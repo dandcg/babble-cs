@@ -38,9 +38,9 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public void TestSignEvent()
         {
-            var privateKey = CryptoUtils.GenerateECDSAKey();
+            var privateKey = CryptoUtils.GenerateEcdsaKey();
 
-            var publicKeyBytes = CryptoUtils.FromECDSAPub(privateKey);
+            var publicKeyBytes = CryptoUtils.FromEcdsaPub(privateKey);
 
             var body = CreateDummyEventBody();
 
@@ -56,7 +56,7 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public void TestBigIntegerSignitureEncoding()
         {
-            var privateKey = CryptoUtils.GenerateECDSAKey();
+            var privateKey = CryptoUtils.GenerateEcdsaKey();
 
             var body = CreateDummyEventBody();
 
@@ -72,9 +72,9 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public void TestMarshallEvent()
         {
-            var privateKey = CryptoUtils.GenerateECDSAKey();
+            var privateKey = CryptoUtils.GenerateEcdsaKey();
 
-            var publicKeyBytes = CryptoUtils.FromECDSAPub(privateKey);
+            var publicKeyBytes = CryptoUtils.FromEcdsaPub(privateKey);
 
             var body = CreateDummyEventBody();
 
@@ -95,9 +95,9 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public void TestWireEvent()
         {
-            var privateKey = CryptoUtils.GenerateECDSAKey();
+            var privateKey = CryptoUtils.GenerateEcdsaKey();
 
-            var publicKeyBytes = CryptoUtils.FromECDSAPub(privateKey);
+            var publicKeyBytes = CryptoUtils.FromEcdsaPub(privateKey);
             
             var body = CreateDummyEventBody();
 

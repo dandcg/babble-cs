@@ -2,29 +2,27 @@
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
-using Dotnatter.Util;
 
 namespace Dotnatter.Crypto
 {
     public static class CryptoUtils
     {
-        public static byte[] SHA256(byte[] hashBytes)
+        public static byte[] Sha256(byte[] hashBytes)
         {
             using (var hasher = System.Security.Cryptography.SHA256.Create())
             {
                 var hash = hasher.ComputeHash(hashBytes);
-
                 return hash;
             }
         }
 
-        public static CngKey GenerateECDSAKey()
+        public static CngKey GenerateEcdsaKey()
         {
             var key = CngKey.Create(CngAlgorithm.ECDsaP256);
             return key;
         }
 
-        public static CngKey ToECDSAPub(byte[] pub)
+        public static CngKey ToEcdsaPub(byte[] pub)
         {
             if (pub.Length == 0)
             {
@@ -35,7 +33,7 @@ namespace Dotnatter.Crypto
             return key;
         }
 
-        public static byte[] FromECDSAPub(CngKey pub)
+        public static byte[] FromEcdsaPub(CngKey pub)
         {
             // Todo: Will need to align blob formats for interpolority
             var bytes = pub?.Export(CngKeyBlobFormat.GenericPublicBlob);
@@ -56,8 +54,6 @@ namespace Dotnatter.Crypto
 
         public static byte[] Sign(CngKey priv, byte[] hash)
         {
-            Console.WriteLine("len={0},hash={1}", hash.Length, hash.ToHex());
-
             using (var ecdsa = new ECDsaCng(priv))
             {
                 ecdsa.HashAlgorithm = CngAlgorithm.ECDsaP256;
@@ -84,9 +80,6 @@ namespace Dotnatter.Crypto
             using (var ecdsa = new ECDsaCng(pub))
             {
                 ecdsa.HashAlgorithm = CngAlgorithm.ECDsaP256;
-
-                Console.WriteLine("len={0},sig={1}", sig.Length, sig.ToHex());
-
                 return ecdsa.VerifyHash(hash, sig);
             }
         }

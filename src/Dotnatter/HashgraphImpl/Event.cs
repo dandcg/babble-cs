@@ -33,7 +33,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
  
-        public byte[] Hash() =>  CryptoUtils.SHA256(Marshal());
+        public byte[] Hash() =>  CryptoUtils.Sha256(Marshal());
 
     }
 
@@ -61,7 +61,7 @@ namespace Dotnatter.HashgraphImpl
         private byte[] hash;
         private string hex;
         public string Creator => creator ?? (creator = Body.Creator.ToHex());
-        public byte[] Hash() => hash ?? (hash = CryptoUtils.SHA256(Marhsal()));
+        public byte[] Hash() => hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
         public string Hex() => hex ?? (hex = Hash().ToHex());
 
 
@@ -125,7 +125,7 @@ namespace Dotnatter.HashgraphImpl
         public bool Verify()
         {
             var pubBytes = Body.Creator;
-            var pubKey = CryptoUtils.ToECDSAPub(pubBytes);
+            var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
             var signBytes = Body.Hash();
 
             return CryptoUtils.Verify(pubKey, signBytes, Signiture);
