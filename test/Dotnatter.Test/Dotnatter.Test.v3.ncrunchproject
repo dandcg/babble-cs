@@ -10,6 +10,18 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Hashgraph.EventTests.TestSignEvent</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Hashgraph.EventTests.TestBigIntegerSignitureEncoding</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Hashgraph.EventTests.TestIsLoaded</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Hashgraph.EventTests.TestWireEvent</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
+      </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

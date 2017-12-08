@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
 
-namespace Dotnatter.Hashgraph
+namespace Dotnatter.HashgraphImpl
 {
     public class EventBody
     {

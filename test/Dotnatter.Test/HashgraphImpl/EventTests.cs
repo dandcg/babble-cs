@@ -1,11 +1,11 @@
 using System;
-using DeepEqual.Syntax;
 using Dotnatter.Crypto;
-using Dotnatter.Hashgraph;
+using Dotnatter.HashgraphImpl;
+using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Xunit;
 
-namespace Dotnatter.Test.Hashgraph
+namespace Dotnatter.Test.HashgraphImpl
 {
     public class EventTests
     {
@@ -32,7 +32,7 @@ namespace Dotnatter.Test.Hashgraph
 
             var newBody = EventBody.Unmarshal(raw);
 
-            newBody.ShouldDeepEqual(body);
+            newBody.ShouldCompareTo(body);
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace Dotnatter.Test.Hashgraph
 
             var newEv = Event.Unmarshal(raw);
 
-            newEv.ShouldDeepEqual(ev);
+            newEv.ShouldCompareTo(ev);
         }
 
 
@@ -126,7 +126,7 @@ namespace Dotnatter.Test.Hashgraph
 
             var wireEvent = ev.ToWire();
             
-            wireEvent.ShouldDeepEqual(expectedWireEvent);
+            wireEvent.ShouldCompareTo(expectedWireEvent);
         }
 
 

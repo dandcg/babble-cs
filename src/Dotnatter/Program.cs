@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace dotnatter
+namespace Dotnatter
 {
     class Program
     {
