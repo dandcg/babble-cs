@@ -1,0 +1,15 @@
+﻿<ProjectConfiguration>
+  <Settings>
+    <IgnoredTests>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Hashgraph.EventTests.TestMarshallEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Hashgraph.EventTests.TestMarshallBody</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Hashgraph.EventTests.TestSignEvent</TestName>
+      </NamedTestSelector>
+    </IgnoredTests>
+  </Settings>
+</ProjectConfiguration>
