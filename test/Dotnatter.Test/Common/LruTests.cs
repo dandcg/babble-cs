@@ -88,7 +88,7 @@ namespace Dotnatter.Test.Common
 
         // Test that Add returns true/false if an eviction occurred
         [Fact]
-        public void TestLRU_Add()
+        public void TestLru_Add()
         {
             var evictCounter = 0;
 
@@ -112,7 +112,7 @@ namespace Dotnatter.Test.Common
 
         // Test that Contains doesn't update recent-ness
         [Fact]
-        public void TestLRU_Contains()
+        public void TestLru_Contains()
         {
             var l = new LruCache<int, int>(2, null);
             
@@ -130,7 +130,7 @@ namespace Dotnatter.Test.Common
 
         // Test that Peek doesn't update recent-ness
         [Fact]
-        public void TestLRU_Peek()
+        public void TestLru_Peek()
         {
             var l = new LruCache<int, int>(2, null);
 
