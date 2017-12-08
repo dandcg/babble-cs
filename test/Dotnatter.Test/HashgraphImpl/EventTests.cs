@@ -28,8 +28,6 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var raw = body.Marshal();
 
-            Console.WriteLine(raw.ToHex());
-
             var newBody = EventBody.Unmarshal(raw);
 
             newBody.ShouldCompareTo(body);
