@@ -30,11 +30,9 @@ namespace Dotnatter.Test.Common
             Assert.Equal(128, l.Len());
 
             i = 0;
-            foreach (var k in l.Keys)
+            foreach (var k in l.Keys())
             {
                 var (v,_) = l.Get(k);
-
-                Console.WriteLine("{0},{1}", v, i + 128);
 
                 Assert.Equal(v, k);
                 Assert.Equal(v, i + 128);
@@ -72,7 +70,7 @@ namespace Dotnatter.Test.Common
             l.Get(192); // expect 192 to be last key in l.Keys()
 
             i = 0;
-            foreach (var k in l.Keys)
+            foreach (var k in l.Keys())
             {
 
                 Assert.True((i < 63 && k != i + 193) || (i == 63 && k != 192), $"out of order key: {k}");
