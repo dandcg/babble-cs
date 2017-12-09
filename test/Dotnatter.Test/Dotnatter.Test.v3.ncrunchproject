@@ -1,5 +1,8 @@
 ﻿<ProjectConfiguration>
   <Settings>
+    <HiddenComponentWarnings>
+      <Value>LongTestTimesWithoutParallelExecution</Value>
+    </HiddenComponentWarnings>
     <IgnoredTests>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Hashgraph.EventTests.TestMarshallEvent</TestName>
@@ -21,6 +24,12 @@
       </NamedTestSelector>
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.Common.LruTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.Common.RollingIndexTests</FixtureName>
       </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
