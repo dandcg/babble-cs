@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
+using Dotnatter.Common;
 
 namespace Dotnatter.HashgraphImpl
 {
@@ -20,16 +21,11 @@ namespace Dotnatter.HashgraphImpl
         public int topologicalIndex { get; set; } //counter used to order events in topological order
         public int superMajority { get; set; }
         
-        //ancestorCache* common.LRU
-        //selfAncestorCache* common.LRU
-        //oldestSelfAncestorCache *common.LRU
-        //stronglySeeCache        *common.LRU
-        //parentRoundCache        *common.LRU
-        //roundCache              *common.LRU
-    }
-
-
-    public interface IStore
-    {
+        public LruCache<string,string> ancestorCache { get; set; }
+        public LruCache<string, string> selfAncestorCache { get; set; }
+        public LruCache<string, string> oldestSelfAncestorCache { get; set; }
+        public LruCache<string, string> stronglySeeCache { get; set; }
+        public LruCache<string, string> parentRoundCache { get; set; }
+        public LruCache<string, string> roundCache { get; set; }
     }
 }
