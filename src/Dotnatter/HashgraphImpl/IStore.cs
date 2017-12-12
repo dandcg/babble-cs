@@ -6,11 +6,11 @@ namespace Dotnatter.HashgraphImpl
     {
         int CacheSize();
         Dictionary<string, int> Participants();
-        Event GetEvent(string str);
+        (Event evt, bool success) GetEvent(string str);
         void SetEvent(Event ev);
         string[] ParticipantEvents(string str, int i);
         string ParticipantEvent(string str, int i);
-        (string, bool) LastFrom(string str);
+        (string last, bool isRoot) LastFrom(string str);
         Dictionary<int, int> Known();
         string[] ConsensusEvents();
 

@@ -5,13 +5,12 @@
         public int Round { get; set; }
         public bool IsRoot { get; set; }
         
-        public static ParentRoundInfo NewBaseParentRoundInfo()
+        public ParentRoundInfo()
         {
-            return new ParentRoundInfo
-            {
-                Round = -1,
-                IsRoot = false
-            };
+
+            Round = -1;
+            IsRoot = false;
+
         }
     }
 }

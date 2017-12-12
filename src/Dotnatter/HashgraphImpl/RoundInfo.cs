@@ -7,16 +7,15 @@ namespace Dotnatter.HashgraphImpl
 {
     public class RoundInfo
     {
+
+        public RoundInfo()
+        {
+            Events = new Dictionary<string, RoundEvent>();
+        }
+
         public Dictionary<string, RoundEvent> Events { get; set; }
         public bool Queued { get; set; }
 
-        public static RoundInfo NewRoundInfo()
-        {
-            return new RoundInfo
-            {
-                Events = new Dictionary<string, RoundEvent>()
-            };
-        }
 
         public void AddEvent(string x, bool witness)
         {

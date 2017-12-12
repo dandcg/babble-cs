@@ -31,6 +31,9 @@
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.Common.RollingIndexTests</FixtureName>
       </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.CachesTests</FixtureName>
+      </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

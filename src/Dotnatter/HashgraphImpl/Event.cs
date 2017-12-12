@@ -5,44 +5,6 @@ using Dotnatter.Util;
 
 namespace Dotnatter.HashgraphImpl
 {
-    public class EventBody
-    {
-
-        public byte[][] Transactions { get; set; } //the payload
-        public string[] Parents { get; set; } //hashes of the event's parents, self-parent first
-        public byte[] Creator { get; set; } //creator's public key
-        public DateTime Timestamp { get; set; } //creator's claimed timestamp of the event's creation
-        public int Index { get; set; } //index in the sequence of events created by Creator
-
-        //wire
-        //It is cheaper to send ints then hashes over the wire
-        internal int SelfParentIndex { get; set; }
-        internal int OtherParentCreatorId { get; set; }
-        internal int OtherParentIndex { get; set; }
-        internal int CreatorId { get; set; }
-
-
-        public byte[] Marshal()
-        {
-            return this.SerializeToByteArray();
-        }
-
-        public static EventBody Unmarshal(byte[] data)
-        {
-            return data.DeserializeFromByteArray<EventBody>();
-        }
-
- 
-        public byte[] Hash() =>  CryptoUtils.Sha256(Marshal());
-
-    }
-
-    public class EventCoordinates
-    {
-        public string Hash { get; set; }
-        public int Index { get; set; }
-    }
-
     public class Event
     {
         public EventBody Body { get; set; }
@@ -64,8 +26,10 @@ namespace Dotnatter.HashgraphImpl
         public byte[] Hash() => hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
         public string Hex() => hex ?? (hex = Hash().ToHex());
 
+        public Event()
+        { }
 
-        public static Event NewEvent(byte[][] transactions, string[] parents, byte[] creator, int index)
+        public Event(byte[][] transactions, string[] parents, byte[] creator, int index)
         {
             var body = new EventBody
             {
@@ -75,13 +39,8 @@ namespace Dotnatter.HashgraphImpl
                 Timestamp = DateTime.UtcNow, //strip monotonic time
                 Index = index
             };
-
-            var ev = new Event
-            {
-                Body = body
-            };
-
-            return ev;
+            
+            Body = body;
         }
 
         public string SelfParent()
@@ -185,26 +144,4 @@ namespace Dotnatter.HashgraphImpl
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // WireEvent
-
-    public class WireBody
-    {
-        public byte[][] Transactions { get; set; }
-
-        public int SelfParentIndex { get; set; }
-        public int OtherParentCreatorId { get; set; }
-        public int OtherParentIndex { get; set; }
-        public int CreatorId { get; set; }
-
-        public DateTime Timestamp { get; set; }
-        public int Index { get; set; }
-    }
-
-    public class WireEvent
-    {
-        public WireBody Body { get; set; }
-        public byte[] Signiture { get; set; }
-
-        //public ulong R { get; set; }
-        //public ulong S { get; set; }
-    }
 }
