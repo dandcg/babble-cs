@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
@@ -14,7 +15,7 @@ namespace Dotnatter.HashgraphImpl
         public int RoundReceived { get; set; }
         public DateTime ConsensusTimestamp { get; set; }
         public EventCoordinates[] LastAncestors { get; set; } //[participant fake id] => last ancestor
-        public EventCoordinates[] FirstDescendants { get; set; } //[participant fake id] => first descendant
+        public EventCoordinates[] FirstDescendants  { get; set; } //[participant fake id] => first descendant
 
 
         //sha256 hash of body and signature

@@ -34,6 +34,12 @@
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.CachesTests</FixtureName>
       </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.InmemStoreTests</FixtureName>
+      </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>
