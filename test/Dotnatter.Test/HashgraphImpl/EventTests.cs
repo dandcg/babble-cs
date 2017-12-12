@@ -132,7 +132,7 @@ namespace Dotnatter.Test.HashgraphImpl
         public void TestIsLoaded()
         {
             //nil payload
-            var ev = Event.NewEvent(null, new[] {"p1", "p2"}, "creator".StringToBytes(), 1);
+            var ev = new Event(null, new[] {"p1", "p2"}, "creator".StringToBytes(), 1);
             Assert.False(ev.IsLoaded(), "IsLoaded() should return false for nil Body.Transactions");
             
             //empty payload
