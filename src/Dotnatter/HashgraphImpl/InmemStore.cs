@@ -58,7 +58,6 @@ namespace Dotnatter.HashgraphImpl
             if (!success)
             {
                 AddParticpantEvent(ev.Creator, key, ev.Index());
-    
             }
             
             eventCache.Add(key, ev);

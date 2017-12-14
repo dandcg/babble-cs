@@ -23,8 +23,8 @@ namespace Dotnatter.HashgraphImpl
         public int topologicalIndex { get; set; } //counter used to order evs in topological order
         public int superMajority { get; set; }
 
-        public LruCache<string, string> ancestorCache { get; set; }
-        public LruCache<string, string> selfAncestorCache { get; set; }
+        public LruCache<string, bool> ancestorCache { get; set; }
+        public LruCache<string, bool> selfAncestorCache { get; set; }
         public LruCache<string, string> oldestSelfAncestorCache { get; set; }
         public LruCache<string, string> stronglySeeCache { get; set; }
         public LruCache<string, string> parentRoundCache { get; set; }
@@ -40,8 +40,8 @@ namespace Dotnatter.HashgraphImpl
             ReverseParticipants = reverseParticipants;
             Store = store;
             CommitChannel = commitCh;
-            ancestorCache = new LruCache<string, string>(cacheSize, null);
-            selfAncestorCache = new LruCache<string, string>(cacheSize, null);
+            ancestorCache = new LruCache<string, bool>(cacheSize, null);
+            selfAncestorCache = new LruCache<string, bool>(cacheSize, null);
             oldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null);
             stronglySeeCache = new LruCache<string, string>(cacheSize, null);
             parentRoundCache = new LruCache<string, string>(cacheSize, null);
@@ -57,68 +57,90 @@ namespace Dotnatter.HashgraphImpl
             return superMajority;
         }
 
-        //    //true if y is an ancestor of x
-        //    public bool Ancestor(string x, string y)
-        //        {
-        //	if c, ok = h.ancestorCache.Get(Key{x, y
-        //}); ok {
-        //		return c.(bool)
-        //	}
-        //	a = h.ancestor(x, y)
-        //    h.ancestorCache.Add(Key{ x, y}, a)
-        //	return a
-        //}
+        //true if y is an ancestor of x
+        public bool Ancestor(string x, string y)
+        {
+        var (c, ok) = ancestorCache.Get(new Key(x,y).ToString());
 
-        //public bool ancestor(string x, string y)
-        //        {
-        //	if x == y {
-        //		return true
-        //	}
+            if (ok)
+            {
+                return c;
+                
+            }
 
-        //	ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return false
-        //	}
+            var a = AncestorInternal(x, y);
+            ancestorCache.Add(new Key(x, y).ToString(), a);
+            return a;
+        }
 
-        //	ey, err = h.Store.GetEvent(y)
-        //	if err != nil {
-        //		return false
-        //	}
+        public bool AncestorInternal(string x, string y)
+        {
+            if (x == y)
+            {
+                return true;
 
-        //	eyCreator = h.Participants[ey.Creator()]
-        //    lastAncestorKnownFromYCreator = ex.lastAncestors[eyCreator].index
+            }
 
-        //	return lastAncestorKnownFromYCreator >= ey.Index()
-        //}
+            var (ex, successx) = Store.GetEvent(x);
 
-        ////true if y is a self-ancestor of x
-        //public Self Ancestor(x, y string)  {
-        //	if c, ok = h.selfAncestorCache.Get(Key{x, y}); ok {
-        //		return c.(bool)
-        //	}
-        //	a = h.selfAncestor(x, y)
-        //    h.selfAncestorCache.Add(Key{ x, y}, a)
-        //	return a
-        //}
+            if (!successx)
+            {
+                return false;
+            }
 
-        //public void selfAncestor(x, y string) bool {
-        //	if x == y {
-        //		return true
-        //	}
-        //	ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return false
-        //	}
-        //	exCreator = h.Participants[ex.Creator()]
+            var (ey, successy) = Store.GetEvent(y);
 
-        //    ey, err = h.Store.GetEvent(y)
-        //	if err != nil {
-        //		return false
-        //	}
-        //	eyCreator = h.Participants[ey.Creator()]
+            if (!successy)
+            {
+                return false;
+            }
 
-        //	return exCreator == eyCreator && ex.Index() >= ey.Index()
-        //}
+            var eyCreator = Participants[ey.Creator];
+            var lastAncestorKnownFromYCreator = ex.LastAncestors[eyCreator].Index;
+
+            return lastAncestorKnownFromYCreator >= ey.Index();
+        }
+
+        //true if y is a self-ancestor of x
+        public bool SelfAncestor(string x, string  y )
+        {
+            var (c, ok) = selfAncestorCache.Get(new Key( x, y).ToString());
+
+            if (ok)
+            {
+                return c;
+
+            }
+            var a = SelfAncestorInternal(x, y);
+            selfAncestorCache.Add(new Key(x, y).ToString(), a);
+            return a;
+        }
+
+        public bool SelfAncestorInternal(string x, string y)
+        {
+        	if (x == y)
+	        {
+	            return true;
+	        }
+            var (ex, successx) = Store.GetEvent(x);
+
+        	if (!successx)
+	        {
+	            return false;
+	        }
+
+            var exCreator = Participants[ex.Creator];
+
+            var (ey, successy) = Store.GetEvent(y);
+            if (!successy)
+            {
+                return false;
+            }
+
+            var eyCreator = Participants[ey.Creator];
+
+            return exCreator == eyCreator && ex.Index() >= ey.Index();
+        }
 
         ////true if x sees y
         //public bool See(x, y string)  {
@@ -477,38 +499,36 @@ namespace Dotnatter.HashgraphImpl
 
             ev.FirstDescendants = new EventCoordinates[members];
 
-            for (var fakeID = 0; fakeID < members; fakeID++)
+            for (var fakeId = 0; fakeId < members; fakeId++)
             {
-                ev.FirstDescendants[fakeID] = new EventCoordinates
+                ev.FirstDescendants[fakeId] = new EventCoordinates
                 {
                     Index = int.MaxValue
                 };
             }
 
-
             ev.LastAncestors = new EventCoordinates[members];
 
+            var ( selfParent, selfParentSuccess) = Store.GetEvent(ev.SelfParent());
+            var ( otherParent, otherParentSuccess) = Store.GetEvent(ev.OtherParent());
 
-            var( selfParent, selfParentError) = Store.GetEvent(ev.SelfParent());
-            var ( otherParent, otherParentError) = Store.GetEvent(ev.OtherParent());
-
-            if (selfParentError && otherParentError)
+            if (!selfParentSuccess && !otherParentSuccess)
             {
-                for (var fakeID = 0; fakeID < members; fakeID++)
+                for (var fakeId = 0; fakeId < members; fakeId++)
                 {
-                    ev.LastAncestors[fakeID] = new EventCoordinates
+                    ev.LastAncestors[fakeId] = new EventCoordinates
                     {
                         Index = -1
                     };
                 }
             }
-            else if (selfParentError)
+            else if (!selfParentSuccess)
             {
-                Array.Copy(ev.LastAncestors.Take(members).ToArray(), 0, otherParent.LastAncestors, 0, members);
+                Array.Copy(otherParent.LastAncestors.Take(members).ToArray(), 0, ev.LastAncestors, 0, members);
             }
-            else if (otherParentError)
+            else if (!otherParentSuccess)
             {
-                Array.Copy(ev.LastAncestors.Take(members).ToArray(), 0, selfParent.LastAncestors, 0, members);
+                Array.Copy(selfParent.LastAncestors.Take(members).ToArray(), 0, ev.LastAncestors, 0, members);
             }
             else
             {
@@ -516,9 +536,8 @@ namespace Dotnatter.HashgraphImpl
 
                 var otherParentLastAncestors = otherParent.LastAncestors;
 
-                Array.Copy(ev.LastAncestors.Take(members).ToArray(), 0, selfParentLastAncestors, 0, members);
-
-
+                Array.Copy(selfParentLastAncestors.Take(members).ToArray(), 0, ev.LastAncestors, 0, members);
+            
                 for (var i = 0; i < members; i++)
                 {
                     if (ev.LastAncestors[i].Index < otherParentLastAncestors[i].Index)
@@ -529,8 +548,8 @@ namespace Dotnatter.HashgraphImpl
                         }
                     }
                 }
-
-                var index = ev.Index();
+            }
+            var index = ev.Index();
 
                 var creator = ev.Creator;
 
@@ -541,7 +560,7 @@ namespace Dotnatter.HashgraphImpl
                     ev.FirstDescendants[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
                     ev.LastAncestors[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
                 }
-            }
+            
         }
 
 //update first decendant of each last ancestor to point to ev
@@ -554,9 +573,9 @@ namespace Dotnatter.HashgraphImpl
 
             for (var i = 0; i < ev.LastAncestors.Length; i++)
             {
-                var ah = ev.LastAncestors[i].Hash;
+                var ah = ev.LastAncestors[i]?.Hash;
 
-                while (ah != "")
+                while (!string.IsNullOrEmpty(ah) )
                 {
                     var (a, success) = Store.GetEvent(ah);
 

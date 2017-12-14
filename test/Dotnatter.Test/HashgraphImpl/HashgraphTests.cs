@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -167,11 +168,15 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var p in  plays)
             {
+                var parents = new List<string>();
+                parents.Add(index[p.SelfParent]);
+                index.TryGetValue(p.OtherParent, out var otherParent);
+    
+                    parents.Add(otherParent??"");
+            
+
                 var e = new Event(p.Payload,
-                    new[]
-                    {
-                        index[p.SelfParent], index[p.OtherParent]
-                    },
+                    parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
 
@@ -218,118 +223,105 @@ public void TestAncestor()
             var ( h, index) = InitHashgraph();
 
             //1 generation
-            //        if !h.Ancestor(index["e01"], index["e0"]) {
-            //            t.Fatal("e0 should be ancestor of e01")
 
-            //}
-            //        if !h.Ancestor(index["e01"], index["e1"]) {
-            //            t.Fatal("e1 should be ancestor of e01")
+            Assert.True(h.Ancestor(index["e01"], index["e0"]), "e0 should be ancestor of e01");
 
-            //}
-            //        if !h.Ancestor(index["s00"], index["e01"]) {
-            //            t.Fatal("e01 should be ancestor of s00")
+            Assert.True(h.Ancestor(index["e01"], index["e1"]), "e1 should be ancestor of e01");
 
-            //}
-            //        if !h.Ancestor(index["s20"], index["e2"]) {
-            //            t.Fatal("e2 should be ancestor of s20")
+            Assert.True(h.Ancestor(index["s00"], index["e01"]), "e01 should be ancestor of s00");
+            
+            Assert.True(h.Ancestor(index["s00"], index["e01"]), "e01 should be ancestor of s00");
+            
+            Assert.True(h.Ancestor(index["s20"], index["e2"]), "e2 should be ancestor of s20");
 
-            //}
-            //        if !h.Ancestor(index["e20"], index["s00"]) {
-            //            t.Fatal("s00 should be ancestor of e20")
+            Assert.True(h.Ancestor(index["e20"], index["s00"]), "s00 should be ancestor of e20");
 
-            //}
-            //        if !h.Ancestor(index["e20"], index["s20"]) {
-            //            t.Fatal("s20 should be ancestor of e20")
+            Assert.True(h.Ancestor(index["e20"], index["s20"]), "s20 should be ancestor of e20");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["e20"]) {
-            //            t.Fatal("e20 should be ancestor of e12")
+            Assert.True(h.Ancestor(index["e12"], index["e20"]), "e20 should be ancestor of e12");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["s10"]) {
-            //            t.Fatal("s10 should be ancestor of e12")
+            Assert.True(h.Ancestor(index["e12"], index["s10"]), "s10 should be ancestor of e12");
 
-            //}
 
-            //        //2 generations
-            //        if !h.Ancestor(index["s00"], index["e0"]) {
-            //            t.Fatalf("e0 should be ancestor of s00")
+            //2 generations
 
-            //}
-            //        if !h.Ancestor(index["s00"], index["e1"]) {
-            //            t.Fatalf("e1 should be ancestor of s00")
+            Assert.True(h.Ancestor(index["s00"], index["e0"]), "e0 should be ancestor of s00");
 
-            //}
-            //        if !h.Ancestor(index["e20"], index["e01"]) {
-            //            t.Fatalf("e01 should be ancestor of e20")
+            Assert.True(h.Ancestor(index["s00"], index["e1"]), "e1 should be ancestor of s00");
+        
+            Assert.True(h.Ancestor(index["e20"], index["e01"]), "e01 should be ancestor of e20");
+        
+            Assert.True(h.Ancestor(index["e20"], index["e2"]), "e2 should be ancestor of e20");
+        
+            Assert.True(h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e12");
+       
+            Assert.True(h.Ancestor(index["e12"], index["s20"]), "s20 should be ancestor of e12");
+            
 
-            //}
-            //        if !h.Ancestor(index["e20"], index["e2"]) {
-            //            t.Fatalf("e2 should be ancestor of e20")
+            // 3 generations
+     
+            Assert.True(h.Ancestor(index["e12"], index["e0"]), "e0 should be ancestor of e20");
+            
+            Assert.True(h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e20");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["e1"]) {
-            //            t.Fatalf("e1 should be ancestor of e12")
+            Assert.True(h.Ancestor(index["e12"], index["e2"]), "e2 should be ancestor of e20");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["s20"]) {
-            //            t.Fatalf("s20 should be ancestor of e12")
+            Assert.True(h.Ancestor(index["e12"], index["e01"]), "e01 should be ancestor of e12");
 
-            //}
+            Assert.True(h.Ancestor(index["e12"], index["e0"]), "e0 should be ancestor of e12");
 
-            //        //3 generations
-            //        if !h.Ancestor(index["e20"], index["e0"]) {
-            //            t.Fatal("e0 should be ancestor of e20")
+            Assert.True(h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e12");
 
-            //}
-            //        if !h.Ancestor(index["e20"], index["e1"]) {
-            //            t.Fatal("e1 should be ancestor of e20")
+            Assert.True(h.Ancestor(index["e12"], index["e2"]), "e2 should be ancestor of e12");
 
-            //}
-            //        if !h.Ancestor(index["e20"], index["e2"]) {
-            //            t.Fatal("e2 should be ancestor of e20")
+            //false positive
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["e01"]) {
-            //            t.Fatal("e01 should be ancestor of e12")
+            Assert.False(h.Ancestor(index["e01"], index["e2"]), "e2 should not be ancestor of e01");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["e0"]) {
-            //            t.Fatal("e0 should be ancestor of e12")
+            Assert.False(h.Ancestor(index["s00"], index["e2"]), "e2 should not be ancestor of s00");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["e1"]) {
-            //            t.Fatal("e1 should be ancestor of e12")
+            Assert.False(h.Ancestor(index["e0"], ""), "\"\" should not be ancestor of e0");
 
-            //}
-            //        if !h.Ancestor(index["e12"], index["e2"]) {
-            //            t.Fatal("e2 should be ancestor of e12")
+            Assert.False(h.Ancestor(index["s00"], ""), "\"\" should not be ancestor of s00");
 
-            //}
+            Assert.False(h.Ancestor(index["e12"], ""), "\"\" should not be ancestor of e12");
+  
 
-            //        //false positive
-            //        if h.Ancestor(index["e01"], index["e2"]) {
-            //            t.Fatal("e2 should not be ancestor of e01")
+        }
 
-            //}
-            //        if h.Ancestor(index["s00"], index["e2"]) {
-            //            t.Fatal("e2 should not be ancestor of s00")
+        [Fact]
+        public void TestSelfAncestor()
+        {
+            var (h, index) = InitHashgraph();
 
-            //}
+            // 1 generation
 
-            //        if h.Ancestor(index["e0"], "") {
-            //            t.Fatal("\"\" should not be ancestor of e0")
+            Assert.True(h.SelfAncestor(index["e01"], index["e0"]), "e0 should be self ancestor of e01");
 
-            //}
-            //        if h.Ancestor(index["s00"], "") {
-            //            t.Fatal("\"\" should not be ancestor of s00")
+            Assert.True(h.SelfAncestor(index["s00"], index["e01"]), "e01 should be self ancestor of s00");
 
-            //}
-            //        if h.Ancestor(index["e12"], "") {
-            //            t.Fatal("\"\" should not be ancestor of e12")
+            // 1 generation false negatives
 
-            //}
+            Assert.False(h.SelfAncestor(index["e01"], index["e1"]), "e1 should not be self ancestor of e01");
 
+            Assert.False(h.SelfAncestor(index["e12"], index["e20"]), "e20 should not be self ancestor of e12");
+
+            Assert.False(h.SelfAncestor(index["s20"], ""), "\"\" should not be self ancestor of s20");
+
+            // 2 generation
+            
+            Assert.True(h.SelfAncestor(index["e20"], index["e2"]), "e2 should be self ancestor of e20");
+
+            Assert.True(h.SelfAncestor(index["e12"], index["e1"]), "e1 should be self ancestor of e12");
+
+            // 2 generation false negative
+
+            Assert.False(h.SelfAncestor(index["e20"], index["e0"]), "e0 should not be self ancestor of e20");
+            
+            Assert.False(h.SelfAncestor(index["e12"], index["e2"]), "e2 should not be self ancestor of e12");
+            
+            Assert.False(h.SelfAncestor(index["e20"], index["e01"]), "e01 should not be self ancestor of e20");
+            
         }
 
 

@@ -204,7 +204,7 @@ func TestAncestor(t *testing.T) {
 		t.Fatal("e2 should be ancestor of e12")
 	}
 
-	//false positive
+
 	if h.Ancestor(index["e01"], index["e2"]) {
 		t.Fatal("e2 should not be ancestor of e01")
 	}

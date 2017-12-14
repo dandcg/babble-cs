@@ -2,8 +2,14 @@
 {
     public class Key
     {
-        public string X { get; set; }
-        public string Y { get; set; }
+
+        public Key(string x, string y)
+        {
+            X = x;
+            Y = y;
+        }
+        public string X { get; }
+        public string Y { get;  }
 
         public override string ToString()
         {
