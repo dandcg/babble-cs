@@ -23,9 +23,6 @@
         <TestName>Dotnatter.Test.Hashgraph.EventTests.TestWireEvent</TestName>
       </NamedTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
-      </FixtureTestSelector>
-      <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.Common.LruTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
