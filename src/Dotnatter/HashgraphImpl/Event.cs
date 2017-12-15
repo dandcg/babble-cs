@@ -12,7 +12,7 @@ namespace Dotnatter.HashgraphImpl
         //public (ulong R, ulong S) Signiture { get; set; } //creator's digital signature of body
         public byte[] Signiture { get; set; }
         public int TopologicalIndex { get; set; }
-        public int RoundReceived { get; set; }
+        public int? RoundReceived { get; set; }
         public DateTime ConsensusTimestamp { get; set; }
         public EventCoordinates[] LastAncestors { get; set; } //[participant fake id] => last ancestor
         public EventCoordinates[] FirstDescendants  { get; set; } //[participant fake id] => first descendant

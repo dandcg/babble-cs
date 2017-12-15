@@ -26,9 +26,9 @@ namespace Dotnatter.HashgraphImpl
         public LruCache<string, bool> ancestorCache { get; set; }
         public LruCache<string, bool> selfAncestorCache { get; set; }
         public LruCache<string, string> oldestSelfAncestorCache { get; set; }
-        public LruCache<string, string> stronglySeeCache { get; set; }
-        public LruCache<string, string> parentRoundCache { get; set; }
-        public LruCache<string, string> roundCache { get; set; }
+        public LruCache<string, bool> stronglySeeCache { get; set; }
+        public LruCache<string, ParentRoundInfo> parentRoundCache { get; set; }
+        public LruCache<string, int> roundCache { get; set; }
 
         public Hashgraph(Dictionary<string, int> participants, IStore store, ConcurrentQueue<Event> commitCh)
         {
@@ -43,9 +43,9 @@ namespace Dotnatter.HashgraphImpl
             ancestorCache = new LruCache<string, bool>(cacheSize, null);
             selfAncestorCache = new LruCache<string, bool>(cacheSize, null);
             oldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null);
-            stronglySeeCache = new LruCache<string, string>(cacheSize, null);
-            parentRoundCache = new LruCache<string, string>(cacheSize, null);
-            roundCache = new LruCache<string, string>(cacheSize, null);
+            stronglySeeCache = new LruCache<string, bool>(cacheSize, null);
+            parentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null);
+            roundCache = new LruCache<string, int>(cacheSize, null);
 
             superMajority = 2 * participants.Count / 3 + 1;
             UndecidedRounds = new Queue<int>(); //initialize
@@ -60,7 +60,7 @@ namespace Dotnatter.HashgraphImpl
         //true if y is an ancestor of x
         public bool Ancestor(string x, string y)
         {
-        var (c, ok) = ancestorCache.Get(new Key(x,y).ToString());
+        var (c, ok) = ancestorCache.Get(Key.New(x,y));
 
             if (ok)
             {
@@ -69,11 +69,11 @@ namespace Dotnatter.HashgraphImpl
             }
 
             var a = AncestorInternal(x, y);
-            ancestorCache.Add(new Key(x, y).ToString(), a);
+            ancestorCache.Add(Key.New(x, y), a);
             return a;
         }
 
-        public bool AncestorInternal(string x, string y)
+        private bool AncestorInternal(string x, string y)
         {
             if (x == y)
             {
@@ -104,7 +104,7 @@ namespace Dotnatter.HashgraphImpl
         //true if y is a self-ancestor of x
         public bool SelfAncestor(string x, string  y )
         {
-            var (c, ok) = selfAncestorCache.Get(new Key( x, y).ToString());
+            var (c, ok) = selfAncestorCache.Get(Key.New(x, y));
 
             if (ok)
             {
@@ -112,11 +112,11 @@ namespace Dotnatter.HashgraphImpl
 
             }
             var a = SelfAncestorInternal(x, y);
-            selfAncestorCache.Add(new Key(x, y).ToString(), a);
+            selfAncestorCache.Add(Key.New(x, y), a);
             return a;
         }
 
-        public bool SelfAncestorInternal(string x, string y)
+        private bool SelfAncestorInternal(string x, string y)
         {
         	if (x == y)
 	        {
@@ -142,358 +142,432 @@ namespace Dotnatter.HashgraphImpl
             return exCreator == eyCreator && ex.Index() >= ey.Index();
         }
 
-        ////true if x sees y
-        //public bool See(x, y string)  {
-        //	return h.Ancestor(x, y)
-        //	//it is not necessary to detect forks because we assume that with our
-        //	//implementations, no two evs can be added by the same creator at the
-        //	//same height (cf InsertEvent)
-        //}
+        //true if x sees y
+        public bool See(string x, string y)
+        {
+            return Ancestor(x, y);
+            //it is not necessary to detect forks because we assume that with our
+            //implementations, no two evs can be added by the same creator at the
+            //same height (cf InsertEvent)
+        }
 
-        ////oldest self-ancestor of x to see y
-        //public string OldestSelfAncestorToSee(x, y string)  {
-        //	if c, ok = h.oldestSelfAncestorCache.Get(Key{x, y}); ok {
-        //		return c.(string)
-        //	}
-        //	res = h.oldestSelfAncestorToSee(x, y)
-        //    h.oldestSelfAncestorCache.Add(Key{ x, y}, res)
-        //	return res
-        //}
+        //oldest self-ancestor of x to see y
+        public string OldestSelfAncestorToSee(string x, string y)
+        {
+            var ( c, ok) = oldestSelfAncestorCache.Get(Key.New( x, y));
 
-        //public string oldestSelfAncestorToSee(x, y string) {
-        //	ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return ""
-        //	}
-        //	ey, err = h.Store.GetEvent(y)
-        //	if err != nil {
-        //		return ""
-        //	}
+            if (ok)
+            {
+                return c;
 
-        //	a = ey.firstDescendants[h.Participants[ex.Creator()]]
+            }
 
-        //	if a.index <= ex.Index() {
-        //		return a.hash
-        //	}
+            var res = OldestSelfAncestorToSeeInternal(x, y);
+            oldestSelfAncestorCache.Add(Key.New(x, y), res);
+            return res;
+        }
 
-        //	return ""
-        //}
+        private string OldestSelfAncestorToSeeInternal(string x, string y)
+        {
+            var (ex, successx) = Store.GetEvent(x);
 
-        ////true if x strongly sees y
-        //public bool StronglySee(x, y string) {
-        //	if c, ok = h.stronglySeeCache.Get(Key{x, y}); ok {
-        //		return c.(bool)
-        //	}
-        //	ss = h.stronglySee(x, y)
-        //    h.stronglySeeCache.Add(Key{ x, y}, ss)
-        //	return ss
-        //}
+            if (!successx)
+            {
+                return "";
+            }
 
-        //public bool stronglySee(x, y string)  {
+            var (ey, successy) = Store.GetEvent(y);
 
-        //	ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return false
-        //	}
+            if (!successy)
+            {
+                return "";
+            }
 
-        //	ey, err = h.Store.GetEvent(y)
-        //	if err != nil {
-        //		return false
-        //	}
+            var a = ey.FirstDescendants[Participants[ex.Creator]];
+            
+            if (a.Index <= ex.Index())
+            {
+                return a.Hash;
+            }
+            return "";
+        }
 
-        //	c = 0
-        //	for i = 0; i<len(ex.lastAncestors); i++ {
-        //		if ex.lastAncestors[i].index >= ey.firstDescendants[i].index {
-        //			c++
-        //		}
-        //	}
-        //	return c >= h.SuperMajority()
-        //}
+        //true if x strongly sees y
+        public bool StronglySee(string x, string y)
+        {
+            var (c, ok) = stronglySeeCache.Get(Key.New(x, y));
+            if (ok)
+            {
+                return c;
 
-        ////PRI.round: max of parent rounds
-        ////PRI.isRoot: true if round is taken from a Root
-        //public ParentRoundInfo ParentRound(x string)
-        //{
-        //	if c, ok = h.parentRoundCache.Get(x); ok {
-        //		return c.(ParentRoundInfo)
-        //	}
-        //	pr = h.parentRound(x)
-        //    h.parentRoundCache.Add(x, pr)
-        //	return pr
-        //}
+            }
+            var ss = StronglySeeInternal(x, y);
+            stronglySeeCache.Add(Key.New(x, y), ss);
+            return ss;
+        }
 
-        //public ParentRoundInfo parentRound(x string)  {
-        //	res = NewBaseParentRoundInfo()
+        public bool StronglySeeInternal(string x, string y)
+        {
 
+            var (ex, successx) = Store.GetEvent(x);
 
-        //    ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return res
-        //	}
+            if (!successx)
+            {
+                return false;
+            }
 
-        //	//We are going to need the Root later
-        //	root, err = h.Store.GetRoot(ex.Creator())
-        //	if err != nil {
-        //		return res
-        //	}
+            var (ey, successy) = Store.GetEvent(y);
 
-        //	spRound = -1
-        //	spRoot = false
-        //	//If it is the creator's first Event, use the corresponding Root
-        //	if ex.SelfParent() == root.X {
-        //		spRound = root.Round
-        //        spRoot = true
-        //	} else {
-        //		spRound = h.Round(ex.SelfParent())
-        //		spRoot = false
-        //	}
+            if (!successy)
+            {
+                return false;
+            }
 
-        //	opRound = -1
-        //	opRoot = false
-        //	if _, err = h.Store.GetEvent(ex.OtherParent()); err == nil {
-        //		//if we known the other-parent, fetch its Round directly
-        //		opRound = h.Round(ex.OtherParent())
-        //	} else if ex.OtherParent() == root.Y {
-        //		//we do not know the other-parent but it is referenced in Root.Y
-        //		opRound = root.Round
-        //        opRoot = true
-        //	} else if other, ok = root.Others[x]; ok && other == ex.OtherParent() {
-        //		//we do not know the other-parent but it is referenced  in Root.Others
-        //		//we use the Root's Round
-        //		//in reality the OtherParent Round is not necessarily the same as the
-        //		//Root's but it is necessarily smaller. Since We are intererest in the
-        //		//max between self-parent and other-parent rounds, this shortcut is
-        //		//acceptable.
-        //		opRound = root.Round
-        //	}
+            var c = 0;
 
-        //	res.round = spRound
-        //    res.isRoot = spRoot
-        //	if spRound<opRound {
-        //    res.round = opRound
+            for (var i = 0; i < ex.LastAncestors.Length; i++)
+            {
+                if (ex.LastAncestors[i].Index >= ey.FirstDescendants[i].Index)
+                {
+                    c++;
+                }
+            }
+            return c >= SuperMajority();
+        }
 
-        //        res.isRoot = opRoot
+        //PRI.round: max of parent rounds
+        //PRI.isRoot: true if round is taken from a Root
+        public ParentRoundInfo ParentRound(string x )
+        {
+            var (c, ok) = parentRoundCache.Get(x);
+            if (ok)
+            {
+                return c;
+            }
+            var pr = ParentRoundInternal(x);
+            parentRoundCache.Add(x, pr);
 
-        //    }
-        //	return res
-        //}
+            return pr;
+        }
+
+        public ParentRoundInfo ParentRoundInternal(string x )
+        {
+            var res = new ParentRoundInfo();
+
+            var (ex, successx) = Store.GetEvent(x);
+
+            if (!successx)
+            {
+                return res;
+            }
+
+            //We are going to need the Root later
+            var root = Store.GetRoot(ex.Creator);
+
+            if (root==null)
+            {
+                return res;
+
+            }
+
+            var spRound = -1;
+
+            var spRoot = false;
+            //If it is the creator's first Event, use the corresponding Root
+            if (ex.SelfParent() == root.X)
+            {
+                spRound = root.Round;
+                spRoot = true;
+
+            }
+            else
+            {
+                spRound = Round(ex.SelfParent());
+
+                spRoot = false;
+
+            }
+
+            var opRound = -1;
+
+            var opRoot = false;
+
+            var (_, success) = Store.GetEvent(ex.OtherParent());
+            if  (success) {
+                //if we known the other-parent, fetch its Round directly
+                opRound = Round(ex.OtherParent());
+
+            }
+            else if (ex.OtherParent() == root.Y)
+            {
+                //we do not know the other-parent but it is referenced in Root.Y
+                opRound = root.Round;
+                opRoot = true;
+
+            }
+            else if (root.Others.TryGetValue(x, out var other))
+            {
+                if (other == ex.OtherParent())
+                {
+                    //we do not know the other-parent but it is referenced  in Root.Others
+                    //we use the Root's Round
+                    //in reality the OtherParent Round is not necessarily the same as the
+                    //Root's but it is necessarily smaller. Since We are intererest in the
+                    //max between self-parent and other-parent rounds, this shortcut is
+                    //acceptable.
+                    opRound = root.Round;
+                }
+            }
+
+            res.Round = spRound;
+            res.IsRoot = spRoot;
+
+            if (spRound < opRound)
+            {
+                res.Round = opRound;
+                res.IsRoot = opRoot;
+            }
+            return res;
+        }
 
         ////true if x is a witness (first ev of a round for the owner)
-        //public bool Witness(x string)  {
-        //	ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return false
-        //	}
+        public bool Witness(string x )
+        {
+            var (ex, successx) = Store.GetEvent(x);
 
-        //	root, err = h.Store.GetRoot(ex.Creator())
-        //	if err != nil {
-        //		return false
-        //	}
+            if (!successx)
+            {
+                return false;
 
-        //	//If it is the creator's first Event, return true
-        //	if ex.SelfParent() == root.X && ex.OtherParent() == root.Y {
-        //		return true
-        //	}
+            }
 
-        //	return h.Round(x) > h.Round(ex.SelfParent())
-        //}
+            var root = Store.GetRoot(ex.Creator);
 
-        ////true if round of x should be incremented
-        //public bool RoundInc(x string)  {
+            if (root==null)
+            {
+                return false;
 
-        //	parentRound = h.ParentRound(x)
+            }
 
-        //	//If parent-round was obtained from a Root, then x is the Event that sits
-        //	//right on top of the Root. RoundInc is true.
-        //	if parentRound.isRoot {
-        //		return true
-        //	}
+            //If it is the creator's first Event, return true
+            if (ex.SelfParent() == root.X && ex.OtherParent() == root.Y)
+            {
+                return true;
 
-        //	//If parent-round was obtained from a regulare Event, then we need to check
-        //	//if x strongly-sees a strong majority of withnesses from parent-round.
-        //	c = 0
-        //	for _, w = range h.Store.RoundWitnesses(parentRound.round)
-        //{
-        //    if h.StronglySee(x, w) {
-        //        c++
+            }
 
-        //        }
-        //}
+            return Round(x) > Round(ex.SelfParent());
+        }
 
-        //	return c >= h.SuperMajority()
-        //}
+        //true if round of x should be incremented
+        public bool RoundInc(string x )
+        {
 
-        //public int RoundReceived(x string) {
+            var parentRound = ParentRound(x);
 
-        //	ex, err = h.Store.GetEvent(x)
-        //	if err != nil {
-        //		return -1
-        //	}
-        //	if ex.roundReceived == nil {
-        //		return -1
-        //	}
+            //If parent-round was obtained from a Root, then x is the Event that sits
+            //right on top of the Root. RoundInc is true.
+            if (parentRound.IsRoot)
+            {
+                return true;
 
-        //	return * ex.roundReceived
-        //}
+            }
 
-        //public int Round(x string) {
-        //	if c, ok = h.roundCache.Get(x); ok {
-        //		return c.(int)
-        //	}
-        //	r = h.round(x)
-        //    h.roundCache.Add(x, r)
-        //	return r
-        //}
+            //If parent-round was obtained from a regulare Event, then we need to check
+            //if x strongly-sees a strong majority of withnesses from parent-round.
+            var c = 0;
 
-        //public int round(x string)  {
+            foreach (var w in Store.RoundWitnesses(parentRound.Round))
+        {
+                if (StronglySee(x, w))
+                {
+                    c++;
 
-        //	round = h.ParentRound(x).round
+                }
+            }
 
-        //    inc = h.RoundInc(x)
+            return c >= SuperMajority();
+        }
 
-        //	if inc {
-        //		round++
-        //	}
-        //	return round
-        //}
+        public int RoundReceived(string x )
+        {
 
-        ////round(x) - round(y)
-        //public int RoundDiff(x, y string)  {
+            var (ex, successx) = Store.GetEvent(x);
 
-        //	xRound = h.Round(x)
-        //	if xRound< 0 {
-        //		return math.MinInt32, fmt.Errorf("ev %s has negative round", x)
-        //	}
-        //	yRound = h.Round(y)
-        //	if yRound< 0 {
-        //		return math.MinInt32, fmt.Errorf("ev %s has negative round", y)
-        //	}
+            if (!successx)
+            {
+                return -1;
 
-        //	return xRound - yRound, nil
-        //}
+            }
+            
+            return ex.RoundReceived??-1;
+        }
 
-        //public void InsertEvent(ev Event, setWireInfo bool)  {
-        //	//verify signature
-        //	if ok, err = ev.Verify(); !ok
-        //{
-        //    if err != nil {
-        //        return err
+        public int Round(string x)
+        {
+            var (c, ok) = roundCache.Get(x);
+            if  (ok)
+            {
+                return c;
 
-        //        }
-        //    return fmt.Errorf("Invalid signature")
+            }
+            var r = RoundInternal(x);
+            roundCache.Add(x, r);
 
-        //    }
+            return r;
+        }
 
-        //	if err = h.CheckSelfParent(ev); err != nil
-        //{
-        //    return fmt.Errorf("CheckSelfParent: %s", err)
+       private int RoundInternal(string x)
+       {
 
-        //    }
+           var round = ParentRound(x).Round;
 
-        //	if err = h.CheckOtherParent(ev); err != nil
-        //{
-        //    return fmt.Errorf("CheckOtherParent: %s", err)
+           var inc = RoundInc(x);
 
-        //    }
+        	if (inc)
+	        {
+	            round++;
+	        }
+           return round;
+       }
 
-        //	ev.topologicalIndex = h.topologicalIndex
-        //    h.topologicalIndex++
+////round(x) - round(y)
+//public int RoundDiff(x, y string)  {
 
-        //	if setWireInfo
-        //{
-        //    if err = h.SetWireInfo(&ev); err != nil {
-        //        return fmt.Errorf("SetWireInfo: %s", err)
+//	xRound = h.Round(x)
+//	if xRound< 0 {
+//		return math.MinInt32, fmt.Errorf("ev %s has negative round", x)
+//	}
+//	yRound = h.Round(y)
+//	if yRound< 0 {
+//		return math.MinInt32, fmt.Errorf("ev %s has negative round", y)
+//	}
 
-        //        }
-        //}
+//	return xRound - yRound, nil
+//}
 
-        //	if err = h.InitEventCoordinates(&ev); err != nil
-        //{
-        //    return fmt.Errorf("InitEventCoordinates: %s", err)
+//public void InsertEvent(ev Event, setWireInfo bool)  {
+//	//verify signature
+//	if ok, err = ev.Verify(); !ok
+//{
+//    if err != nil {
+//        return err
 
-        //    }
+//        }
+//    return fmt.Errorf("Invalid signature")
 
-        //	if err = h.Store.SetEvent(ev); err != nil
-        //{
-        //    return fmt.Errorf("SetEvent: %s", err)
+//    }
 
-        //    }
+//	if err = h.CheckSelfParent(ev); err != nil
+//{
+//    return fmt.Errorf("CheckSelfParent: %s", err)
 
-        //	if err = h.UpdateAncestorFirstDescendant(ev); err != nil
-        //{
-        //    return fmt.Errorf("UpdateAncestorFirstDescendant: %s", err)
+//    }
 
-        //    }
+//	if err = h.CheckOtherParent(ev); err != nil
+//{
+//    return fmt.Errorf("CheckOtherParent: %s", err)
 
-        //h.UndeterminedEvents = append(h.UndeterminedEvents, ev.Hex())
+//    }
 
-        //	if ev.IsLoaded() {
-        //    h.PendingLoadedEvents++
+//	ev.topologicalIndex = h.topologicalIndex
+//    h.topologicalIndex++
 
-        //    }
+//	if setWireInfo
+//{
+//    if err = h.SetWireInfo(&ev); err != nil {
+//        return fmt.Errorf("SetWireInfo: %s", err)
 
-        //	return nil
-        //}
+//        }
+//}
 
-        ////Check the SelfParent is the Creator's last known Event
-        //public void CheckSelfParent(ev Event)
-        //{
-        //	selfParent = ev.SelfParent()
-        //	creator = ev.Creator()
+//	if err = h.InitEventCoordinates(&ev); err != nil
+//{
+//    return fmt.Errorf("InitEventCoordinates: %s", err)
 
-        //	creatorLastKnown, _, err = h.Store.LastFrom(creator)
-        //	if err != nil
-        //{
-        //    return err
+//    }
 
-        //    }
+//	if err = h.Store.SetEvent(ev); err != nil
+//{
+//    return fmt.Errorf("SetEvent: %s", err)
 
-        //selfParentLegit = selfParent == creatorLastKnown
+//    }
 
-        //	if !selfParentLegit
-        //{
-        //    return fmt.Errorf("Self-parent not last known ev by creator")
+//	if err = h.UpdateAncestorFirstDescendant(ev); err != nil
+//{
+//    return fmt.Errorf("UpdateAncestorFirstDescendant: %s", err)
 
-        //    }
+//    }
 
-        //	return nil
-        //}
+//h.UndeterminedEvents = append(h.UndeterminedEvents, ev.Hex())
 
-        ////Check if we know the OtherParent
-        //public void CheckOtherParent(ev Event)
-        //{
-        //	otherParent = ev.OtherParent()
-        //	if otherParent != "" {
-        //    //Check if we have it
-        //    _, err= h.Store.GetEvent(otherParent)
+//	if ev.IsLoaded() {
+//    h.PendingLoadedEvents++
 
-        //        if err != nil {
-        //        //it might still be in the Root
-        //        root, err= h.Store.GetRoot(ev.Creator())
+//    }
 
-        //            if err != nil {
-        //            return err
+//	return nil
+//}
 
-        //            }
-        //        if root.X == ev.SelfParent() && root.Y == otherParent {
-        //            return nil
+////Check the SelfParent is the Creator's last known Event
+//public void CheckSelfParent(ev Event)
+//{
+//	selfParent = ev.SelfParent()
+//	creator = ev.Creator()
 
-        //            }
-        //        other, ok= root.Others[ev.Hex()]
+//	creatorLastKnown, _, err = h.Store.LastFrom(creator)
+//	if err != nil
+//{
+//    return err
 
-        //            if ok && other == ev.OtherParent() {
-        //            return nil
+//    }
 
-        //            }
-        //        return fmt.Errorf("Other-parent not known")
+//selfParentLegit = selfParent == creatorLastKnown
 
-        //        }
-        //}
-        //	return nil
-        //}
+//	if !selfParentLegit
+//{
+//    return fmt.Errorf("Self-parent not last known ev by creator")
 
-        ////initialize arrays of last ancestors and first descendants
-        public void InitEventCoordinates(Event ev)
+//    }
+
+//	return nil
+//}
+
+////Check if we know the OtherParent
+//public void CheckOtherParent(ev Event)
+//{
+//	otherParent = ev.OtherParent()
+//	if otherParent != "" {
+//    //Check if we have it
+//    _, err= h.Store.GetEvent(otherParent)
+
+//        if err != nil {
+//        //it might still be in the Root
+//        root, err= h.Store.GetRoot(ev.Creator())
+
+//            if err != nil {
+//            return err
+
+//            }
+//        if root.X == ev.SelfParent() && root.Y == otherParent {
+//            return nil
+
+//            }
+//        other, ok= root.Others[ev.Hex()]
+
+//            if ok && other == ev.OtherParent() {
+//            return nil
+
+//            }
+//        return fmt.Errorf("Other-parent not known")
+
+//        }
+//}
+//	return nil
+//}
+
+////initialize arrays of last ancestors and first descendants
+public void InitEventCoordinates(Event ev)
         {
             var members = Participants.Count;
 

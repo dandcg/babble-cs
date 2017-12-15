@@ -323,6 +323,30 @@ public void TestAncestor()
             Assert.False(h.SelfAncestor(index["e20"], index["e01"]), "e01 should not be self ancestor of e20");
             
         }
+        [Fact]
+        public void TestSee()
+        {
+            var (h, index) = InitHashgraph();
+
+
+            Assert.True(h.See(index["e01"], index["e0"]), "e01 should see e0");
+
+            Assert.True(h.See(index["e01"], index["e1"]), "e01 should see e1");
+
+            Assert.True(h.See(index["e20"], index["e0"]), "e20 should see e0");
+
+            Assert.True(h.See(index["e20"], index["e01"]), "e20 should see e01");
+
+            Assert.True(h.See(index["e12"], index["e01"]), "e12 should see e01");
+
+            Assert.True(h.See(index["e12"], index["e0"]), "e12 should see e0");
+
+            Assert.True(h.See(index["e12"], index["e1"]), "e12 should see e1");
+
+            Assert.True(h.See(index["e12"], index["s20"]), "e12 should see s20");
+        }
+
+
 
 
     }
