@@ -964,7 +964,7 @@ namespace Dotnatter.HashgraphImpl
 
             UndeterminedEvents = newUndeterminedEvents;
 
-            newConsensusEvents.Sort(new EventByConsensus());
+            newConsensusEvents.Sort(new Event.EventByConsensus());
 
             foreach (var e in newConsensusEvents)
             {
@@ -996,7 +996,7 @@ namespace Dotnatter.HashgraphImpl
                 evs.Add(ex);
             }
 
-            evs.Sort(new EventByTimeStamp());
+            evs.Sort(new Event.EventByTimeStamp());
 
             return evs[evs.Count / 2].Body.Timestamp;
         }
@@ -1136,7 +1136,7 @@ namespace Dotnatter.HashgraphImpl
                 }
             }
 
-            evs.Sort(new EventByTopologicalOrder());
+            evs.Sort(new Event.EventByTopologicalOrder());
 
             //Some Events in the Frame might have other-parents that are outside of the
             //Frame (cf root.go ex 2)

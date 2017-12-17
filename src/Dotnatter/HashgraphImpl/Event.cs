@@ -157,7 +157,6 @@ namespace Dotnatter.HashgraphImpl
 
 
 
-    }
 
 
     //Sorting
@@ -249,7 +248,8 @@ namespace Dotnatter.HashgraphImpl
             return ps;
         }
 
-    
+    }
+
 
 
     }
