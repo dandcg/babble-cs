@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Dynamic;
+using System.Linq;
+using System.Numerics;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
@@ -9,8 +13,18 @@ namespace Dotnatter.HashgraphImpl
     public class Event
     {
         public EventBody Body { get; set; }
-        //public (ulong R, ulong S) Signiture { get; set; } //creator's digital signature of body
+
+
+
+        //creator's digital signature of body
         public byte[] Signiture { get; set; }
+        public (BigInteger R, BigInteger S) GetSignitureTuple()
+        {
+            var r = new BigInteger(Signiture.Take(32).ToArray());
+            var s = new BigInteger(Signiture.Skip(32).ToArray());
+            return (r, s);
+        }
+
         public int TopologicalIndex { get; set; }
         public int? RoundReceived { get; set; }
         public DateTime ConsensusTimestamp { get; set; }
@@ -138,10 +152,110 @@ namespace Dotnatter.HashgraphImpl
                // S = Signiture.S
             };
         }
-    }
+
     
+
+
+
+    }
+
+
     //Sorting
-    //Todo: Sorting extensions
+    public class EventByTimeStamp : IComparer<Event>
+    {
+        public int Compare(Event x, Event y)
+        {
+            Debug.Assert(x != null, nameof(x) + " != null");
+            Debug.Assert(y != null, nameof(y) + " != null");
+            return DateTime.Compare(x.Body.Timestamp, y.Body.Timestamp);
+        }
+    }
+
+    public class EventByTopologicalOrder : IComparer<Event>
+    {
+        public int Compare(Event x, Event y)
+        {
+            Debug.Assert(x != null, nameof(x) + " != null");
+            Debug.Assert(y != null, nameof(y) + " != null");
+            return x.TopologicalIndex.CompareTo(y.TopologicalIndex);
+        }
+    }
+
+
+
+    public class EventByConsensus : IComparer<Event>
+    {
+
+        private readonly Dictionary<int, RoundInfo> r = new Dictionary<int, RoundInfo>();
+        private readonly Dictionary<int, BigInteger> cache = new Dictionary<int, BigInteger>();
+
+        
+        public int Compare(Event i, Event j)
+        {
+
+            Debug.Assert(i != null, nameof(i) + " != null");
+            Debug.Assert(j != null, nameof(j) + " != null");
+
+
+            var (irr, jrr) = (-1, -1);
+
+            if (i.RoundReceived != null)
+            {
+                irr = (int) i.RoundReceived;
+            }
+ 
+            if (j.RoundReceived != null)
+            {
+                jrr = (int) j.RoundReceived;
+            }
+
+            if (irr != jrr)
+            {
+                return irr.CompareTo( jrr);
+            }
+
+            if (!i.ConsensusTimestamp.Equals(j.ConsensusTimestamp))
+            {
+                return DateTime.Compare(i.ConsensusTimestamp, i.ConsensusTimestamp);
+            }
+
+            Debug.Assert(i.RoundReceived != null, "i.RoundReceived != null");
+
+            var w = GetPseudoRandomNumber((int)i.RoundReceived);
+            
+            var wsi =i.GetSignitureTuple().S ^ w;
+            
+           var  wsj = j.GetSignitureTuple().S ^ w;
+
+            return wsi.CompareTo(wsj);
+        }
+
+
+
+        public BigInteger GetPseudoRandomNumber(int round)
+        {
+
+            if ( cache.TryGetValue(round, out var ps))
+            {
+                return ps;
+
+            }
+            var rd = r[round];
+
+            ps = rd.PseudoRandomNumber();
+
+            cache[round] = ps;
+
+            return ps;
+        }
+
+    
+
+
+    }
+
+
+
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // WireEvent
