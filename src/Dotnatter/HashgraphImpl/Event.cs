@@ -60,6 +60,7 @@ namespace Dotnatter.HashgraphImpl
 
         public string SelfParent()
         {
+
             return Body.Parents[0];
         }
 

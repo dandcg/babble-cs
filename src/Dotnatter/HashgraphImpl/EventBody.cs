@@ -15,10 +15,10 @@ namespace Dotnatter.HashgraphImpl
 
         //wire
         //It is cheaper to send ints then hashes over the wire
-        internal int SelfParentIndex { get; set; }
-        internal int OtherParentCreatorId { get; set; }
-        internal int OtherParentIndex { get; set; }
-        internal int CreatorId { get; set; }
+        public int SelfParentIndex { get; set; }
+        public int OtherParentCreatorId { get; set; }
+        public int OtherParentIndex { get; set; }
+        public int CreatorId { get; set; }
 
 
         public byte[] Marshal()

@@ -80,6 +80,7 @@ namespace Dotnatter.HashgraphImpl
 
         public (string last, bool isRoot) LastFrom(string participant)
         {
+            
             //try to get the last event from this participant
             var last = participantEventsCache.GetLast(participant);
 

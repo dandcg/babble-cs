@@ -460,9 +460,9 @@ namespace Dotnatter.HashgraphImpl
         public void CheckSelfParent(Event ev)
         {
             var selfParent = ev.SelfParent();
-
+            
             var creator = ev.Creator;
-
+            
             var (creatorLastKnown, _) = Store.LastFrom(creator);
 
             var selfParentLegit = selfParent == creatorLastKnown;
@@ -571,16 +571,17 @@ namespace Dotnatter.HashgraphImpl
             if (Participants.TryGetValue(creator, out var fakeCreatorId))
             {
                 var hash = ev.Hex();
-
-                ev.FirstDescendants[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
+        
+            ev.FirstDescendants[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
                 ev.LastAncestors[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
+
             }
         }
 
-//update first decendant of each last ancestor to point to ev
+        //update first decendant of each last ancestor to point to ev
         public void UpdateAncestorFirstDescendant(Event ev)
         {
-            var fakeCreatorId = Participants[ev.Creator];
+         Participants.TryGetValue(ev.Creator, out var fakeCreatorId) ;
 
             var index = ev.Index();
             var hash = ev.Hex();

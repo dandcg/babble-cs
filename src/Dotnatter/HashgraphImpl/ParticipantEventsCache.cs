@@ -47,17 +47,20 @@ namespace Dotnatter.HashgraphImpl
 
         public string GetLast(string participant)
         {
-            var pe = ParticipantEvents[participant];
-            
-            var (cached, _) = pe.GetLastWindow();
-
-            if (cached.Length == 0)
+            if (ParticipantEvents.TryGetValue(participant, out var pe))
             {
-                return null;
-            }
+                var (cached, _) = pe.GetLastWindow();
 
-            var last = cached[cached.Length - 1];
-            return last;
+                if (cached.Length == 0)
+                {
+                    return "";
+                }
+
+                var last = cached[cached.Length - 1];
+                return last;
+            }
+            return "";
+           //throw new StoreError(StoreErrorType.KeyNotFound, participant);
         }
 
         public void Add(string participant, string hash, int index)
