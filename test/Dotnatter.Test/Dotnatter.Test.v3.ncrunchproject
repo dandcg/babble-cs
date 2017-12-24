@@ -41,9 +41,6 @@
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
