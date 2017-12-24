@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -351,7 +352,7 @@ namespace Dotnatter.Test.HashgraphImpl
             var index = new Dictionary<string, string>();
 
             var nodes = new List<Node>();
-            
+
             var participants = new Dictionary<string, int>();
 
             foreach (var node in nodes)
@@ -363,7 +364,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var hashgraph = new Hashgraph(participants, store, null);
 
-            for (var i = 0; i < 1; i++ )
+            for (var i = 0; i < N; i++)
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var node = new Node(key, i);
@@ -375,36 +376,35 @@ namespace Dotnatter.Test.HashgraphImpl
                 nodes.Add(node);
             }
 
-            //////a and e2 need to have different hashes
-            //var eventA = new Event(new byte[][] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
-            //eventA.Sign(nodes[2].Key);
-            //index["a"] = eventA.Hex();
+            ////a and e2 need to have different hashes
+            var eventA = new Event(new[] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
+            eventA.Sign(nodes[2].Key);
+            index["a"] = eventA.Hex();
+
+            // "InsertEvent should return error for 'a'"
+            //Assert.Throws<ApplicationException>(()=>hashgraph.InsertEvent(eventA, true));
+            // Todo:Double check with martin on this
+
+            var event01 = new Event(new byte[][] { }, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
+
+            event01.Sign(nodes[0].Key);
+            index["e01"] = event01.Hex();
+
+            // "InsertEvent should return error for e01";
+            Assert.Throws<ApplicationException>(() => hashgraph.InsertEvent(event01, true));
 
 
-            //hashgraph.InsertEvent(eventA, true); 
+            var event20 = new Event(new byte[][] { }, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
 
 
-            //    t.Fatal("InsertEvent should return error for 'a'")
-            //}
+            event20.Sign(nodes[2].Key);
+            index["e20"] = event20.Hex();
 
-//            event01 = NewEvent([][]byte{ },
-//            [] string{index["e0"], index["a"]}, //e0 and a
-//            nodes[0].Pub, 1)
-//            event01.Sign(nodes[0].Key)
-//            index["e01"] = event01.Hex()
-//            if err = hashgraph.InsertEvent(event01, true); err == nil {
-//                t.Fatal("InsertEvent should return error for e01")
-//            }
+            //"InsertEvent should return error for e20"
+            Assert.Throws<ApplicationException>(() => hashgraph.InsertEvent(event20, true));
 
-//            event20 = NewEvent([][]byte{ },
-//            [] string{index["e2"], index["e01"]}, //e2 and e01
-//            nodes[2].Pub, 1)
-//            event20.Sign(nodes[2].Key)
-//            index["e20"] = event20.Hex()
-//            if err = hashgraph.InsertEvent(event20, true); err == nil {
-//                t.Fatal("InsertEvent should return error for e20")
-//            }
         }
+
 
         /*
         |  s11  |

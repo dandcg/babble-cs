@@ -58,6 +58,7 @@ namespace Dotnatter.HashgraphImpl
             if (!success)
             {
                 AddParticpantEvent(ev.Creator, key, ev.Index());
+                //throw new StoreError(StoreErrorType.KeyNotFound);
             }
             
             eventCache.Add(key, ev);

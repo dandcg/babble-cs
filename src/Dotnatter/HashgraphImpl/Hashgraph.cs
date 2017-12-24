@@ -524,6 +524,9 @@ namespace Dotnatter.HashgraphImpl
 
             ev.LastAncestors = new EventCoordinates[members];
 
+
+
+
             var ( selfParent, selfParentSuccess) = Store.GetEvent(ev.SelfParent());
             var ( otherParent, otherParentSuccess) = Store.GetEvent(ev.OtherParent());
 
@@ -539,27 +542,27 @@ namespace Dotnatter.HashgraphImpl
             }
             else if (!selfParentSuccess)
             {
-                Array.Copy(otherParent.LastAncestors.Take(members).ToArray(), 0, ev.LastAncestors, 0, members);
+                Array.Copy(otherParent.LastAncestors, 0, ev.LastAncestors, 0, members);
             }
             else if (!otherParentSuccess)
             {
-                Array.Copy(selfParent.LastAncestors.Take(members).ToArray(), 0, ev.LastAncestors, 0, members);
+                Array.Copy(selfParent.LastAncestors, 0, ev.LastAncestors, 0, members);
             }
             else
             {
-                var selfParentLastAncestors = selfParent.LastAncestors;
+                var selfParentLastAncestors = selfParent.LastAncestors.ToArray();
 
-                var otherParentLastAncestors = otherParent.LastAncestors;
+                var otherParentLastAncestors = otherParent.LastAncestors.ToArray();
 
-                Array.Copy(selfParentLastAncestors.Take(members).ToArray(), 0, ev.LastAncestors, 0, members);
+                Array.Copy(selfParentLastAncestors, 0, ev.LastAncestors, 0, members);
 
                 for (var i = 0; i < members; i++)
                 {
                     if (ev.LastAncestors[i].Index < otherParentLastAncestors[i].Index)
                     {
                         {
-                            ev.LastAncestors[i].Index = otherParentLastAncestors[i].Index;
-                            ev.LastAncestors[i].Hash = otherParentLastAncestors[i].Hash;
+                            ev.LastAncestors[i] = otherParentLastAncestors[i];
+
                         }
                     }
                 }
