@@ -36,7 +36,7 @@ namespace Dotnatter.HashgraphImpl
 
         private string creator;
         private byte[] hash;
-        private string hex;
+        public string hex;
         public string Creator => creator ?? (creator = Body.Creator.ToHex());
         public byte[] Hash() => hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
         public string Hex() => hex ?? (hex = Hash().ToHex());
