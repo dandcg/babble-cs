@@ -376,27 +376,31 @@ namespace Dotnatter.Test.HashgraphImpl
                 nodes.Add(node);
             }
 
+            // ---
+
             ////a and e2 need to have different hashes
             var eventA = new Event(new[] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
-            eventA.Sign(nodes[2].Key);
+
+            // Todo: Is hashing repeatable in Golang?
+            eventA.Signiture = store.GetEvent(index["e2"]).evt.Signiture;
+            //eventA.Sign(nodes[2].Key);
             index["a"] = eventA.Hex();
 
             // "InsertEvent should return error for 'a'"
-            //Assert.Throws<ApplicationException>(()=>hashgraph.InsertEvent(eventA, true));
-            // Todo:Double check with martin on this
+            Assert.Throws<ApplicationException>(()=>hashgraph.InsertEvent(eventA, true));
+  
+            // ---
 
             var event01 = new Event(new byte[][] { }, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
-
             event01.Sign(nodes[0].Key);
             index["e01"] = event01.Hex();
-
+            
             // "InsertEvent should return error for e01";
             Assert.Throws<ApplicationException>(() => hashgraph.InsertEvent(event01, true));
 
+            // ---
 
             var event20 = new Event(new byte[][] { }, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
-
-
             event20.Sign(nodes[2].Key);
             index["e20"] = event20.Hex();
 
