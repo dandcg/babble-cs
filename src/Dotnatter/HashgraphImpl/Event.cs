@@ -58,16 +58,9 @@ namespace Dotnatter.HashgraphImpl
             Body = body;
         }
 
-        public string SelfParent()
-        {
+        public string SelfParent => Body.Parents[0];
 
-            return Body.Parents[0];
-        }
-
-        public string OtherParent()
-        {
-            return Body.Parents[1];
-        }
+        public string OtherParent => Body.Parents.Length>1? Body.Parents[1]:"";
 
         public byte[][] Transactions()
         {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dotnatter.Common;
 using Dotnatter.Util;
+using Serilog;
 
 namespace Dotnatter.HashgraphImpl
 {
@@ -259,14 +260,14 @@ namespace Dotnatter.HashgraphImpl
 
             var spRoot = false;
             //If it is the creator's first Event, use the corresponding Root
-            if (ex.SelfParent() == root.X)
+            if (ex.SelfParent == root.X)
             {
                 spRound = root.Round;
                 spRoot = true;
             }
             else
             {
-                spRound = Round(ex.SelfParent());
+                spRound = Round(ex.SelfParent);
 
                 spRoot = false;
             }
@@ -275,13 +276,13 @@ namespace Dotnatter.HashgraphImpl
 
             var opRoot = false;
 
-            var (_, success) = Store.GetEvent(ex.OtherParent());
+            var (_, success) = Store.GetEvent(ex.OtherParent);
             if (success)
             {
                 //if we known the other-parent, fetch its Round directly
-                opRound = Round(ex.OtherParent());
+                opRound = Round(ex.OtherParent);
             }
-            else if (ex.OtherParent() == root.Y)
+            else if (ex.OtherParent == root.Y)
             {
                 //we do not know the other-parent but it is referenced in Root.Y
                 opRound = root.Round;
@@ -289,7 +290,7 @@ namespace Dotnatter.HashgraphImpl
             }
             else if (root.Others.TryGetValue(x, out var other))
             {
-                if (other == ex.OtherParent())
+                if (other == ex.OtherParent)
                 {
                     //we do not know the other-parent but it is referenced  in Root.Others
                     //we use the Root's Round
@@ -330,12 +331,12 @@ namespace Dotnatter.HashgraphImpl
             }
 
             //If it is the creator's first Event, return true
-            if (ex.SelfParent() == root.X && ex.OtherParent() == root.Y)
+            if (ex.SelfParent == root.X && ex.OtherParent == root.Y)
             {
                 return true;
             }
 
-            return Round(x) > Round(ex.SelfParent());
+            return Round(x) > Round(ex.SelfParent);
         }
 
         //true if round of x should be incremented
@@ -424,6 +425,9 @@ namespace Dotnatter.HashgraphImpl
 
         public void InsertEvent(Event ev, bool setWireInfo)
         {
+
+            
+
             //verify signature
             if (!ev.Verify())
             {
@@ -454,12 +458,15 @@ namespace Dotnatter.HashgraphImpl
             {
                 PendingLoadedEvents++;
             }
+
+            
+
         }
 
         //Check the SelfParent is the Creator's last known Event
         public void CheckSelfParent(Event ev)
         {
-            var selfParent = ev.SelfParent();
+            var selfParent = ev.SelfParent;
             
             var creator = ev.Creator;
             
@@ -476,7 +483,7 @@ namespace Dotnatter.HashgraphImpl
         //Check if we know the OtherParent
         public void CheckOtherParent(Event ev)
         {
-            var otherParent = ev.OtherParent();
+            var otherParent = ev.OtherParent;
 
             if (!string.IsNullOrEmpty(otherParent))
             {
@@ -492,13 +499,13 @@ namespace Dotnatter.HashgraphImpl
                     {
                         return;
                     }
-                    if (root.X == ev.SelfParent() && root.Y == otherParent)
+                    if (root.X == ev.SelfParent && root.Y == otherParent)
                     {
                         return;
                     }
                     var other = root.Others[ev.Hex()];
 
-                    if (other == ev.OtherParent())
+                    if (other == ev.OtherParent)
                     {
                         return;
                     }
@@ -523,12 +530,9 @@ namespace Dotnatter.HashgraphImpl
             }
 
             ev.LastAncestors = new EventCoordinates[members];
-
-
-
-
-            var ( selfParent, selfParentSuccess) = Store.GetEvent(ev.SelfParent());
-            var ( otherParent, otherParentSuccess) = Store.GetEvent(ev.OtherParent());
+            
+            var ( selfParent, selfParentSuccess) = Store.GetEvent(ev.SelfParent);
+            var ( otherParent, otherParentSuccess) = Store.GetEvent(ev.OtherParent);
 
             if (!selfParentSuccess && !otherParentSuccess)
             {
@@ -550,9 +554,9 @@ namespace Dotnatter.HashgraphImpl
             }
             else
             {
-                var selfParentLastAncestors = selfParent.LastAncestors.ToArray();
+                var selfParentLastAncestors = selfParent.LastAncestors;
 
-                var otherParentLastAncestors = otherParent.LastAncestors.ToArray();
+                var otherParentLastAncestors = otherParent.LastAncestors;
 
                 Array.Copy(selfParentLastAncestors, 0, ev.LastAncestors, 0, members);
 
@@ -561,8 +565,9 @@ namespace Dotnatter.HashgraphImpl
                     if (ev.LastAncestors[i].Index < otherParentLastAncestors[i].Index)
                     {
                         {
-                            ev.LastAncestors[i] = otherParentLastAncestors[i];
-
+                            ev.LastAncestors[i]= new EventCoordinates();
+                            ev.LastAncestors[i].Index = otherParentLastAncestors[i].Index;
+                            ev.LastAncestors[i].Hash = otherParentLastAncestors[i].Hash;
                         }
                     }
                 }
@@ -584,18 +589,24 @@ namespace Dotnatter.HashgraphImpl
         //update first decendant of each last ancestor to point to ev
         public void UpdateAncestorFirstDescendant(Event ev)
         {
-         Participants.TryGetValue(ev.Creator, out var fakeCreatorId) ;
-
+            Participants.TryGetValue(ev.Creator, out int fakeCreatorId);
+          
+        
             var index = ev.Index();
             var hash = ev.Hex();
 
             for (var i = 0; i < ev.LastAncestors.Length; i++)
             {
-                var ah = ev.LastAncestors[i]?.Hash;
+                var ah = ev.LastAncestors[i].Hash;
 
                 while (!string.IsNullOrEmpty(ah))
                 {
                     var (a, success) = Store.GetEvent(ah);
+
+                    if (!success)
+                    {
+                        break;
+                    }
 
                     if (a.FirstDescendants[fakeCreatorId].Index == int.MaxValue)
                     {
@@ -607,7 +618,7 @@ namespace Dotnatter.HashgraphImpl
 
                         Store.SetEvent(a);
 
-                        ah = a.SelfParent();
+                        ah = a.SelfParent;
                     }
                     else
                     {
@@ -627,7 +638,7 @@ namespace Dotnatter.HashgraphImpl
 
             var (lf, isRoot) = Store.LastFrom(ev.Creator);
             //could be the first Event inserted for this creator. In this case, use Root
-            if (isRoot && lf == ev.SelfParent())
+            if (isRoot && lf == ev.SelfParent)
             {
                 var root = Store.GetRoot(ev.Creator);
 
@@ -635,11 +646,12 @@ namespace Dotnatter.HashgraphImpl
                 {
                     return;
                 }
+
                 selfParentIndex = root.Index;
             }
             else
             {
-                var (selfParent, ok) = Store.GetEvent(ev.SelfParent());
+                var (selfParent, ok) = Store.GetEvent(ev.SelfParent);
 
                 if (!ok)
                 {
@@ -648,9 +660,9 @@ namespace Dotnatter.HashgraphImpl
                 selfParentIndex = selfParent.Index();
             }
 
-            if (!string.IsNullOrEmpty(ev.OtherParent()))
+            if (!string.IsNullOrEmpty(ev.OtherParent))
             {
-                var (otherParent, ok) = Store.GetEvent(ev.OtherParent());
+                var (otherParent, ok) = Store.GetEvent(ev.OtherParent);
 
                 if (!ok)
                 {
@@ -673,7 +685,7 @@ namespace Dotnatter.HashgraphImpl
             var otherParent = "";
 
             var creator = ReverseParticipants[wev.Body.CreatorId];
-            var creatorBytes = creator.Substring(2).StringToBytes();
+            var creatorBytes = creator.Substring(3).StringToBytes();
 
             if (wev.Body.SelfParentIndex >= 0)
             {
@@ -1070,10 +1082,10 @@ namespace Dotnatter.HashgraphImpl
 
                 roots.Add(w.Creator, new Root
                 {
-                    X = w.SelfParent(),
-                    Y = w.OtherParent(),
+                    X = w.SelfParent,
+                    Y = w.OtherParent,
                     Index = w.Index() - 1,
-                    Round = Round(w.SelfParent())
+                    Round = Round(w.SelfParent)
                 });
 
                 var participantEvents = Store.ParticipantEvents(w.Creator, w.Index());
@@ -1130,10 +1142,10 @@ namespace Dotnatter.HashgraphImpl
 
                         root = new Root
                         {
-                            X = ev.SelfParent(),
-                            Y = ev.OtherParent(),
+                            X = ev.SelfParent,
+                            Y = ev.OtherParent,
                             Index = ev.Index() - 1,
-                            Round = Round(ev.SelfParent())
+                            Round = Round(ev.SelfParent)
                         };
                     }
                     roots.Add(p.Key, root);
@@ -1153,7 +1165,7 @@ namespace Dotnatter.HashgraphImpl
             {
                 treated.Add(ev.Hex(), true);
 
-                var otherParent = ev.OtherParent();
+                var otherParent = ev.OtherParent;
 
                 if (!string.IsNullOrEmpty(otherParent))
                 {
@@ -1161,7 +1173,7 @@ namespace Dotnatter.HashgraphImpl
 
                     if (!opt || !ok)
                     {
-                        if (ev.SelfParent() != roots[ev.Creator].X)
+                        if (ev.SelfParent != roots[ev.Creator].X)
                         {
                             roots[ev.Creator].Others[ev.Hex()] = otherParent;
                         }

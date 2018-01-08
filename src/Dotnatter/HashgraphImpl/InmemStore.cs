@@ -46,6 +46,11 @@ namespace Dotnatter.HashgraphImpl
 
         public (Event evt, bool success) GetEvent(string key)
         {
+            if (string.IsNullOrEmpty(key))
+            {
+                return (null,false);
+            }
+
             var res = eventCache.Get(key);
             return res;
         }

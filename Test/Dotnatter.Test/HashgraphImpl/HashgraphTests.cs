@@ -1,16 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
+using Grin.Tests.Unit;
 using Xunit;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
-    public class HashgraphTests
+    public class HashgraphTests:IClassFixture<LoggingFixture>
     {
+
+ 
+
+
         private const int CacheSize = 100;
 
         private const int N = 3;
@@ -366,6 +372,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             for (var i = 0; i < N; i++)
             {
+             
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var node = new Node(key, i);
                 var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
@@ -374,7 +381,11 @@ namespace Dotnatter.Test.HashgraphImpl
                 index.Add($"e{i}", ev.Hex());
                 hashgraph.InsertEvent(ev, true);
                 nodes.Add(node);
+        
             }
+
+
+
 
             // ---
 
@@ -462,28 +473,35 @@ namespace Dotnatter.Test.HashgraphImpl
             foreach (var p in plays)
             {
                 var parents = new List<string>();
+
                 parents.Add(index[p.SelfParent]);
+
                 index.TryGetValue(p.OtherParent, out var otherParent);
 
-                parents.Add(otherParent ?? "");
+                parents.Add(otherParent ?? null);
 
-                var e = new Event(p.Payload, parents.ToArray(),
+                var e = new Event(
+                    p.Payload, 
+                    parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
+
                 nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
             }
 
             var participants = new Dictionary<string, int>();
             foreach (var node in nodes)
             {
-                participants[node.PubHex] = node.Id;
+                participants.Add(node.PubHex, node.Id);
             }
 
             var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize), null);
 
             foreach (var ev in orderedEvents)
             {
+
                 hashgraph.InsertEvent(ev, true);
+
             }
             return (hashgraph, index);
         }
@@ -556,36 +574,37 @@ namespace Dotnatter.Test.HashgraphImpl
             (e10, ok) = h.Store.GetEvent(index["e10"]);
 
 
-            h.Dump();
-            h.Store.Dump();
+            //h.Dump();
+            //h.Store.Dump();
+
+            
+            Assert.True(e21.Body.SelfParentIndex == 1 &&
+                      e21.Body.OtherParentCreatorId == h.Participants[e10.Creator] &&
+                      e21.Body.OtherParentIndex == 1 &&
+                      e21.Body.CreatorId == h.Participants[e21.Creator]
+                   , "Invalid wire info on e21"
+                );
+
+            index.Dump();
+
+            expectedFirstDescendants[0].ShouldCompareTo(new EventCoordinates
+            {
+                Index = 2,
+                Hash = index["e02"],
+            });
 
 
-            //Assert.True(e21.Body.SelfParentIndex == 1 &&
-            //          e21.Body.OtherParentCreatorId == h.Participants[e10.Creator] &&
-            //          e21.Body.OtherParentIndex == 1 &&
-            //          e21.Body.CreatorId == h.Participants[e21.Creator]
-            //       , "Invalid wire info on e21");
+            expectedFirstDescendants[1].ShouldCompareTo(new EventCoordinates
+            {
+                Index = 3,
+                Hash = index["f1"],
+            });
 
-
-
-            //expectedFirstDescendants[0].ShouldCompareTo(new EventCoordinates
-            //{
-            //    Index = 2,
-            //    Hash = index["e02"],
-            //});
-
-
-            //expectedFirstDescendants[1].ShouldCompareTo(new EventCoordinates
-            //{
-            //    Index = 3,
-            //    Hash = index["f1"],
-            //});
-
-            //expectedFirstDescendants[2].ShouldCompareTo(new EventCoordinates
-            //{
-            //    Index = 2,
-            //    Hash = index["e21"],
-            //});
+            expectedFirstDescendants[2].ShouldCompareTo(new EventCoordinates
+            {
+                Index = 2,
+                Hash = index["e21"],
+            });
 
             //expectedLastAncestors[0].ShouldCompareTo(new EventCoordinates{
             //    Index = 0,
@@ -665,51 +684,44 @@ namespace Dotnatter.Test.HashgraphImpl
             //   }
         }
 
-        //        [Fact]
-        //        public void TestReadWireInfo(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestReadWireInfo()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    for k, evh = range index {
-        //        ev, err= h.Store.GetEvent(evh)
+           
 
-        //        if err != nil {
-        //            t.Fatal(err)
+            foreach (var evh in index.Take(1))
+            {
+                //evh.Dump();
 
-        //        }
+                var (ev, ok) = h.Store.GetEvent(evh.Value);
 
-        //        evWire= ev.ToWire()
+                Assert.True(ok);
+                
+                var evWire = ev.ToWire();
 
-        //        evFromWire, err= h.ReadWireInfo(evWire)
+                ev.Dump();
 
-        //        if err != nil {
-        //            t.Fatal(err)
 
-        //        }
+                var evFromWire = h.ReadWireInfo(evWire);
 
-        //        if !reflect.DeepEqual(ev.Body, evFromWire.Body) {
-        //            t.Fatalf("Error converting %s.Body from light wire", k)
+                //evFromWire.Dump();
 
-        //        }
 
-        //        if !reflect.DeepEqual(ev.R, evFromWire.R) {
-        //            t.Fatalf("Error converting %s.R from light wire", k)
+                //"Error converting %s.Body from light wire"
+                evFromWire.Body.ShouldCompareTo(ev.Body);
 
-        //        }
 
-        //        if !reflect.DeepEqual(ev.S, evFromWire.S) {
-        //            t.Fatalf("Error converting %s.S from light wire", k)
+                evFromWire.Signiture.ShouldCompareTo(ev.Signiture);
 
-        //        }
 
-        //        ok, err= ev.Verify()
+                ok = ev.Verify();
 
-        //        if !ok {
-        //            t.Fatalf("Error verifying signature for %s from ligh wire: %v", k, err)
+                Assert.True(ok, "Error verifying signature for %s from ligh wire: %v");
 
-        //        }
-        //    }
-        //}
+            }
+        }
 
         //        [Fact]
         //        public void TestStronglySee(t* testing.T)
