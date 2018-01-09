@@ -1,30 +1,31 @@
 ﻿using System.Collections.Generic;
+using Dotnatter.Common;
 
 namespace Dotnatter.HashgraphImpl
 {
     public interface IStore
     {
         int CacheSize();
-        Dictionary<string, int> Participants();
-        (Event evt, bool success) GetEvent(string str);
-        void SetEvent(Event ev);
-        string[] ParticipantEvents(string str, int i);
-        string ParticipantEvent(string str, int i);
-        (string last, bool isRoot) LastFrom(string str);
+        (Dictionary<string, int> participents, StoreError err) Participants();
+        (Event evt, StoreError err) GetEvent(string str);
+        StoreError SetEvent(Event ev);
+        (string[] evts, StoreError err) ParticipantEvents(string str, int i);
+        (string ev, StoreError err) ParticipantEvent(string str, int i);
+        (string last, bool isRoot, StoreError err) LastFrom(string str);
         Dictionary<int, int> Known();
         string[] ConsensusEvents();
 
         int ConsensusEventsCount();
-        void AddConsensusEvent(string str);
-        RoundInfo GetRound(int i);
-        void SetRound(int i , RoundInfo ri);
+        StoreError AddConsensusEvent(string str);
+        (RoundInfo roundInfo, StoreError err) GetRound(int i);
+        StoreError SetRound(int i , RoundInfo ri);
         int LastRound();
         string[] RoundWitnesses(int i);
 
         int RoundEvents(int i );
-        Root GetRoot(string str);
-        void Reset(Dictionary<string, Root> d);
-        void Close();
+        (Root root, StoreError err) GetRoot(string str);
+        StoreError Reset(Dictionary<string, Root> d);
+        StoreError Close();
 
     }
 }

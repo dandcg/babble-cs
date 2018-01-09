@@ -29,7 +29,7 @@ namespace Dotnatter.HashgraphImpl
             eventCache = new LruCache<string, Event>(cacheSize, null);
             roundCache = new LruCache<int, RoundInfo>(cacheSize, null);
             consensusCache = new RollingIndex<string>(cacheSize);
-            participantEventsCache = ParticipantEventsCache.NewParticipantEventsCache(cacheSize, participants);
+            participantEventsCache = new ParticipantEventsCache(cacheSize, participants);
             roots = rts;
             lastRound = -1;
         }
@@ -39,67 +39,95 @@ namespace Dotnatter.HashgraphImpl
             return cacheSize;
         }
 
-        public Dictionary<string, int> Participants()
+        public (Dictionary<string, int> participents, StoreError err) Participants()
         {
-            return participants;
+            return (participants,null);
         }
 
-        public (Event evt, bool success) GetEvent(string key)
+        public (Event evt, StoreError err) GetEvent(string key)
         {
-            if (string.IsNullOrEmpty(key))
+            
+            var (res,ok ) = eventCache.Get(key);
+
+            if (!ok)
             {
-                return (null,false);
+                return (new Event(), new StoreError(StoreErrorType.KeyNotFound, key));
             }
-
-            var res = eventCache.Get(key);
-            return res;
+            
+            return (res,null);
         }
 
-        public void SetEvent(Event ev)
+        public StoreError SetEvent(Event ev)
         {
             var key = ev.Hex();
-            var (_, success) = GetEvent(key);
+            var (_, err) = GetEvent(key);
 
-            if (!success)
+            if (err != null && err.StoreErrorType != StoreErrorType.KeyNotFound)
             {
-                AddParticpantEvent(ev.Creator, key, ev.Index());
-                //throw new StoreError(StoreErrorType.KeyNotFound);
+                return err;
+            }
+
+            if (err != null && err.StoreErrorType == StoreErrorType.KeyNotFound)
+            {
+                err =AddParticpantEvent(ev.Creator, key, ev.Index());
+                if (err != null)
+                {
+                    return err;
+                }
             }
             
             eventCache.Add(key, ev);
+
+            return null;
+
         }
 
-        private void AddParticpantEvent(string participant, string hash, int index)
+        private StoreError AddParticpantEvent(string participant, string hash, int index)
         {
-            participantEventsCache.Add(participant, hash, index);
+          return  participantEventsCache.Add(participant, hash, index);
         }
 
-        public string[] ParticipantEvents(string participant, int skip)
+        public (string[] evts, StoreError err) ParticipantEvents(string participant, int skip)
         {
             return participantEventsCache.Get(participant, skip);
         }
 
-        public string ParticipantEvent(string particant, int index)
+        public (string ev, StoreError err) ParticipantEvent(string particant, int index)
         {
             return participantEventsCache.GetItem(particant, index);
         }
 
-        public (string last, bool isRoot) LastFrom(string participant)
+        public (string last, bool isRoot, StoreError err) LastFrom(string participant)
         {
-            
+
+
             //try to get the last event from this participant
-            var last = participantEventsCache.GetLast(participant);
+            var (last, err) = participantEventsCache.GetLast(participant);
+
+
+            var isRoot = false;
+            if (err != null)
+            {
+                return (last, isRoot, err);
+            }
 
             //if there is none, grab the root
-            if (last == null)
+            if (last =="")
             {
-                if (roots.TryGetValue(participant, out var root))
+                var ok = roots.TryGetValue(participant, out var root);
+
+                if (ok)
                 {
-                    return (root.X, true);
+                    last = root.X;
+                    isRoot = true;
                 }
-                throw new StoreError(StoreErrorType.NoRoot, participant);
+                else
+                {
+                    err=new  StoreError(StoreErrorType.NoRoot, participant);
+                }
             }
-            return (last, true);
+
+            return (last, isRoot,err);
         }
 
         public Dictionary<int, int> Known()
@@ -124,24 +152,25 @@ namespace Dotnatter.HashgraphImpl
             return totConsensusEvents;
         }
 
-        public void AddConsensusEvent(string key)
+        public StoreError AddConsensusEvent(string key)
         {
             consensusCache.Add(key, totConsensusEvents);
             totConsensusEvents++;
+            return null;
         }
 
-        public RoundInfo GetRound(int r)
+        public (RoundInfo roundInfo, StoreError err) GetRound(int r)
         {
             var (res, ok) = roundCache.Get(r);
 
             if (!ok)
             {
-                return new RoundInfo();
+                return (new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound, r.ToString())); ;
             }
-            return res;
+            return (res,null);
         }
 
-        public void SetRound(int r, RoundInfo round)
+        public  StoreError  SetRound(int r, RoundInfo round)
         {
             roundCache.Add(r, round);
 
@@ -149,6 +178,9 @@ namespace Dotnatter.HashgraphImpl
             {
                 lastRound = r;
             }
+
+            return null;
+
         }
 
         public int LastRound()
@@ -158,9 +190,9 @@ namespace Dotnatter.HashgraphImpl
 
         public string[] RoundWitnesses(int r)
         {
-            var round = GetRound(r);
+            var (round,err) = GetRound(r);
 
-            if (round == null)
+            if (err != null)
             {
                 return new string[] { };
             }
@@ -169,25 +201,27 @@ namespace Dotnatter.HashgraphImpl
 
         public int RoundEvents(int i)
         {
-            var round = GetRound(i);
-            if (round == null)
+            var (round,err) = GetRound(i);
+            if (err != null)
             {
                 return 0;
             }
             return round.Events.Count;
         }
 
-        public Root GetRoot(string participant)
+        public (Root root, StoreError err) GetRoot(string participant)
         {
-            if (roots.TryGetValue(participant, out var res))
+            var ok = (roots.TryGetValue(participant, out var res));
+
+            if (!ok)
             {
-                return res;
+                return (new Root(), new StoreError(StoreErrorType.KeyNotFound, participant));
             }
 
-            return null;
+            return (res,null);
         }
 
-        public void Reset(Dictionary<string, Root> newRoots)
+        public StoreError Reset(Dictionary<string, Root> newRoots)
         {
             roots = newRoots;
 
@@ -197,13 +231,17 @@ namespace Dotnatter.HashgraphImpl
 
             consensusCache = new RollingIndex<string>(cacheSize);
 
-            participantEventsCache.Reset();
+            var err = participantEventsCache.Reset();
 
             lastRound = -1;
+
+            return err;
         }
 
-        public void Close()
+        public StoreError Close()
         {
+            return null;
+
         }
     }
 }

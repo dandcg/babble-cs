@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using Dotnatter.Common;
 using Newtonsoft.Json;
 
 namespace Dotnatter.Util
@@ -33,6 +34,21 @@ namespace Dotnatter.Util
         {
             var bytes = Encoding.ASCII.GetBytes(str);
             return bytes;
+        }
+
+        public static (byte[] bytes, Exception err) StringToBytesWithErr(this string str)
+        {
+
+            try
+            {
+                var bytes = Encoding.ASCII.GetBytes(str);
+                return (bytes,null);
+            }
+            catch (Exception e)
+            {
+                return (null, e);
+            }
+    
         }
 
         public static string BytesToString(this byte[] bytes)

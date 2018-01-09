@@ -37,7 +37,6 @@ namespace Dotnatter.Test.HashgraphImpl
             return (store, participantPubs.ToArray());
         }
 
-
         [Fact]
         public void TestInmemEvents()
         {
@@ -48,7 +47,6 @@ namespace Dotnatter.Test.HashgraphImpl
             var (store, participants) = InitInmemStore(cacheSize);
 
             var events = new Dictionary<string, List<Event>>();
-
 
             foreach (var p in participants)
             {
@@ -61,11 +59,11 @@ namespace Dotnatter.Test.HashgraphImpl
                         p.PubKey,
                         k);
 
-
                     ev.Hex(); //just to set private variables
                     items.Add(ev);
                     store.SetEvent(ev);
                 }
+
                 events[p.Hex] = items;
             }
 
@@ -73,8 +71,9 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 foreach (var ev in evi.Value)
                 {
-                    var (rev, success) = store.GetEvent(ev.Hex());
+                    var (rev, err) = store.GetEvent(ev.Hex());
 
+                    Assert.Null(err);
                     rev.Body.ShouldCompareTo(ev.Body);
                 }
             }
@@ -82,7 +81,10 @@ namespace Dotnatter.Test.HashgraphImpl
             var skipIndex = -1; //do not skip any indexes
             foreach (var p in participants)
             {
-                var pEvents = store.ParticipantEvents(p.Hex, skipIndex);
+                var (pEvents, err) = store.ParticipantEvents(p.Hex, skipIndex);
+
+                Assert.Null(err);
+
                 var l = pEvents.Length;
 
                 Assert.Equal(testSize, l);
@@ -96,14 +98,15 @@ namespace Dotnatter.Test.HashgraphImpl
             }
 
             var expectedKnown = new Dictionary<int, int>();
+
             foreach (var p in participants)
             {
                 expectedKnown.Add(p.Id, testSize - 1);
             }
+
             var known = store.Known();
 
             known.ShouldCompareTo(expectedKnown);
-
 
             foreach (var p in participants)
             {
@@ -120,14 +123,14 @@ namespace Dotnatter.Test.HashgraphImpl
         public void TestInmemRounds()
         {
             var ( store, participants) = InitInmemStore(10);
-            
+
             var round = new RoundInfo();
 
             var events = new Dictionary<string, Event>();
 
             foreach (var p in participants)
             {
-                var ev = new Event(new byte[][] {new byte[] { }},
+                var ev = new Event(new[] {new byte[] { }},
                     new[] {"", ""},
                     p.PubKey,
                     0);
@@ -135,33 +138,25 @@ namespace Dotnatter.Test.HashgraphImpl
                 round.AddEvent(ev.Hex(), true);
             }
 
-          store.SetRound(0,  round);
+            store.SetRound(0, round);
 
             var c = store.LastRound();
-            Assert.Equal(0,c);
+            Assert.Equal(0, c);
 
-
-            var storedRound = store.GetRound(0);
-       
+            var (storedRound, err) = store.GetRound(0);
+            Assert.Null(err);
 
             round.ShouldCompareTo(storedRound);
-
-
 
             var witnesses = store.RoundWitnesses(0);
             var expectedWitnesses = round.Witnesses();
 
             Assert.Equal(expectedWitnesses.Length, witnesses.Length);
 
-     
             foreach (var w in expectedWitnesses)
             {
-                Assert.Contains(w,witnesses);
-
+                Assert.Contains(w, witnesses);
             }
         }
-
-
     }
 }
-

@@ -32,26 +32,11 @@
         <FixtureName>Dotnatter.Test.HashgraphImpl.CachesTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.InmemStoreTests</FixtureName>
       </FixtureTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReadWireInfo</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
-      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

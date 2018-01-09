@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Dynamic;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
@@ -90,13 +89,13 @@ namespace Dotnatter.HashgraphImpl
             Signiture = CryptoUtils.Sign(privKey, signBytes);
         }
 
-        public bool Verify()
+        public (bool res, Exception err) Verify()
         {
             var pubBytes = Body.Creator;
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
             var signBytes = Body.Hash();
 
-            return CryptoUtils.Verify(pubKey, signBytes, Signiture);
+            return (CryptoUtils.Verify(pubKey, signBytes, Signiture),null);
         }
 
 
