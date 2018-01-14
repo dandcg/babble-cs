@@ -1,18 +1,17 @@
-﻿using Dotnatter.Crypto;
+﻿using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Grin.Tests.Unit;
-using System;
-using System.Collections.Generic;
-using System.Security.Cryptography;
 using Xunit;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
-    public class HashgraphTests:IClassFixture<LoggingFixture>
+    public class HashgraphTests : IClassFixture<LoggingFixture>
     {
-        
         private const int CacheSize = 100;
 
         private const int N = 3;
@@ -44,7 +43,7 @@ namespace Dotnatter.Test.HashgraphImpl
             }
         }
 
-        public class play
+        public class Play
         {
             public int To { get; }
             public int Index { get; }
@@ -53,7 +52,7 @@ namespace Dotnatter.Test.HashgraphImpl
             public string Name { get; }
             public byte[][] Payload { get; }
 
-            public play(
+            public Play(
                 int to,
                 int index,
                 string selfParent,
@@ -106,7 +105,7 @@ namespace Dotnatter.Test.HashgraphImpl
             var plays = new[]
             {
                 new
-                    play
+                    Play
                     (
                         0,
                         1,
@@ -115,7 +114,7 @@ namespace Dotnatter.Test.HashgraphImpl
                         "e01",
                         new byte[][] { }
                     ),
-                new play
+                new Play
                 (
                     2,
                     1,
@@ -124,7 +123,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "s20",
                     new byte[][] { }
                 ),
-                new play
+                new Play
                 (
                     1,
                     1,
@@ -133,7 +132,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "s10",
                     new byte[][] { }
                 ),
-                new play
+                new Play
                 (
                     0,
                     2,
@@ -142,7 +141,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "s00",
                     new byte[][] { }
                 ),
-                new play
+                new Play
                 (
                     2,
                     2,
@@ -151,7 +150,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "e20",
                     new byte[][] { }
                 ),
-                new play
+                new Play
                 (
                     1,
                     2,
@@ -203,6 +202,8 @@ namespace Dotnatter.Test.HashgraphImpl
         public void TestInit()
         {
             var (h, index) = InitHashgraph();
+            Assert.NotNull(h);
+            Assert.NotNull(index);
         }
 
         [Fact]
@@ -329,41 +330,34 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.True(h.See(index["e12"], index["s20"]), "e12 should see s20");
         }
 
-
-
         [Fact]
         public void TestSigningIssue()
         {
-
             var key = CryptoUtils.GenerateEcdsaKey();
-            
+
             var node = new Node(key, 1);
 
-            var ev = new Event(new byte[][] { }, new[] { "", "" }, node.Pub, 0);
+            var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
 
             ev.Sign(key);
 
             Console.WriteLine(ev.Hex());
-      
-            var ev2 = new Event(new byte[][] { }, new[] { "", "" }, node.Pub, 0);
+
+            var ev2 = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
 
             ev2.Body.Timestamp = ev.Body.Timestamp;
 
             ev2.Sign(key);
-            
-            Console.WriteLine(ev2.Hex());
-            
-            Assert.Equal(ev.Marhsal().ToHex(), ev2.Marhsal().ToHex());
-            Assert.Equal(ev.Hex(),ev2.Hex());
 
-            Assert.NotEqual(ev.Signiture(),ev2.Signiture());
+            Console.WriteLine(ev2.Hex());
+
+            Assert.Equal(ev.Marhsal().ToHex(), ev2.Marhsal().ToHex());
+            Assert.Equal(ev.Hex(), ev2.Hex());
+
+            Assert.NotEqual(ev.Signiture(), ev2.Signiture());
 
             ev.ShouldCompareTo(ev2);
-            
         }
-
-
-
 
         /*
         |    |    e20
@@ -399,11 +393,9 @@ namespace Dotnatter.Test.HashgraphImpl
             var store = new InmemStore(participants, CacheSize);
 
             var hashgraph = new Hashgraph(participants, store, null);
-            
 
             for (var i = 0; i < N; i++)
             {
-             
                 var key = CryptoUtils.GenerateEcdsaKey();
 
                 var node = new Node(key, i);
@@ -413,31 +405,27 @@ namespace Dotnatter.Test.HashgraphImpl
                 ev.Sign(node.Key);
 
                 index.Add($"e{i}", ev.Hex());
-                
+
                 hashgraph.InsertEvent(ev, true);
 
                 nodes.Add(node);
-        
             }
-
-
-
 
             // ---
 
             //a and e2 need to have different hashes
-            
-            var eventA = new Event(new byte[][] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
+
+            var eventA = new Event(new[] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
             eventA.Sign(nodes[2].Key);
             index["a"] = eventA.Hex();
-            
+
             // "InsertEvent should return error for 'a'"
-            var err  = hashgraph.InsertEvent(eventA, true);
+            var err = hashgraph.InsertEvent(eventA, true);
             Assert.NotNull(err);
 
             //// ---
 
-            var event01 = new Event(new byte[][] { }, new[] { index["e0"], index["a"] }, nodes[0].Pub, 1); //e0 and a
+            var event01 = new Event(new byte[][] { }, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
             event01.Sign(nodes[0].Key);
             index["e01"] = event01.Hex();
 
@@ -447,7 +435,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             // ---
 
-            var event20 = new Event(new byte[][] { }, new[] { index["e2"], index["e01"] }, nodes[2].Pub, 1); //e2 and e01
+            var event20 = new Event(new byte[][] { }, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
             event20.Sign(nodes[2].Key);
             index["e20"] = event20.Hex();
 
@@ -455,7 +443,6 @@ namespace Dotnatter.Test.HashgraphImpl
             err = hashgraph.InsertEvent(event20, true);
             Assert.NotNull(err);
         }
-
 
         /*
         |  s11  |
@@ -496,14 +483,14 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var plays = new[]
             {
-                new play(1, 1, "e1", "e0", "e10", new byte[][] { }),
-                new play(2, 1, "e2", "", "s20", new byte[][] { }),
-                new play(0, 1, "e0", "", "s00", new byte[][] { }),
-                new play(2, 2, "s20", "e10", "e21", new byte[][] { }),
-                new play(0, 2, "s00", "e21", "e02", new byte[][] { }),
-                new play(1, 2, "e10", "", "s10", new byte[][] { }),
-                new play(1, 3, "s10", "e02", "f1", new byte[][] { }),
-                new play(1, 4, "f1", "", "s11", new[] {"abc".StringToBytes()})
+                new Play(1, 1, "e1", "e0", "e10", new byte[][] { }),
+                new Play(2, 1, "e2", "", "s20", new byte[][] { }),
+                new Play(0, 1, "e0", "", "s00", new byte[][] { }),
+                new Play(2, 2, "s20", "e10", "e21", new byte[][] { }),
+                new Play(0, 2, "s00", "e21", "e02", new byte[][] { }),
+                new Play(1, 2, "e10", "", "s10", new byte[][] { }),
+                new Play(1, 3, "s10", "e02", "f1", new byte[][] { }),
+                new Play(1, 4, "f1", "", "s11", new[] {"abc".StringToBytes()})
             };
 
             foreach (var p in plays)
@@ -517,7 +504,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 parents.Add(otherParent ?? "");
 
                 var e = new Event(
-                    p.Payload, 
+                    p.Payload,
                     parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
@@ -535,10 +522,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var ev in orderedEvents)
             {
-
                 hashgraph.InsertEvent(ev, true);
-
             }
+
             return (hashgraph, index);
         }
 
@@ -603,56 +589,54 @@ namespace Dotnatter.Test.HashgraphImpl
 
             Assert.Null(err);
 
-
             Event e10;
             (e10, err) = h.Store.GetEvent(index["e10"]);
 
             Assert.Null(err);
 
             Assert.True(e21.Body.GetSelfParentIndex() == 1 &&
-                      e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator] &&
-                      e21.Body.GetOtherParentIndex() == 1 &&
-                      e21.Body.GetCreatorId() == h.Participants[e21.Creator]
-                   , "Invalid wire info on e21"
-                );
+                        e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator] &&
+                        e21.Body.GetOtherParentIndex() == 1 &&
+                        e21.Body.GetCreatorId() == h.Participants[e21.Creator]
+                , "Invalid wire info on e21"
+            );
 
-           // -------------
+            // -------------
 
-            expectedFirstDescendants[0] =new EventCoordinates
+            expectedFirstDescendants[0] = new EventCoordinates
             {
                 Index = 2,
-                Hash = index["e02"],
+                Hash = index["e02"]
             };
 
-
-            expectedFirstDescendants[1]=new EventCoordinates
+            expectedFirstDescendants[1] = new EventCoordinates
             {
                 Index = 3,
-                Hash = index["f1"],
+                Hash = index["f1"]
             };
 
-            expectedFirstDescendants[2]=new EventCoordinates
+            expectedFirstDescendants[2] = new EventCoordinates
             {
                 Index = 2,
-                Hash = index["e21"],
+                Hash = index["e21"]
             };
 
-            expectedLastAncestors[0]=new EventCoordinates
+            expectedLastAncestors[0] = new EventCoordinates
             {
                 Index = 0,
-                Hash = index["e0"],
+                Hash = index["e0"]
             };
 
-            expectedLastAncestors[1]=new EventCoordinates
+            expectedLastAncestors[1] = new EventCoordinates
             {
                 Index = 1,
-                Hash = index["e10"],
+                Hash = index["e10"]
             };
 
-            expectedLastAncestors[2]=new EventCoordinates
+            expectedLastAncestors[2] = new EventCoordinates
             {
                 Index = 2,
-                Hash = index["e21"],
+                Hash = index["e21"]
             };
 
             // "e21 firstDescendants not good"
@@ -661,13 +645,12 @@ namespace Dotnatter.Test.HashgraphImpl
             //"e21 lastAncestors not good" 
             e21.GetLastAncestors().ShouldCompareTo(expectedLastAncestors.ToArray());
 
-
             //f1
             Event f1;
             (f1, err) = h.Store.GetEvent(index["f1"]);
 
             Assert.Null(err);
-            
+
             Assert.True(f1.Body.GetSelfParentIndex() == 2 &&
                         f1.Body.GetOtherParentCreatorId() == h.Participants[e0.Creator] &&
                         f1.Body.GetOtherParentIndex() == 2 &&
@@ -677,48 +660,43 @@ namespace Dotnatter.Test.HashgraphImpl
 
             expectedFirstDescendants[0] = new EventCoordinates
             {
-                Index = Int32.MaxValue
+                Index = int.MaxValue
             };
 
             expectedFirstDescendants[1] = new EventCoordinates
             {
                 Index = 3,
-                Hash = index["f1"],
+                Hash = index["f1"]
             };
 
             expectedFirstDescendants[2] = new EventCoordinates
             {
-                Index = Int32.MaxValue
+                Index = int.MaxValue
             };
 
             expectedLastAncestors[0] = new EventCoordinates
             {
                 Index = 2,
-                Hash = index["e02"],
+                Hash = index["e02"]
             };
 
             expectedLastAncestors[1] = new EventCoordinates
             {
                 Index = 3,
-                Hash = index["f1"],
+                Hash = index["f1"]
             };
 
             expectedLastAncestors[2] = new EventCoordinates
             {
                 Index = 2,
-                Hash = index["e21"],
+                Hash = index["e21"]
             };
-
 
             // "f1 firstDescendants not good"
             f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
 
-
             // "f1 lastAncestors not good"
             f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
-
-
-
 
             //Pending loaded Events
             var ple = h.PendingLoadedEvents;
@@ -729,8 +707,6 @@ namespace Dotnatter.Test.HashgraphImpl
         public void TestReadWireInfo()
         {
             var (h, index) = InitRoundHashgraph();
-
-
 
             int k = 0;
             foreach (var evh in index)
@@ -745,15 +721,13 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 var evWire = ev.ToWire();
 
-
                 Event evFromWire;
-                (evFromWire,err) = h.ReadWireInfo(evWire);
+                (evFromWire, err) = h.ReadWireInfo(evWire);
                 Assert.Null(err);
-           
 
                 //"Error converting %s.Body from light wire"
                 //evFromWire.Body.ShouldCompareTo(ev.Body);
-                
+
                 evFromWire.Signiture().ShouldCompareTo(ev.Signiture());
 
                 bool ok;
@@ -1092,7 +1066,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //	return false
         //}
 
-        ///*
+        //*
         //		h0  |   h2
         //		| \ | / |
         //		|   h1  |
@@ -1724,7 +1698,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        ///*
+        //*
         //    |    |    |    |
         //	|    |    |    |w51 collects votes from w40, w41, w42 and w43.
         //    |   w51   |    |IT DECIDES YES
