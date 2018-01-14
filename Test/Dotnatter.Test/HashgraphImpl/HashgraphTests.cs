@@ -16,7 +16,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
         private const int N = 3;
 
-        private string badgerDir = "test_data/badger";
+        //private string badgerDir = "test_data/badger";
 
         public class Node
         {
@@ -739,76 +739,45 @@ namespace Dotnatter.Test.HashgraphImpl
             }
         }
 
-        //        [Fact]
-        //        public void TestStronglySee(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestStronglySee()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    if !h.StronglySee(index["e21"], index["e0"]) {
-        //        t.Fatal("e21 should strongly see e0")
+            Assert.True(h.StronglySee(index["e21"], index["e0"]), "e21 should strongly see e0");
 
-        //    }
+            Assert.True(h.StronglySee(index["e02"], index["e10"]),"e02 should strongly see e10");
 
-        //    if !h.StronglySee(index["e02"], index["e10"]) {
-        //        t.Fatal("e02 should strongly see e10")
+            Assert.True(h.StronglySee(index["e02"], index["e0"]),"e02 should strongly see e0");
+            
+            Assert.True(h.StronglySee(index["e02"], index["e1"]),"e02 should strongly see e1");
+            
+            Assert.True(h.StronglySee(index["f1"], index["e21"]),"f1 should strongly see e21");
+            
+            Assert.True(h.StronglySee(index["f1"], index["e10"]),"f1 should strongly see e10");
+            
+            Assert.True(h.StronglySee(index["f1"], index["e0"]),"f1 should strongly see e0");
+            
+            Assert.True(h.StronglySee(index["f1"], index["e1"]),"f1 should strongly see e1");
+            
+            Assert.True(h.StronglySee(index["f1"], index["e2"]),"f1 should strongly see e2");
+            
+            Assert.True(h.StronglySee(index["s11"], index["e2"]),"s11 should strongly see e2");
+            
 
-        //    }
-        //    if !h.StronglySee(index["e02"], index["e0"]) {
-        //        t.Fatal("e02 should strongly see e0")
+            //false negatives
+            Assert.False(h.StronglySee(index["e10"], index["e0"]), "e12 should not strongly see e2");
 
-        //    }
-        //    if !h.StronglySee(index["e02"], index["e1"]) {
-        //        t.Fatal("e02 should strongly see e1")
+            Assert.False(h.StronglySee(index["e21"], index["e1"]),"e21 should not strongly see e1");
+            
+            Assert.False(h.StronglySee(index["e21"], index["e2"]),"e21 should not strongly see e2");
+            
+            Assert.False(h.StronglySee(index["e02"], index["e2"]),"e02 should not strongly see e2");
+   
+            Assert.False(h.StronglySee(index["s11"], index["e02"]),"s11 should not strongly see e02");
 
-        //    }
-
-        //    if !h.StronglySee(index["f1"], index["e21"]) {
-        //        t.Fatal("f1 should strongly see e21")
-
-        //    }
-        //    if !h.StronglySee(index["f1"], index["e10"]) {
-        //        t.Fatal("f1 should strongly see e10")
-
-        //    }
-        //    if !h.StronglySee(index["f1"], index["e0"]) {
-        //        t.Fatal("f1 should strongly see e0")
-
-        //    }
-        //    if !h.StronglySee(index["f1"], index["e1"]) {
-        //        t.Fatal("f1 should strongly see e1")
-
-        //    }
-        //    if !h.StronglySee(index["f1"], index["e2"]) {
-        //        t.Fatal("f1 should strongly see e2")
-
-        //    }
-        //    if !h.StronglySee(index["s11"], index["e2"]) {
-        //        t.Fatal("s11 should strongly see e2")
-
-        //    }
-
-        //    //false negatives
-        //    if h.StronglySee(index["e10"], index["e0"]) {
-        //        t.Fatal("e12 should not strongly see e2")
-
-        //    }
-        //    if h.StronglySee(index["e21"], index["e1"]) {
-        //        t.Fatal("e21 should not strongly see e1")
-
-        //    }
-        //    if h.StronglySee(index["e21"], index["e2"]) {
-        //        t.Fatal("e21 should not strongly see e2")
-
-        //    }
-        //    if h.StronglySee(index["e02"], index["e2"]) {
-        //        t.Fatal("e02 should not strongly see e2")
-
-        //    }
-        //    if h.StronglySee(index["s11"], index["e02"]) {
-        //        t.Fatal("s11 should not strongly see e02")
-
-        //    }
-        //}
+      
+        }
 
         //        public void TestParentRound(t* testing.T)
         //{
