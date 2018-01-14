@@ -779,58 +779,38 @@ namespace Dotnatter.Test.HashgraphImpl
       
         }
 
-        //        public void TestParentRound(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestParentRound()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous =null};
+            round0Witnesses[index["e1"]] = new RoundEvent { Witness = true, Famous = null };
+            round0Witnesses[index["e2"]] = new RoundEvent { Witness = true, Famous = null };
 
-        //	round1Witnesses= make(map[string]RoundEvent)
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //    round1Witnesses[index["f1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(1, RoundInfo{ Events: round1Witnesses})
+            var round1Witnesses = new Dictionary<string, RoundEvent>();
 
-        //	if r = h.ParentRound(index["e0"]).round; r != -1 {
-        //        t.Fatalf("e0.ParentRound().round should be -1, not %d", r)
+            round1Witnesses[index["f1"]] = new RoundEvent { Witness = true, Famous = null };
+            h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-        //    }
-        //    if r = h.ParentRound(index["e0"]).isRoot; !r {
-        //        t.Fatal("e0.ParentRound().isRoot should be true")
 
-        //    }
+            Assert.Equal(-1, h.ParentRound(index["e0"]).Round);
+            Assert.True(h.ParentRound(index["e0"]).IsRoot);
 
-        //    if r = h.ParentRound(index["e1"]).round; r != -1 {
-        //        t.Fatalf("e1.ParentRound().round should be -1, not %d", r)
+            Assert.Equal(-1, h.ParentRound(index["e1"]).Round);
+            Assert.True(h.ParentRound(index["e1"]).IsRoot);
 
-        //    }
-        //    if r = h.ParentRound(index["e1"]).isRoot; !r {
-        //        t.Fatal("e1.ParentRound().isRoot should be true")
+            Assert.Equal(0, h.ParentRound(index["f1"]).Round);
+            Assert.False(h.ParentRound(index["f1"]).IsRoot);
 
-        //    }
+            Assert.Equal(1, h.ParentRound(index["s11"]).Round);
+            Assert.False(h.ParentRound(index["s11"]).IsRoot);
 
-        //    if r = h.ParentRound(index["f1"]).round; r != 0 {
-        //        t.Fatalf("f1.ParentRound().round should be 0, not %d", r)
-
-        //    }
-        //    if r = h.ParentRound(index["f1"]).isRoot; r {
-        //        t.Fatalf("f1.ParentRound().isRoot should be false")
-
-        //    }
-
-        //    if r = h.ParentRound(index["s11"]).round; r != 1 {
-        //        t.Fatalf("s11.ParentRound().round should be 1, not %d", r)
-
-        //    }
-        //    if r = h.ParentRound(index["s11"]).isRoot; r {
-        //        t.Fatalf("s11.ParentRound().isRoot should be false")
-
-        //    }
-        //}
+        }
 
         //        [Fact]
         //        public void TestWitness(t* testing.T)
