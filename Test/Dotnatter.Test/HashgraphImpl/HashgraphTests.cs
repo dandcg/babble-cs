@@ -784,11 +784,13 @@ namespace Dotnatter.Test.HashgraphImpl
         {
             var (h, index) = InitRoundHashgraph();
 
-            var round0Witnesses = new Dictionary<string, RoundEvent>();
+            var round0Witnesses = new Dictionary<string, RoundEvent>
+            {
+                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
+            };
 
-            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous =null};
-            round0Witnesses[index["e1"]] = new RoundEvent { Witness = true, Famous = null };
-            round0Witnesses[index["e2"]] = new RoundEvent { Witness = true, Famous = null };
 
             h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
