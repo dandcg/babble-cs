@@ -99,12 +99,10 @@ namespace Dotnatter.HashgraphImpl
 
         public (string last, bool isRoot, StoreError err) LastFrom(string participant)
         {
-
-
+            
             //try to get the last event from this participant
             var (last, err) = participantEventsCache.GetLast(participant);
-
-
+            
             var isRoot = false;
             if (err != null)
             {

@@ -90,7 +90,6 @@ namespace Dotnatter.HashgraphImpl
 
         private string creator;
         private byte[] hash;
-        private string hex;
         private int topologicalIndex;
         private int? roundReceived;
         private DateTime consensusTimestamp;

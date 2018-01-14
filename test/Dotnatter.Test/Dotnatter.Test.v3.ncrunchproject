@@ -61,6 +61,9 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

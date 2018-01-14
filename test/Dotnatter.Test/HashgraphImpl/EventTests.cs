@@ -48,7 +48,8 @@ namespace Dotnatter.Test.HashgraphImpl
 
             ev.Sign(privateKey);
 
-            Assert.True(ev.Verify());
+            var (ok, err) = ev.Verify();
+            Assert.True(ok);
         }
 
         [Fact]
@@ -119,7 +120,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     Timestamp = ev.Body.Timestamp,
                     Index = ev.Body.Index
                 },
-                Signiture = ev.Signiture
+                Signiture = ev.Signiture()
             };
 
             var wireEvent = ev.ToWire();

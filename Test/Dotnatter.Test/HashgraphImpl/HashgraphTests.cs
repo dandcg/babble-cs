@@ -598,10 +598,6 @@ namespace Dotnatter.Test.HashgraphImpl
             });
 
             e0.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
-
-            //e0.LastAncestors.Dump();
-            //expectedLastAncestors.ToArray().Dump();
-
             e0.GetLastAncestors().ShouldCompareTo(expectedLastAncestors.ToArray());
 
             //e21
@@ -616,10 +612,6 @@ namespace Dotnatter.Test.HashgraphImpl
 
             Assert.Null(err);
 
-            //h.Dump();
-            //h.Store.Dump();
-
-
             Assert.True(e21.Body.GetSelfParentIndex() == 1 &&
                       e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator] &&
                       e21.Body.GetOtherParentIndex() == 1 &&
@@ -627,103 +619,113 @@ namespace Dotnatter.Test.HashgraphImpl
                    , "Invalid wire info on e21"
                 );
 
-            index.Dump();
+           // -------------
 
-            expectedFirstDescendants[0].ShouldCompareTo(new EventCoordinates
+            expectedFirstDescendants[0] =new EventCoordinates
             {
                 Index = 2,
                 Hash = index["e02"],
-            });
+            };
 
 
-            expectedFirstDescendants[1].ShouldCompareTo(new EventCoordinates
+            expectedFirstDescendants[1]=new EventCoordinates
             {
                 Index = 3,
                 Hash = index["f1"],
-            });
+            };
 
-            expectedFirstDescendants[2].ShouldCompareTo(new EventCoordinates
+            expectedFirstDescendants[2]=new EventCoordinates
             {
                 Index = 2,
                 Hash = index["e21"],
-            });
+            };
 
-            //expectedLastAncestors[0].ShouldCompareTo(new EventCoordinates{
-            //    Index = 0,
-            //	     Hash = index["e0"],
-            //});
-            //expectedLastAncestors[1].ShouldCompareTo(new EventCoordinates{
-            //    Index = 1,
-            //	     Hash = index["e10"],
-            //});
-            //expectedLastAncestors[2].ShouldCompareTo(new   EventCoordinates{
-            //    Index = 2,
-            //	     Hash = index["e21"],
-            //});
+            expectedLastAncestors[0]=new EventCoordinates
+            {
+                Index = 0,
+                Hash = index["e0"],
+            };
 
-            //   if !reflect.DeepEqual(e21.firstDescendants, expectedFirstDescendants) {
-            //       t.Fatal("e21 firstDescendants not good")
+            expectedLastAncestors[1]=new EventCoordinates
+            {
+                Index = 1,
+                Hash = index["e10"],
+            };
 
-            //   }
-            //   if !reflect.DeepEqual(e21.lastAncestors, expectedLastAncestors) {
-            //       t.Fatal("e21 lastAncestors not good")
+            expectedLastAncestors[2]=new EventCoordinates
+            {
+                Index = 2,
+                Hash = index["e21"],
+            };
 
-            //   }
+            // "e21 firstDescendants not good"
+            e21.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
 
-            //   //f1
-            //   f1, err= h.Store.GetEvent(index["f1"])
+            //"e21 lastAncestors not good" 
+            e21.GetLastAncestors().ShouldCompareTo(expectedLastAncestors.ToArray());
 
-            //   if err != nil {
-            //       t.Fatal(err)
 
-            //   }
+            //f1
+            Event f1;
+            (f1, err) = h.Store.GetEvent(index["f1"]);
 
-            //   if !(f1.Body.selfParentIndex == 2 &&
-            //       f1.Body.otherParentCreatorID == h.Participants[e0.Creator()] &&
-            //       f1.Body.otherParentIndex == 2 &&
-            //       f1.Body.creatorID == h.Participants[f1.Creator()]) {
-            //       t.Fatalf("Invalid wire info on f1")
+            Assert.Null(err);
+            
+            Assert.True(f1.Body.GetSelfParentIndex() == 2 &&
+                        f1.Body.GetOtherParentCreatorId() == h.Participants[e0.Creator] &&
+                        f1.Body.GetOtherParentIndex() == 2 &&
+                        f1.Body.GetCreatorId() == h.Participants[f1.Creator], "Invalid wire info on f1");
 
-            //   }
+            // -------------
 
-            //   expectedFirstDescendants[0] = EventCoordinates{
-            //       index: math.MaxInt32,
-            //}
-            //   expectedFirstDescendants[1] = EventCoordinates{
-            //       index: 3,
-            //	hash: index["f1"],
-            //}
-            //   expectedFirstDescendants[2] = EventCoordinates{
-            //       index: math.MaxInt32,
-            //}
+            expectedFirstDescendants[0] = new EventCoordinates
+            {
+                Index = Int32.MaxValue
+            };
 
-            //   expectedLastAncestors[0] = EventCoordinates{
-            //       index: 2,
-            //	hash: index["e02"],
-            //}
-            //   expectedLastAncestors[1] = EventCoordinates{
-            //       index: 3,
-            //	hash: index["f1"],
-            //}
-            //   expectedLastAncestors[2] = EventCoordinates{
-            //       index: 2,
-            //	hash: index["e21"],
-            //}
+            expectedFirstDescendants[1] = new EventCoordinates
+            {
+                Index = 3,
+                Hash = index["f1"],
+            };
 
-            //   if !reflect.DeepEqual(f1.firstDescendants, expectedFirstDescendants) {
-            //       t.Fatal("f1 firstDescendants not good")
+            expectedFirstDescendants[2] = new EventCoordinates
+            {
+                Index = Int32.MaxValue
+            };
 
-            //   }
-            //   if !reflect.DeepEqual(f1.lastAncestors, expectedLastAncestors) {
-            //       t.Fatal("f1 lastAncestors not good")
+            expectedLastAncestors[0] = new EventCoordinates
+            {
+                Index = 2,
+                Hash = index["e02"],
+            };
 
-            //   }
+            expectedLastAncestors[1] = new EventCoordinates
+            {
+                Index = 3,
+                Hash = index["f1"],
+            };
 
-            //   //Pending loaded Events
-            //   if ple = h.PendingLoadedEvents; ple != 4 {
-            //       t.Fatalf("PendingLoadedEvents should be 4, not %d", ple)
+            expectedLastAncestors[2] = new EventCoordinates
+            {
+                Index = 2,
+                Hash = index["e21"],
+            };
 
-            //   }
+
+            // "f1 firstDescendants not good"
+            f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
+
+
+            // "f1 lastAncestors not good"
+            f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
+
+
+
+
+            //Pending loaded Events
+            var ple = h.PendingLoadedEvents;
+            Assert.Equal(4, ple);
         }
 
         [Fact]
