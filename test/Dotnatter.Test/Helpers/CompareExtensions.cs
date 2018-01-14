@@ -7,12 +7,12 @@ namespace Dotnatter.Test.Helpers
     {
         public static void ShouldCompareTo<T1, T2>(this T1 actual, T2 expected, CompareLogic compareLogic = null)
         {
-            compareLogic = compareLogic ?? new CompareLogic();
+            compareLogic = compareLogic ?? new CompareLogic() { Config = new ComparisonConfig() { MaxDifferences = 100 } };
 
             var result = compareLogic.Compare(actual, expected);
 
             Assert.True(result.AreEqual,result.DifferencesString);
         }
-        
+
     }
 }
