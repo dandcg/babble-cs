@@ -2,21 +2,20 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using Dotnatter.Common;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Grin.Tests.Unit;
+using KellermanSoftware.CompareNetObjects;
 using Xunit;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
     public class HashgraphTests:IClassFixture<LoggingFixture>
     {
-
- 
-
-
+        
         private const int CacheSize = 100;
 
         private const int N = 3;
@@ -27,7 +26,6 @@ namespace Dotnatter.Test.HashgraphImpl
         {
             public int Id { get; set; }
             public byte[] Pub { get; set; }
-            public string PubHex { get; set; }
             public CngKey Key { get; set; }
             public List<Event> Events { get; set; }
 
@@ -37,7 +35,6 @@ namespace Dotnatter.Test.HashgraphImpl
                 Id = id;
                 Key = key;
                 Pub = pub;
-                PubHex = pub.ToHex();
                 Events = new List<Event>();
             }
 
@@ -187,7 +184,7 @@ namespace Dotnatter.Test.HashgraphImpl
             var participants = new Dictionary<string, int>();
             foreach (var node in nodes)
             {
-                participants[node.PubHex] = node.Id;
+                participants[node.Pub.ToHex()] = node.Id;
             }
 
             var store = new InmemStore(participants, CacheSize);
@@ -335,6 +332,42 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.True(h.See(index["e12"], index["s20"]), "e12 should see s20");
         }
 
+
+
+        [Fact]
+        public void TestSigningIssue()
+        {
+
+            var key = CryptoUtils.GenerateEcdsaKey();
+            
+            var node = new Node(key, 1);
+
+            var ev = new Event(new byte[][] { }, new[] { "", "" }, node.Pub, 0);
+
+            ev.Sign(key);
+
+            Console.WriteLine(ev.Hex());
+      
+            var ev2 = new Event(new byte[][] { }, new[] { "", "" }, node.Pub, 0);
+
+            ev2.Body.Timestamp = ev.Body.Timestamp;
+
+            ev2.Sign(key);
+            
+            Console.WriteLine(ev2.Hex());
+            
+            Assert.Equal(ev.Marhsal().ToHex(), ev2.Marhsal().ToHex());
+            Assert.Equal(ev.Hex(),ev2.Hex());
+
+            Assert.NotEqual(ev.Signiture(),ev2.Signiture());
+
+            ev.ShouldCompareTo(ev2);
+            
+        }
+
+
+
+
         /*
         |    |    e20
         |    |   / |
@@ -363,23 +396,29 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var node in nodes)
             {
-                participants.Add(node.PubHex, node.Id);
+                participants.Add(node.Pub.ToHex(), node.Id);
             }
 
             var store = new InmemStore(participants, CacheSize);
 
             var hashgraph = new Hashgraph(participants, store, null);
+            
 
             for (var i = 0; i < N; i++)
             {
              
                 var key = CryptoUtils.GenerateEcdsaKey();
+
                 var node = new Node(key, i);
+
                 var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
 
                 ev.Sign(node.Key);
+
                 index.Add($"e{i}", ev.Hex());
+                
                 hashgraph.InsertEvent(ev, true);
+
                 nodes.Add(node);
         
             }
@@ -389,35 +428,35 @@ namespace Dotnatter.Test.HashgraphImpl
 
             // ---
 
-            ////a and e2 need to have different hashes
-            var eventA = new Event(new[] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
-
-            // Todo: Is hashing repeatable in Golang?
-            eventA.Signiture = store.GetEvent(index["e2"]).evt.Signiture;
-            //eventA.Sign(nodes[2].Key);
+            //a and e2 need to have different hashes
+            
+            var eventA = new Event(new byte[][] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
+            eventA.Sign(nodes[2].Key);
             index["a"] = eventA.Hex();
-
+            
             // "InsertEvent should return error for 'a'"
-            Assert.Throws<ApplicationException>(()=>hashgraph.InsertEvent(eventA, true));
-  
-            // ---
+            var err  = hashgraph.InsertEvent(eventA, true);
+            Assert.NotNull(err);
 
-            var event01 = new Event(new byte[][] { }, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
+            //// ---
+
+            var event01 = new Event(new byte[][] { }, new[] { index["e0"], index["a"] }, nodes[0].Pub, 1); //e0 and a
             event01.Sign(nodes[0].Key);
             index["e01"] = event01.Hex();
-            
+
             // "InsertEvent should return error for e01";
-            Assert.Throws<ApplicationException>(() => hashgraph.InsertEvent(event01, true));
+            err = hashgraph.InsertEvent(event01, true);
+            Assert.NotNull(err);
 
             // ---
 
-            var event20 = new Event(new byte[][] { }, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
+            var event20 = new Event(new byte[][] { }, new[] { index["e2"], index["e01"] }, nodes[2].Pub, 1); //e2 and e01
             event20.Sign(nodes[2].Key);
             index["e20"] = event20.Hex();
 
             //"InsertEvent should return error for e20"
-            Assert.Throws<ApplicationException>(() => hashgraph.InsertEvent(event20, true));
-
+            err = hashgraph.InsertEvent(event20, true);
+            Assert.NotNull(err);
         }
 
 
@@ -478,7 +517,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 index.TryGetValue(p.OtherParent, out var otherParent);
 
-                parents.Add(otherParent ?? null);
+                parents.Add(otherParent ?? "");
 
                 var e = new Event(
                     p.Payload, 
@@ -492,7 +531,7 @@ namespace Dotnatter.Test.HashgraphImpl
             var participants = new Dictionary<string, int>();
             foreach (var node in nodes)
             {
-                participants.Add(node.PubHex, node.Id);
+                participants.Add(node.Pub.ToHex(), node.Id);
             }
 
             var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize), null);
@@ -515,14 +554,14 @@ namespace Dotnatter.Test.HashgraphImpl
             var expectedLastAncestors = new List<EventCoordinates>(N);
 
             //e0
-            var (e0, ok) = h.Store.GetEvent(index["e0"]);
+            var (e0, err) = h.Store.GetEvent(index["e0"]);
 
-            Assert.True(ok);
+            Assert.Null(err);
 
-            Assert.True(e0.Body.SelfParentIndex == -1 &&
-                        e0.Body.OtherParentCreatorId == -1 &&
-                        e0.Body.OtherParentIndex == -1 &&
-                        e0.Body.CreatorId == h.Participants[e0.Creator], "Invalid wire info on e0");
+            Assert.True(e0.Body.GetSelfParentIndex() == -1 &&
+                        e0.Body.GetOtherParentCreatorId() == -1 &&
+                        e0.Body.GetOtherParentIndex() == -1 &&
+                        e0.Body.GetCreatorId() == h.Participants[e0.Creator], "Invalid wire info on e0");
 
             expectedFirstDescendants.Add(new EventCoordinates
             {
@@ -558,30 +597,33 @@ namespace Dotnatter.Test.HashgraphImpl
                 Index = -1
             });
 
-            e0.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
+            e0.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
 
             //e0.LastAncestors.Dump();
             //expectedLastAncestors.ToArray().Dump();
 
-            e0.LastAncestors.ShouldCompareTo(expectedLastAncestors.ToArray());
+            e0.GetLastAncestors().ShouldCompareTo(expectedLastAncestors.ToArray());
 
             //e21
             Event e21;
-            (e21, ok) = h.Store.GetEvent(index["e21"]);
+            (e21, err) = h.Store.GetEvent(index["e21"]);
+
+            Assert.Null(err);
 
 
             Event e10;
-            (e10, ok) = h.Store.GetEvent(index["e10"]);
+            (e10, err) = h.Store.GetEvent(index["e10"]);
 
+            Assert.Null(err);
 
             //h.Dump();
             //h.Store.Dump();
 
-            
-            Assert.True(e21.Body.SelfParentIndex == 1 &&
-                      e21.Body.OtherParentCreatorId == h.Participants[e10.Creator] &&
-                      e21.Body.OtherParentIndex == 1 &&
-                      e21.Body.CreatorId == h.Participants[e21.Creator]
+
+            Assert.True(e21.Body.GetSelfParentIndex() == 1 &&
+                      e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator] &&
+                      e21.Body.GetOtherParentIndex() == 1 &&
+                      e21.Body.GetCreatorId() == h.Participants[e21.Creator]
                    , "Invalid wire info on e21"
                 );
 
@@ -689,37 +731,42 @@ namespace Dotnatter.Test.HashgraphImpl
         {
             var (h, index) = InitRoundHashgraph();
 
-           
 
-            foreach (var evh in index.Take(1))
+
+            int k = 0;
+            foreach (var evh in index)
             {
                 //evh.Dump();
 
-                var (ev, ok) = h.Store.GetEvent(evh.Value);
+                Exception err;
+                Event ev;
+                (ev, err) = h.Store.GetEvent(evh.Value);
 
-                Assert.True(ok);
-                
+                Assert.Null(err);
+
                 var evWire = ev.ToWire();
 
                 ev.Dump();
 
+                Event evFromWire;
+                (evFromWire,err) = h.ReadWireInfo(evWire);
+                Assert.Null(err);
+           
 
-                var evFromWire = h.ReadWireInfo(evWire);
-
-                //evFromWire.Dump();
 
 
                 //"Error converting %s.Body from light wire"
                 evFromWire.Body.ShouldCompareTo(ev.Body);
 
 
-                evFromWire.Signiture.ShouldCompareTo(ev.Signiture);
+                evFromWire.Signiture().ShouldCompareTo(ev.Signiture());
 
+                bool ok;
+                (ok, err) = ev.Verify();
 
-                ok = ev.Verify();
+                Assert.True(ok, $"Error verifying signature for {k} from ligh wire: {err.Message}");
 
-                Assert.True(ok, "Error verifying signature for %s from ligh wire: %v");
-
+                k++;
             }
         }
 

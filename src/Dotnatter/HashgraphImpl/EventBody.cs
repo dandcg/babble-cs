@@ -1,11 +1,16 @@
 ﻿using System;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
+using Newtonsoft.Json;
 
 namespace Dotnatter.HashgraphImpl
 {
     public class EventBody
     {
+        private int selfParentIndex;
+        private int otherParentCreatorId;
+        private int otherParentIndex;
+        private int creatorId;
 
         public byte[][] Transactions { get; set; } //the payload
         public string[] Parents { get; set; }  //hashes of the event's parents, self-parent first
@@ -15,11 +20,46 @@ namespace Dotnatter.HashgraphImpl
 
         //wire
         //It is cheaper to send ints then hashes over the wire
-        public int SelfParentIndex { get; set; }
-        public int OtherParentCreatorId { get; set; }
-        public int OtherParentIndex { get; set; }
-        public int CreatorId { get; set; }
 
+        public void SetSelfParentIndex(int value)
+        {
+            selfParentIndex = value;
+        }
+
+        public int GetSelfParentIndex()
+        {
+            return selfParentIndex;
+        }
+
+        public void SetOtherParentCreatorId(int value)
+        {
+            otherParentCreatorId = value;
+        }
+
+        public int GetOtherParentCreatorId()
+        {
+            return otherParentCreatorId;
+        }
+
+        public void SetOtherParentIndex(int value)
+        {
+            otherParentIndex = value;
+        }
+
+        public int GetOtherParentIndex()
+        {
+            return otherParentIndex;
+        }
+
+        public void SetCreatorId(int value)
+        {
+            creatorId = value;
+        }
+
+        public int GetCreatorId()
+        {
+            return creatorId;
+        }
 
         public byte[] Marshal()
         {

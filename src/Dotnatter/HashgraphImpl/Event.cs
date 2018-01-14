@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
+using Newtonsoft.Json;
 
 namespace Dotnatter.HashgraphImpl
 {
@@ -13,32 +14,92 @@ namespace Dotnatter.HashgraphImpl
     {
         public EventBody Body { get; set; }
 
+        private byte[] signiture;
 
 
         //creator's digital signature of body
-        public byte[] Signiture { get; set; }
-        public (BigInteger R, BigInteger S) GetSignitureTuple()
+        public byte[] Signiture()
         {
-            var r = new BigInteger(Signiture.Take(32).ToArray());
-            var s = new BigInteger(Signiture.Skip(32).ToArray());
+            return signiture;
+        }
+        
+        public void SetSigniture(byte[] value)
+        {
+            signiture = value;
+        }
+
+        public (BigInteger R, BigInteger S) SignatureRS()
+        {
+            var r = new BigInteger(Signiture().Take(32).ToArray());
+            var s = new BigInteger(Signiture().Skip(32).ToArray());
             return (r, s);
         }
 
-        public int TopologicalIndex { get; set; }
-        public int? RoundReceived { get; set; }
-        public DateTime ConsensusTimestamp { get; set; }
-        public EventCoordinates[] LastAncestors { get; set; } //[participant fake id] => last ancestor
-        public EventCoordinates[] FirstDescendants  { get; set; } //[participant fake id] => first descendant
+        public void SetTopologicalIndex(int value)
+        {
+            topologicalIndex = value;
+        }
 
+
+        public int GetTopologicalIndex()
+        {
+            return topologicalIndex;
+        }
+
+        public void SetRoundReceived(int? value)
+        {
+            roundReceived = value;
+        }
+
+        public int? GetRoundReceived()
+        {
+            return roundReceived;
+        }
+
+        public void SetConsensusTimestamp(DateTime value)
+        {
+            consensusTimestamp = value;
+        }
+
+        public DateTime GetConsensusTimestamp()
+        {
+            return consensusTimestamp;
+        }
+
+        public void SetLastAncestors(EventCoordinates[] value)
+        {
+            lastAncestors = value;
+        }
+
+        public EventCoordinates[] GetLastAncestors()
+        {
+            return lastAncestors;
+        }
+
+        public void SetFirstDescendants(EventCoordinates[] value)
+        {
+            firstDescendants = value;
+        }
+
+        public EventCoordinates[] GetFirstDescendants()
+        {
+            return firstDescendants;
+        }
 
         //sha256 hash of body and signature
 
         private string creator;
         private byte[] hash;
-        public string hex;
+        private string hex;
+        private int topologicalIndex;
+        private int? roundReceived;
+        private DateTime consensusTimestamp;
+        private EventCoordinates[] lastAncestors;
+        private EventCoordinates[] firstDescendants;
+
         public string Creator => creator ?? (creator = Body.Creator.ToHex());
         public byte[] Hash() => hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
-        public string Hex() => hex ?? (hex = Hash().ToHex());
+        public string Hex() =>  Hash().ToHex();
 
         public Event()
         { }
@@ -86,7 +147,7 @@ namespace Dotnatter.HashgraphImpl
         public void Sign(CngKey privKey)
         {
             var signBytes = Body.Hash();
-            Signiture = CryptoUtils.Sign(privKey, signBytes);
+            SetSigniture(CryptoUtils.Sign(privKey, signBytes));
         }
 
         public (bool res, Exception err) Verify()
@@ -95,7 +156,7 @@ namespace Dotnatter.HashgraphImpl
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
             var signBytes = Body.Hash();
 
-            return (CryptoUtils.Verify(pubKey, signBytes, Signiture),null);
+            return (CryptoUtils.Verify(pubKey, signBytes, Signiture()),null);
         }
 
 
@@ -112,18 +173,18 @@ namespace Dotnatter.HashgraphImpl
 
         public void SetRoundReceived(int rr)
         {
-            RoundReceived = rr;
+            SetRoundReceived(rr);
         }
 
         public void SetWireInfo(int selfParentIndex, int otherParentCreatorId, int otherParentIndex, int creatorId)
         {
-            Body.SelfParentIndex = selfParentIndex;
+            Body.SetSelfParentIndex(selfParentIndex);
 
-            Body.OtherParentCreatorId = otherParentCreatorId;
+            Body.SetOtherParentCreatorId(otherParentCreatorId);
 
-            Body.OtherParentIndex = otherParentIndex;
+            Body.SetOtherParentIndex(otherParentIndex);
 
-            Body.CreatorId = creatorId;
+            Body.SetCreatorId(creatorId);
         }
 
         public WireEvent ToWire()
@@ -133,16 +194,16 @@ namespace Dotnatter.HashgraphImpl
                 Body = new WireBody
                 {
                     Transactions = Body.Transactions,
-                    SelfParentIndex = Body.SelfParentIndex,
-                    OtherParentCreatorId = Body.OtherParentCreatorId,
-                    OtherParentIndex = Body.OtherParentIndex,
-                    CreatorId = Body.CreatorId,
+                    SelfParentIndex = Body.GetSelfParentIndex(),
+                    OtherParentCreatorId = Body.GetOtherParentCreatorId(),
+                    OtherParentIndex = Body.GetOtherParentIndex(),
+                    CreatorId = Body.GetCreatorId(),
                     Timestamp = Body.Timestamp,
                     Index = Body.Index
                 },
-                Signiture = Signiture
+                Signiture = Signiture()
                 //R = Signiture.R,
-               // S = Signiture.S
+                // S = Signiture.S
             };
         }
 
@@ -169,7 +230,7 @@ namespace Dotnatter.HashgraphImpl
         {
             Debug.Assert(x != null, nameof(x) + " != null");
             Debug.Assert(y != null, nameof(y) + " != null");
-            return x.TopologicalIndex.CompareTo(y.TopologicalIndex);
+            return x.GetTopologicalIndex().CompareTo(y.GetTopologicalIndex());
         }
     }
 
@@ -191,14 +252,14 @@ namespace Dotnatter.HashgraphImpl
 
             var (irr, jrr) = (-1, -1);
 
-            if (i.RoundReceived != null)
+            if (i.GetRoundReceived() != null)
             {
-                irr = (int) i.RoundReceived;
+                irr = (int) i.GetRoundReceived();
             }
  
-            if (j.RoundReceived != null)
+            if (j.GetRoundReceived() != null)
             {
-                jrr = (int) j.RoundReceived;
+                jrr = (int) j.GetRoundReceived();
             }
 
             if (irr != jrr)
@@ -206,18 +267,18 @@ namespace Dotnatter.HashgraphImpl
                 return irr.CompareTo( jrr);
             }
 
-            if (!i.ConsensusTimestamp.Equals(j.ConsensusTimestamp))
+            if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
             {
-                return DateTime.Compare(i.ConsensusTimestamp, i.ConsensusTimestamp);
+                return DateTime.Compare(i.GetConsensusTimestamp(), i.GetConsensusTimestamp());
             }
 
-            Debug.Assert(i.RoundReceived != null, "i.RoundReceived != null");
+            Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
 
-            var w = GetPseudoRandomNumber((int)i.RoundReceived);
+            var w = GetPseudoRandomNumber((int)i.GetRoundReceived());
             
-            var wsi =i.GetSignitureTuple().S ^ w;
+            var wsi =i.SignatureRS().S ^ w;
             
-           var  wsj = j.GetSignitureTuple().S ^ w;
+           var  wsj = j.SignatureRS().S ^ w;
 
             return wsi.CompareTo(wsj);
         }

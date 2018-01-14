@@ -85,7 +85,7 @@ namespace Dotnatter.HashgraphImpl
             }
 
             var eyCreator = Participants[ey.Creator];
-            var lastAncestorKnownFromYCreator = ex.LastAncestors[eyCreator].Index;
+            var lastAncestorKnownFromYCreator = ex.GetLastAncestors()[eyCreator].Index;
 
             return lastAncestorKnownFromYCreator >= ey.Index();
         }
@@ -172,7 +172,7 @@ namespace Dotnatter.HashgraphImpl
                 return "";
             }
 
-            var a = ey.FirstDescendants[Participants[ex.Creator]];
+            var a = ey.GetFirstDescendants()[Participants[ex.Creator]];
 
             if (a.Index <= ex.Index())
             {
@@ -214,9 +214,9 @@ namespace Dotnatter.HashgraphImpl
 
             var c = 0;
 
-            for (var i = 0; i < ex.LastAncestors.Length; i++)
+            for (var i = 0; i < ex.GetLastAncestors().Length; i++)
             {
-                if (ex.LastAncestors[i].Index >= ey.FirstDescendants[i].Index)
+                if (ex.GetLastAncestors()[i].Index >= ey.GetFirstDescendants()[i].Index)
                 {
                     c++;
                 }
@@ -380,7 +380,7 @@ namespace Dotnatter.HashgraphImpl
                 return -1;
             }
 
-            return ex.RoundReceived ?? -1;
+            return ex.GetRoundReceived() ?? -1;
         }
 
         public int Round(string x)
@@ -446,23 +446,52 @@ namespace Dotnatter.HashgraphImpl
             return new HashgraphError($"Invalid signature");
             }
 
-            CheckSelfParent(ev);
+            err= CheckSelfParent(ev);
+            if (err != null)
+            {
+                return new Exception($"CheckSelfParent: {err.Message}",err);
+            }
 
-            CheckOtherParent(ev);
+            err = CheckOtherParent(ev);
+            if (err != null)
+            {
+                return new Exception($"CheckOtherParent: {err.Message}", err);
+            }
 
-            ev.TopologicalIndex = TopologicalIndex;
+
+            ev.SetTopologicalIndex(TopologicalIndex);
             TopologicalIndex++;
 
             if (setWireInfo)
             {
-                SetWireInfo(ev);
+                err = SetWireInfo(ev);
+                if (err != null)
+                {
+                    return new Exception($"SetWireInfo: {err.Message}", err);
+                }
+
             }
 
-            InitEventCoordinates(ev);
+            err= InitEventCoordinates(ev);
+            if (err != null)
+            {
+                return new Exception($"InitEventCoordinates: {err.Message}", err);
+            }
 
-            Store.SetEvent(ev);
 
-            UpdateAncestorFirstDescendant(ev);
+            err=Store.SetEvent(ev);
+            if (err != null)
+            {
+                return new Exception($"SetEvent: {err.Message}", err);
+            }
+
+
+            err=UpdateAncestorFirstDescendant(ev);
+            if (err != null)
+            {
+                return new Exception($"UpdateAncestorFirstDescendant: {err.Message}", err);
+            }
+
 
             UndeterminedEvents.Add(ev.Hex());
 
@@ -540,17 +569,17 @@ namespace Dotnatter.HashgraphImpl
         {
             var members = Participants.Count;
 
-            ev.FirstDescendants = new EventCoordinates[members];
+            ev.SetFirstDescendants(new EventCoordinates[members]);
 
             for (var fakeId = 0; fakeId < members; fakeId++)
             {
-                ev.FirstDescendants[fakeId] = new EventCoordinates
+                ev.GetFirstDescendants()[fakeId] = new EventCoordinates
                 {
                     Index = int.MaxValue
                 };
             }
 
-            ev.LastAncestors = new EventCoordinates[members];
+            ev.SetLastAncestors(new EventCoordinates[members]);
 
             var (selfParent, selfParentError) = Store.GetEvent(ev.SelfParent);
             var (otherParent, otherParentError) = Store.GetEvent(ev.OtherParent);
@@ -559,7 +588,7 @@ namespace Dotnatter.HashgraphImpl
             {
                 for (var fakeId = 0; fakeId < members; fakeId++)
                 {
-                    ev.LastAncestors[fakeId] = new EventCoordinates
+                    ev.GetLastAncestors()[fakeId] = new EventCoordinates
                     {
                         Index = -1
                     };
@@ -567,28 +596,28 @@ namespace Dotnatter.HashgraphImpl
             }
             else if (selfParentError != null)
             {
-                Array.Copy(otherParent.LastAncestors, 0, ev.LastAncestors, 0, members);
+                Array.Copy(otherParent.GetLastAncestors(), 0, ev.GetLastAncestors(), 0, members);
             }
             else if (otherParentError != null)
             {
-                Array.Copy(selfParent.LastAncestors, 0, ev.LastAncestors, 0, members);
+                Array.Copy(selfParent.GetLastAncestors(), 0, ev.GetLastAncestors(), 0, members);
             }
             else
             {
-                var selfParentLastAncestors = selfParent.LastAncestors;
+                var selfParentLastAncestors = selfParent.GetLastAncestors();
 
-                var otherParentLastAncestors = otherParent.LastAncestors;
+                var otherParentLastAncestors = otherParent.GetLastAncestors();
 
-                Array.Copy(selfParentLastAncestors, 0, ev.LastAncestors, 0, members);
+                Array.Copy(selfParentLastAncestors, 0, ev.GetLastAncestors(), 0, members);
 
                 for (var i = 0; i < members; i++)
                 {
-                    if (ev.LastAncestors[i].Index < otherParentLastAncestors[i].Index)
+                    if (ev.GetLastAncestors()[i].Index < otherParentLastAncestors[i].Index)
                     {
                         {
-                            ev.LastAncestors[i] = new EventCoordinates();
-                            ev.LastAncestors[i].Index = otherParentLastAncestors[i].Index;
-                            ev.LastAncestors[i].Hash = otherParentLastAncestors[i].Hash;
+                            ev.GetLastAncestors()[i] = new EventCoordinates();
+                            ev.GetLastAncestors()[i].Index = otherParentLastAncestors[i].Index;
+                            ev.GetLastAncestors()[i].Hash = otherParentLastAncestors[i].Hash;
                         }
                     }
                 }
@@ -607,8 +636,8 @@ namespace Dotnatter.HashgraphImpl
 
             var hash = ev.Hex();
 
-            ev.FirstDescendants[fakeCreatorId] = new EventCoordinates { Index = index, Hash = hash };
-            ev.LastAncestors[fakeCreatorId] = new EventCoordinates { Index = index, Hash = hash };
+            ev.GetFirstDescendants()[fakeCreatorId] = new EventCoordinates { Index = index, Hash = hash };
+            ev.GetLastAncestors()[fakeCreatorId] = new EventCoordinates { Index = index, Hash = hash };
 
             return null;
         }
@@ -626,9 +655,9 @@ namespace Dotnatter.HashgraphImpl
             var index = ev.Index();
             var hash = ev.Hex();
 
-            for (var i = 0; i < ev.LastAncestors.Length; i++)
+            for (var i = 0; i < ev.GetLastAncestors().Length; i++)
             {
-                var ah = ev.LastAncestors[i].Hash;
+                var ah = ev.GetLastAncestors()[i].Hash;
 
                 while (!string.IsNullOrEmpty(ah))
                 {
@@ -639,9 +668,9 @@ namespace Dotnatter.HashgraphImpl
                         break;
                     }
 
-                    if (a.FirstDescendants[fakeCreatorId].Index == int.MaxValue)
+                    if (a.GetFirstDescendants()[fakeCreatorId].Index == int.MaxValue)
                     {
-                        a.FirstDescendants[fakeCreatorId] = new EventCoordinates
+                        a.GetFirstDescendants()[fakeCreatorId] = new EventCoordinates
                         {
                             Index = index,
                             Hash = hash
@@ -760,18 +789,21 @@ namespace Dotnatter.HashgraphImpl
                 Creator = creatorBytes,
                 Timestamp = wev.Body.Timestamp,
                 Index = wev.Body.Index,
-                SelfParentIndex = wev.Body.SelfParentIndex,
-                OtherParentCreatorId = wev.Body.OtherParentCreatorId,
-                OtherParentIndex = wev.Body.OtherParentIndex,
-                CreatorId = wev.Body.CreatorId
+            
             };
+
+
+            body.SetSelfParentIndex (wev.Body.SelfParentIndex);
+            body.SetOtherParentCreatorId(wev.Body.OtherParentCreatorId);
+            body.SetOtherParentIndex(wev.Body.OtherParentIndex);
+            body.SetCreatorId(wev.Body.CreatorId);
 
             var ev = new Event
             {
                 Body = body,
-                Signiture = wev.Signiture
+    
             };
-
+            ev.SetSigniture(wev.Signiture);
             return (ev, null);
         }
 
@@ -1032,7 +1064,7 @@ namespace Dotnatter.HashgraphImpl
                             t.Add(OldestSelfAncestorToSee(a, x));
                         }
 
-                        ex.ConsensusTimestamp = MedianTimestamp(t);
+                        ex.SetConsensusTimestamp(MedianTimestamp(t));
 
                         Store.SetEvent(ex);
 
@@ -1060,7 +1092,7 @@ namespace Dotnatter.HashgraphImpl
                     return err;
                 }
 
-                if (ex.RoundReceived != null)
+                if (ex.GetRoundReceived() != null)
                 {
                     newConsensusEvents.Add(ex);
                 }

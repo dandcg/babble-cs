@@ -24,7 +24,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {"charlie", 2}
             };
 
-            var pec = ParticipantEventsCache.NewParticipantEventsCache(size, participants);
+            var pec = new ParticipantEventsCache(size, participants);
 
             var items = new Dictionary<string, List<string>>();
 
@@ -55,8 +55,8 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 var index1 = 9;
 
-                var ex = Assert.Throws<StoreError>(() => pec.GetItem(p.Key, index1));
-                Assert.Equal(StoreErrorType.TooLate, ex.StoreErrorType);
+                var (_,err) =  pec.GetItem(p.Key, index1);
+                Assert.Equal(StoreErrorType.TooLate, err.StoreErrorType);
 
                 //--
 
@@ -64,7 +64,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 var expected2 = items[p.Key][index2];
 
-                var actual2 = pec.GetItem(p.Key, index2);
+                var (actual2,err2) = pec.GetItem(p.Key, index2);
+
+                Assert.Null(err2);
 
                 actual2.ShouldCompareTo(expected2);
 
@@ -73,7 +75,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 var index3 = 27;
 
                 var expected3 = new string[] { };
-                var actual3 = pec.Get(p.Key, index3);
+                var (actual3,err3) = pec.Get(p.Key, index3);
 
                 actual3.ShouldCompareTo(expected3);
             }
@@ -96,8 +98,8 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var p in participants)
             {
-                var ex = Assert.Throws<StoreError>(() => pec.Get(p.Key, 0));
-                Assert.Equal(StoreErrorType.TooLate, ex.StoreErrorType);
+                var (_,err) =  pec.Get(p.Key, 0);
+                Assert.Equal(StoreErrorType.TooLate, err.StoreErrorType);
 
                 //--
 
@@ -105,7 +107,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 var expected = items[p.Key].Skip(skipIndex + 1).ToArray();
 
-                var cached = pec.Get(p.Key, skipIndex);
+                var (cached, errc1) = pec.Get(p.Key, skipIndex);
+
+                Assert.Null(errc1);
 
                 cached.ShouldCompareTo(expected);
 
@@ -115,7 +119,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 var expected2 = items[p.Key].Skip(skipIndex2 + 1).ToArray();
 
-                var cached2 = pec.Get(p.Key, skipIndex2);
+             var (cached2,errc2) = pec.Get(p.Key, skipIndex2);
+
+                Assert.Null(errc2);
 
                 cached2.ShouldCompareTo(expected2);
 
@@ -125,7 +131,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 var expected3 = new string[] { };
 
-                var cached3 = pec.Get(p.Key, skipIndex3);
+                var (cached3, errc3) = pec.Get(p.Key, skipIndex3);
+
+                Assert.Null(errc3);
 
                 cached3.ShouldCompareTo(expected3);
             }
@@ -145,7 +153,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {"charlie", 2}
             };
 
-            var pec = ParticipantEventsCache.NewParticipantEventsCache(size, participants);
+            var pec = new ParticipantEventsCache(size, participants);
 
             var items = new Dictionary<string, List<string>>();
             
@@ -172,7 +180,9 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 var expected = items[p.Key].Skip(size).ToArray();
 
-                var cached = pec.Get(p.Key, size - 1);
+                var (cached,err) = pec.Get(p.Key, size - 1);
+
+                Assert.Null(err);
 
                 cached.ShouldCompareTo(expected);
             }

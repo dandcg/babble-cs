@@ -46,29 +46,31 @@ namespace Dotnatter.Test.Common
             }
 
 
-            var ex = Assert.Throws<StoreError>(() => rollingIndex.Add("PassedIndex", expectedLastIndex - 1));
-            Assert.Equal(StoreErrorType.PassedIndex, ex.StoreErrorType);
+            var err =  rollingIndex.Add("PassedIndex", expectedLastIndex - 1);
+            Assert.Equal(StoreErrorType.PassedIndex, err.StoreErrorType);
 
 
-            ex = Assert.Throws<StoreError>(() => rollingIndex.Add("PassedIndex", expectedLastIndex + 2));
-            Assert.Equal(StoreErrorType.SkippedIndex, ex.StoreErrorType);
+           err = rollingIndex.Add("PassedIndex", expectedLastIndex + 2);
+            Assert.Equal(StoreErrorType.SkippedIndex, err.StoreErrorType);
 
 
-            ex = Assert.Throws<StoreError>(() => rollingIndex.GetItem(9));
-            Assert.Equal(StoreErrorType.TooLate, ex.StoreErrorType);
+            (_ ,err)= rollingIndex.GetItem(9);
+            Assert.Equal(StoreErrorType.TooLate,err.StoreErrorType);
 
 
             var indexes = new[] {10, 17, 29};
             foreach (var id in indexes)
             {
-                item = rollingIndex.GetItem(id);
+                (item,err) = rollingIndex.GetItem(id);
+
+                Assert.Null(err);
 
                 item.ShouldCompareTo(items[id]);
             }
 
 
-            ex = Assert.Throws<StoreError>(() => rollingIndex.GetItem(lastIndex + 1));
-            Assert.Equal(StoreErrorType.KeyNotFound, ex.StoreErrorType);
+           (_, err) =  rollingIndex.GetItem(lastIndex + 1);
+            Assert.Equal(StoreErrorType.KeyNotFound, err.StoreErrorType);
         }
 
 
@@ -94,8 +96,8 @@ namespace Dotnatter.Test.Common
             }
 
 
-            var ex = Assert.Throws<StoreError>(() => rollingIndex.Get(0));
-            Assert.Equal(StoreErrorType.TooLate, ex.StoreErrorType);
+            var (_ , err) =  rollingIndex.Get(0);
+            Assert.Equal(StoreErrorType.TooLate, err.StoreErrorType);
 
             // 1
 
@@ -103,7 +105,9 @@ namespace Dotnatter.Test.Common
 
             var expected1 = items.Skip(skipIndex1 + 1).ToArray();
 
-            var cached1 = rollingIndex.Get(skipIndex1);
+            var (cached1,err1) = rollingIndex.Get(skipIndex1);
+            Assert.Null(err1);
+
 
             var convertedItems = new List<string>();
 
@@ -119,8 +123,9 @@ namespace Dotnatter.Test.Common
 
             var expected2 = items.Skip(skipIndex2 + 1).ToArray();
 
-            var cached2 = rollingIndex.Get(skipIndex2);
-            
+            var (cached2,err2) = rollingIndex.Get(skipIndex2);
+            Assert.Null(err2);
+
             convertedItems = new List<string>();
             foreach (var it in cached2)
             {
@@ -133,8 +138,10 @@ namespace Dotnatter.Test.Common
             var skipIndex3 = 27;
 
             string[] expected3 = { };
-            var cached3 = rollingIndex.Get(skipIndex3);
+            var (cached3,err3) = rollingIndex.Get(skipIndex3);
             
+            Assert.Null(err3);
+
             convertedItems = new List<string>();
             foreach (var it in cached3)
             {
