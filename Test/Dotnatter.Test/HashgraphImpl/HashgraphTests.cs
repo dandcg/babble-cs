@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -7,6 +8,7 @@ using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Grin.Tests.Unit;
 using Xunit;
+using Xunit.Sdk;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
@@ -819,126 +821,127 @@ namespace Dotnatter.Test.HashgraphImpl
         {
             var (h, index) = InitRoundHashgraph();
 
-            var round0Witnesses = new Dictionary<string, RoundEvent>();
+            var round0Witnesses = new Dictionary<string, RoundEvent>
+            {
+                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
+            };
 
-            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
-            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
-            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
             h.Store.SetRound(0,new RoundInfo{ Events= round0Witnesses});
 
-        	var round1Witnesses = new Dictionary<string, RoundEvent>();
+            var round1Witnesses = new Dictionary<string, RoundEvent>
+            {
+                [index["f1"]] = new RoundEvent {Witness = true, Famous = null}
+            };
 
-            round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
             h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
             Assert.True(h.Witness(index["e0"]), "e0 should be witness");
-
-        
+            
             Assert.True(h.Witness(index["e1"]),"e1 should be witness");
-
-
+            
             Assert.True(h.Witness(index["e2"]),"e2 should be witness");
-
-       
+            
             Assert.True(h.Witness(index["f1"]),"f1 should be witness");
-
-
+            
 
             Assert.False(h.Witness(index["e10"]),"e10 should not be witness");
-
-    
+            
             Assert.False(h.Witness(index["e21"]),"e21 should not be witness");
-
-
+            
             Assert.False(h.Witness(index["e02"]),"e02 should not be witness");
 
 
         }
 
-        //        [Fact]
-        //        public void TestRoundInc()
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestRoundInc()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //	if !h.RoundInc(index["f1"]) {
-        //        t.Fatal("RoundInc f1 should be true")
+            Assert.True(h.RoundInc(index["f1"]), "RoundInc f1 should be true");
 
-        //    }
+            Assert.False(h.RoundInc(index["e02"]),"RoundInc e02 should be false because it doesnt strongly see e2");
+            
+        }
 
-        //    if h.RoundInc(index["e02"]) {
-        //        t.Fatal("RoundInc e02 should be false because it doesnt strongly see e2")
+        [Fact]
+        public void TestRound()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    }
-        //}
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //        [Fact]
-        //        public void TestRound()
-        //{
-        //    h, index= initRoundHashgraph(t)
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0, new RoundInfo {Events= round0Witnesses});
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+      
+            Assert.Equal(1, h.Round(index["f1"]));
+       
+            Assert.Equal(0, h.Round(index["e02"])); 
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+        }
 
-        //	if r = h.Round(index["f1"]); r != 1 {
-        //        t.Fatalf("round of f1 should be 1 not %d", r)
+        [Fact]
+        public void TestRoundDiff()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    }
-        //    if r = h.Round(index["e02"]); r != 0 {
-        //        t.Fatalf("round of e02 should be 0 not %d", r)
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    }
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //}
+            var (d, err) = h.RoundDiff(index["f1"], index["e02"]);
 
-        //        [Fact]
-        //        public void TestRoundDiff()
-        //{
-        //    h, index= initRoundHashgraph(t)
+        	if ( d != 1) {
+                if (err != null)
+                {
+                    throw new AssertActualExpectedException(null, err, "RoundDiff(f1, e02) returned an error");
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+                }
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+	            throw new AssertActualExpectedException(1,d, "RoundDiff(f1, e02) should be 1");
+            }
 
-        //	if d, err= h.RoundDiff(index["f1"], index["e02"]); d != 1 {
-        //        if err != nil {
-        //            t.Fatalf("RoundDiff(f1, e02) returned an error: %s", err)
 
-        //        }
-        //        t.Fatalf("RoundDiff(f1, e02) should be 1 not %d", d)
+            ( d, err) = h.RoundDiff(index["e02"], index["f1"]);
 
-        //    }
+            if (d != -1) {
+                if (err !=null) {
+                    throw new AssertActualExpectedException(null, err, "RoundDiff(e02, f1) returned an error");
 
-        //    if d, err= h.RoundDiff(index["e02"], index["f1"]); d != -1 {
-        //        if err != nil {
-        //            t.Fatalf("RoundDiff(e02, f1) returned an error: %s", err)
+                }
+                throw new AssertActualExpectedException(-1, d, "RoundDiff(e02, f1) should be -1");
 
-        //        }
-        //        t.Fatalf("RoundDiff(e02, f1) should be -1 not %d", d)
+            }
 
-        //    }
-        //    if d, err= h.RoundDiff(index["e02"], index["e21"]); d != 0 {
-        //        if err != nil {
-        //            t.Fatalf("RoundDiff(e20, e21) returned an error: %s", err)
+            (d, err) = h.RoundDiff(index["e02"], index["e21"]);
 
-        //        }
-        //        t.Fatalf("RoundDiff(e20, e21) should be 0 not %d", d)
+            if (d != 0) {
+                if (err != null) {
+                    throw new AssertActualExpectedException(null, err, "RoundDiff(e20, e21) returned an error");
 
-        //    }
-        //}
+                }
+
+                throw new AssertActualExpectedException(0, d, ("RoundDiff(e20, e21) should be 0"));
+
+
+
+            }
+        }
 
         //        [Fact]
         //        public void TestDivideRounds()
@@ -1814,25 +1817,33 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void getName(index map[string]string, hash string) string {
-        //	for name, h = range index
-        //{
-        //		if h == hash
-        //    {
-        //        return name
+        private string getName(Dictionary<string, string> index, string hash )
 
-        //        }
-        //}
-        //	return ""
-        //}
+        {
+        	foreach (var h in index)
+        {
+        		if (h.Value == hash)
+		        {
+		            return h.Key;
 
-        // [Fact] public void disp(index map[string]string, events[]string) string {
-        //	names = [] string{}
-        //	for _, h = range events
-        //{
-        //    names = append(names, getName(index, h))
-        //	}
-        //	return fmt.Sprintf("[%s]", strings.Join(names, " "))
-        //}
+		        }
+        }
+
+            return "";
+        }
+
+
+    private string Disp(Dictionary<string,string> index, string[] events)
+        {
+            var names = new List<string>();
+
+            foreach (var h in events)
+            {
+                names.Add(getName(index, h));
+
+            }
+            
+            return String.Join(" ",names);
+        }
     }
 }

@@ -412,23 +412,23 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //round(x) - round(y)
-        public int RoundDiff(string x, string y)
+        public (int d, Exception err) RoundDiff(string x, string y)
         {
             var xRound = Round(x);
 
             if (xRound < 0)
             {
-                throw new ApplicationException($"ev {x} has negative round");
+                return (Int32.MinValue, new HashgraphError($"ev {x} has negative round"));
             }
 
             var yRound = Round(y);
 
             if (yRound < 0)
             {
-                throw new ApplicationException($"ev {y} has negative round");
+                return (Int32.MinValue, new HashgraphError($"ev {y} has negative round"));
             }
 
-            return xRound - yRound;
+            return (xRound - yRound,null);
         }
 
         public Exception InsertEvent(Event ev, bool setWireInfo)
