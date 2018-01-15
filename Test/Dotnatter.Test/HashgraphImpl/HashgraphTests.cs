@@ -814,56 +814,49 @@ namespace Dotnatter.Test.HashgraphImpl
 
         }
 
-        //        [Fact]
-        //        public void TestWitness(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestWitness()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0,new RoundInfo{ Events= round0Witnesses});
 
-        //	round1Witnesses= make(map[string]RoundEvent)
+        	var round1Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    round1Witnesses[index["f1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(1, RoundInfo{ Events: round1Witnesses})
+            round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-        //	if !h.Witness(index["e0"]) {
-        //        t.Fatalf("e0 should be witness")
+            Assert.True(h.Witness(index["e0"]), "e0 should be witness");
 
-        //    }
-        //    if !h.Witness(index["e1"]) {
-        //        t.Fatalf("e1 should be witness")
+        
+            Assert.True(h.Witness(index["e1"]),"e1 should be witness");
 
-        //    }
-        //    if !h.Witness(index["e2"]) {
-        //        t.Fatalf("e2 should be witness")
 
-        //    }
-        //    if !h.Witness(index["f1"]) {
-        //        t.Fatalf("f1 should be witness")
+            Assert.True(h.Witness(index["e2"]),"e2 should be witness");
 
-        //    }
+       
+            Assert.True(h.Witness(index["f1"]),"f1 should be witness");
 
-        //    if h.Witness(index["e10"]) {
-        //        t.Fatalf("e10 should not be witness")
 
-        //    }
-        //    if h.Witness(index["e21"]) {
-        //        t.Fatalf("e21 should not be witness")
 
-        //    }
-        //    if h.Witness(index["e02"]) {
-        //        t.Fatalf("e02 should not be witness")
+            Assert.False(h.Witness(index["e10"]),"e10 should not be witness");
 
-        //    }
-        //}
+    
+            Assert.False(h.Witness(index["e21"]),"e21 should not be witness");
+
+
+            Assert.False(h.Witness(index["e02"]),"e02 should not be witness");
+
+
+        }
 
         //        [Fact]
-        //        public void TestRoundInc(t* testing.T)
+        //        public void TestRoundInc()
         //{
         //    h, index= initRoundHashgraph(t)
 
@@ -886,7 +879,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestRound(t* testing.T)
+        //        public void TestRound()
         //{
         //    h, index= initRoundHashgraph(t)
 
@@ -909,7 +902,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestRoundDiff(t* testing.T)
+        //        public void TestRoundDiff()
         //{
         //    h, index= initRoundHashgraph(t)
 
@@ -948,7 +941,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestDivideRounds(t* testing.T)
+        //        public void TestDivideRounds()
         //{
         //    h, index= initRoundHashgraph(t)
 
@@ -1146,7 +1139,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public voidTestDecideFame(t* testing.T)
+        //        public voidTestDecideFame()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1188,7 +1181,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestOldestSelfAncestorToSee(t* testing.T)
+        //        public void TestOldestSelfAncestorToSee()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1219,7 +1212,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestDecideRoundReceived(t* testing.T)
+        //        public void TestDecideRoundReceived()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1243,7 +1236,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //[Fact]
-        //public void TestFindOrder(t* testing.T)
+        //public void TestFindOrder()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1303,7 +1296,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestKnown(t* testing.T)
+        // [Fact] public void TestKnown()
         //{
         //    h, _= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1323,7 +1316,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestReset(t* testing.T)
+        // [Fact] public void TestReset()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1405,7 +1398,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestGetFrame(t* testing.T)
+        // [Fact] public void TestGetFrame()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1509,7 +1502,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
         //}
 
-        // [Fact] public void TestResetFromFrame(t* testing.T)
+        // [Fact] public void TestResetFromFrame()
         //{
         //    h, _= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1573,7 +1566,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestBootstrap(t* testing.T)
+        // [Fact] public void TestBootstrap()
         //{
         //    logger= common.NewTestLogger(t)
 
@@ -1784,7 +1777,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //	return hashgraph, index
         //}
 
-        // [Fact] public void TestFunkyHashgraphFame(t* testing.T)
+        // [Fact] public void TestFunkyHashgraphFame()
         //{
         //    h, index= initFunkyHashgraph(common.NewTestLogger(t))
 
