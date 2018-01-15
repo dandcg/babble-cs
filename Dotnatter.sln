@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27130.2020
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter", "src\Dotnatter\Dotnatter.csproj", "{8253FD8F-8B69-40DE-9E5E-B414F5B7B958}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter.Test", "Test\Dotnatter.Test\Dotnatter.Test.csproj", "{C8D66209-80A5-45A1-B3AC-06F81E3F0EC5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter.Test", "tests\Dotnatter.Test\Dotnatter.Test.csproj", "{C8D66209-80A5-45A1-B3AC-06F81E3F0EC5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
