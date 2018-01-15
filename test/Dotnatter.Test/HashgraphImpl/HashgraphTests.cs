@@ -7,6 +7,7 @@ using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Grin.Tests.Unit;
 using Xunit;
+using Xunit.Sdk;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
@@ -746,227 +747,189 @@ namespace Dotnatter.Test.HashgraphImpl
 
             Assert.True(h.StronglySee(index["e21"], index["e0"]), "e21 should strongly see e0");
 
-            Assert.True(h.StronglySee(index["e02"], index["e10"]),"e02 should strongly see e10");
+            Assert.True(h.StronglySee(index["e02"], index["e10"]), "e02 should strongly see e10");
 
-            Assert.True(h.StronglySee(index["e02"], index["e0"]),"e02 should strongly see e0");
-            
-            Assert.True(h.StronglySee(index["e02"], index["e1"]),"e02 should strongly see e1");
-            
-            Assert.True(h.StronglySee(index["f1"], index["e21"]),"f1 should strongly see e21");
-            
-            Assert.True(h.StronglySee(index["f1"], index["e10"]),"f1 should strongly see e10");
-            
-            Assert.True(h.StronglySee(index["f1"], index["e0"]),"f1 should strongly see e0");
-            
-            Assert.True(h.StronglySee(index["f1"], index["e1"]),"f1 should strongly see e1");
-            
-            Assert.True(h.StronglySee(index["f1"], index["e2"]),"f1 should strongly see e2");
-            
-            Assert.True(h.StronglySee(index["s11"], index["e2"]),"s11 should strongly see e2");
-            
+            Assert.True(h.StronglySee(index["e02"], index["e0"]), "e02 should strongly see e0");
+
+            Assert.True(h.StronglySee(index["e02"], index["e1"]), "e02 should strongly see e1");
+
+            Assert.True(h.StronglySee(index["f1"], index["e21"]), "f1 should strongly see e21");
+
+            Assert.True(h.StronglySee(index["f1"], index["e10"]), "f1 should strongly see e10");
+
+            Assert.True(h.StronglySee(index["f1"], index["e0"]), "f1 should strongly see e0");
+
+            Assert.True(h.StronglySee(index["f1"], index["e1"]), "f1 should strongly see e1");
+
+            Assert.True(h.StronglySee(index["f1"], index["e2"]), "f1 should strongly see e2");
+
+            Assert.True(h.StronglySee(index["s11"], index["e2"]), "s11 should strongly see e2");
 
             //false negatives
             Assert.False(h.StronglySee(index["e10"], index["e0"]), "e12 should not strongly see e2");
 
-            Assert.False(h.StronglySee(index["e21"], index["e1"]),"e21 should not strongly see e1");
-            
-            Assert.False(h.StronglySee(index["e21"], index["e2"]),"e21 should not strongly see e2");
-            
-            Assert.False(h.StronglySee(index["e02"], index["e2"]),"e02 should not strongly see e2");
-   
-            Assert.False(h.StronglySee(index["s11"], index["e02"]),"s11 should not strongly see e02");
+            Assert.False(h.StronglySee(index["e21"], index["e1"]), "e21 should not strongly see e1");
 
-      
+            Assert.False(h.StronglySee(index["e21"], index["e2"]), "e21 should not strongly see e2");
+
+            Assert.False(h.StronglySee(index["e02"], index["e2"]), "e02 should not strongly see e2");
+
+            Assert.False(h.StronglySee(index["s11"], index["e02"]), "s11 should not strongly see e02");
         }
 
-        //        public void TestParentRound(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestParentRound()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+            var round0Witnesses = new Dictionary<string, RoundEvent>
+            {
+                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
+            };
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //	round1Witnesses= make(map[string]RoundEvent)
+            var round1Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    round1Witnesses[index["f1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(1, RoundInfo{ Events: round1Witnesses})
+            round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-        //	if r = h.ParentRound(index["e0"]).round; r != -1 {
-        //        t.Fatalf("e0.ParentRound().round should be -1, not %d", r)
+            Assert.Equal(-1, h.ParentRound(index["e0"]).Round);
+            Assert.True(h.ParentRound(index["e0"]).IsRoot);
 
-        //    }
-        //    if r = h.ParentRound(index["e0"]).isRoot; !r {
-        //        t.Fatal("e0.ParentRound().isRoot should be true")
+            Assert.Equal(-1, h.ParentRound(index["e1"]).Round);
+            Assert.True(h.ParentRound(index["e1"]).IsRoot);
 
-        //    }
+            Assert.Equal(0, h.ParentRound(index["f1"]).Round);
+            Assert.False(h.ParentRound(index["f1"]).IsRoot);
 
-        //    if r = h.ParentRound(index["e1"]).round; r != -1 {
-        //        t.Fatalf("e1.ParentRound().round should be -1, not %d", r)
+            Assert.Equal(1, h.ParentRound(index["s11"]).Round);
+            Assert.False(h.ParentRound(index["s11"]).IsRoot);
+        }
 
-        //    }
-        //    if r = h.ParentRound(index["e1"]).isRoot; !r {
-        //        t.Fatal("e1.ParentRound().isRoot should be true")
+        [Fact]
+        public void TestWitness()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    }
+            var round0Witnesses = new Dictionary<string, RoundEvent>
+            {
+                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
+                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
+            };
 
-        //    if r = h.ParentRound(index["f1"]).round; r != 0 {
-        //        t.Fatalf("f1.ParentRound().round should be 0, not %d", r)
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //    }
-        //    if r = h.ParentRound(index["f1"]).isRoot; r {
-        //        t.Fatalf("f1.ParentRound().isRoot should be false")
+            var round1Witnesses = new Dictionary<string, RoundEvent>
+            {
+                [index["f1"]] = new RoundEvent {Witness = true, Famous = null}
+            };
 
-        //    }
+            h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-        //    if r = h.ParentRound(index["s11"]).round; r != 1 {
-        //        t.Fatalf("s11.ParentRound().round should be 1, not %d", r)
+            Assert.True(h.Witness(index["e0"]), "e0 should be witness");
 
-        //    }
-        //    if r = h.ParentRound(index["s11"]).isRoot; r {
-        //        t.Fatalf("s11.ParentRound().isRoot should be false")
+            Assert.True(h.Witness(index["e1"]), "e1 should be witness");
 
-        //    }
-        //}
+            Assert.True(h.Witness(index["e2"]), "e2 should be witness");
 
-        //        [Fact]
-        //        public void TestWitness(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+            Assert.True(h.Witness(index["f1"]), "f1 should be witness");
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+            Assert.False(h.Witness(index["e10"]), "e10 should not be witness");
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            Assert.False(h.Witness(index["e21"]), "e21 should not be witness");
 
-        //	round1Witnesses= make(map[string]RoundEvent)
+            Assert.False(h.Witness(index["e02"]), "e02 should not be witness");
+        }
 
-        //    round1Witnesses[index["f1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(1, RoundInfo{ Events: round1Witnesses})
+        [Fact]
+        public void TestRoundInc()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //	if !h.Witness(index["e0"]) {
-        //        t.Fatalf("e0 should be witness")
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    }
-        //    if !h.Witness(index["e1"]) {
-        //        t.Fatalf("e1 should be witness")
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //    }
-        //    if !h.Witness(index["e2"]) {
-        //        t.Fatalf("e2 should be witness")
+            Assert.True(h.RoundInc(index["f1"]), "RoundInc f1 should be true");
 
-        //    }
-        //    if !h.Witness(index["f1"]) {
-        //        t.Fatalf("f1 should be witness")
+            Assert.False(h.RoundInc(index["e02"]), "RoundInc e02 should be false because it doesnt strongly see e2");
+        }
 
-        //    }
+        [Fact]
+        public void TestRound()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    if h.Witness(index["e10"]) {
-        //        t.Fatalf("e10 should not be witness")
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    }
-        //    if h.Witness(index["e21"]) {
-        //        t.Fatalf("e21 should not be witness")
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //    }
-        //    if h.Witness(index["e02"]) {
-        //        t.Fatalf("e02 should not be witness")
+            Assert.Equal(1, h.Round(index["f1"]));
 
-        //    }
-        //}
+            Assert.Equal(0, h.Round(index["e02"]));
+        }
 
-        //        [Fact]
-        //        public void TestRoundInc(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestRoundDiff()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //	if !h.RoundInc(index["f1"]) {
-        //        t.Fatal("RoundInc f1 should be true")
+            var (d, err) = h.RoundDiff(index["f1"], index["e02"]);
 
-        //    }
+            if (d != 1)
+            {
+                if (err != null)
+                {
+                    throw new AssertActualExpectedException(null, err, "RoundDiff(f1, e02) returned an error");
+                }
 
-        //    if h.RoundInc(index["e02"]) {
-        //        t.Fatal("RoundInc e02 should be false because it doesnt strongly see e2")
+                throw new AssertActualExpectedException(1, d, "RoundDiff(f1, e02) should be 1");
+            }
 
-        //    }
-        //}
+            ( d, err) = h.RoundDiff(index["e02"], index["f1"]);
 
-        //        [Fact]
-        //        public void TestRound(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
+            if (d != -1)
+            {
+                if (err != null)
+                {
+                    throw new AssertActualExpectedException(null, err, "RoundDiff(e02, f1) returned an error");
+                }
 
-        //    round0Witnesses= make(map[string]RoundEvent)
+                throw new AssertActualExpectedException(-1, d, "RoundDiff(e02, f1) should be -1");
+            }
 
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
+            (d, err) = h.RoundDiff(index["e02"], index["e21"]);
 
-        //	if r = h.Round(index["f1"]); r != 1 {
-        //        t.Fatalf("round of f1 should be 1 not %d", r)
+            if (d != 0)
+            {
+                if (err != null)
+                {
+                    throw new AssertActualExpectedException(null, err, "RoundDiff(e20, e21) returned an error");
+                }
 
-        //    }
-        //    if r = h.Round(index["e02"]); r != 0 {
-        //        t.Fatalf("round of e02 should be 0 not %d", r)
-
-        //    }
-
-        //}
-
-        //        [Fact]
-        //        public void TestRoundDiff(t* testing.T)
-        //{
-        //    h, index= initRoundHashgraph(t)
-
-        //    round0Witnesses= make(map[string]RoundEvent)
-
-        //    round0Witnesses[index["e0"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e1"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    round0Witnesses[index["e2"]] = RoundEvent{ Witness: true, Famous: Undefined}
-        //    h.Store.SetRound(0, RoundInfo{ Events: round0Witnesses})
-
-        //	if d, err= h.RoundDiff(index["f1"], index["e02"]); d != 1 {
-        //        if err != nil {
-        //            t.Fatalf("RoundDiff(f1, e02) returned an error: %s", err)
-
-        //        }
-        //        t.Fatalf("RoundDiff(f1, e02) should be 1 not %d", d)
-
-        //    }
-
-        //    if d, err= h.RoundDiff(index["e02"], index["f1"]); d != -1 {
-        //        if err != nil {
-        //            t.Fatalf("RoundDiff(e02, f1) returned an error: %s", err)
-
-        //        }
-        //        t.Fatalf("RoundDiff(e02, f1) should be -1 not %d", d)
-
-        //    }
-        //    if d, err= h.RoundDiff(index["e02"], index["e21"]); d != 0 {
-        //        if err != nil {
-        //            t.Fatalf("RoundDiff(e20, e21) returned an error: %s", err)
-
-        //        }
-        //        t.Fatalf("RoundDiff(e20, e21) should be 0 not %d", d)
-
-        //    }
-        //}
+                throw new AssertActualExpectedException(0, d, "RoundDiff(e20, e21) should be 0");
+            }
+        }
 
         //        [Fact]
-        //        public void TestDivideRounds(t* testing.T)
+        //        public void TestDivideRounds()
         //{
         //    h, index= initRoundHashgraph(t)
 
@@ -1164,7 +1127,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public voidTestDecideFame(t* testing.T)
+        //        public voidTestDecideFame()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1206,7 +1169,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestOldestSelfAncestorToSee(t* testing.T)
+        //        public void TestOldestSelfAncestorToSee()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1237,7 +1200,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //        [Fact]
-        //        public void TestDecideRoundReceived(t* testing.T)
+        //        public void TestDecideRoundReceived()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1261,7 +1224,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         //[Fact]
-        //public void TestFindOrder(t* testing.T)
+        //public void TestFindOrder()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1321,7 +1284,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestKnown(t* testing.T)
+        // [Fact] public void TestKnown()
         //{
         //    h, _= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1341,7 +1304,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestReset(t* testing.T)
+        // [Fact] public void TestReset()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1423,7 +1386,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestGetFrame(t* testing.T)
+        // [Fact] public void TestGetFrame()
         //{
         //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1527,7 +1490,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
         //}
 
-        // [Fact] public void TestResetFromFrame(t* testing.T)
+        // [Fact] public void TestResetFromFrame()
         //{
         //    h, _= initConsensusHashgraph(false, common.NewTestLogger(t))
 
@@ -1591,7 +1554,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestBootstrap(t* testing.T)
+        // [Fact] public void TestBootstrap()
         //{
         //    logger= common.NewTestLogger(t)
 
@@ -1724,140 +1687,152 @@ namespace Dotnatter.Test.HashgraphImpl
         //	0	 1	  2	   3
         //*/
 
-        // [Fact] public void initFunkyHashgraph(logger* logrus.Logger) (* Hashgraph, map[string]string) {
-        //	index = make(map[string]string)
+        public (Hashgraph h, Dictionary<string, string> index) InitFunkyHashgraph()
 
-        //    nodes = [] Node{}
-        //	orderedEvents = &[] Event{}
+        {
+            var index = new Dictionary<string, string>();
 
-        //	n = 4
-        //	for i = 0; i<n; i++ {
-        //		key, _ = crypto.GenerateECDSAKey()
-        //        node = NewNode(key, i)
+            var nodes = new List<Node>();
+            var orderedEvents = new List<Event>();
 
-        //        event = NewEvent([]
-        //[]byte{ }, []string{ "", ""}, node.Pub, 0)
-        //		node.signAndAddEvent(event, fmt.Sprintf("w0%d", i), index, orderedEvents)
-        //		nodes = append(nodes, node)
-        //	}
+            int i = 0;
+            var n = 4;
+            for (i = 0; i < n; i++)
+            {
+                var key = CryptoUtils.GenerateEcdsaKey();
+                var node = new Node(key, i);
 
-        //plays = [] play{
-        //		play{2, 1, "w02", "w03", "a23", [] [] byte{}},
-        //		play{1, 1, "w01", "a23", "a12", [] [] byte{}},
-        //		play{0, 1, "w00", "", "a00", [] [] byte{}},
-        //		play{1, 2, "a12", "a00", "a10", [] [] byte{}},
-        //		play{2, 2, "a23", "a12", "a21", [] [] byte{}},
-        //		play{3, 1, "w03", "a21", "w13", [] [] byte{}},
-        //		play{2, 3, "a21", "w13", "w12", [] [] byte{}},
-        //		play{1, 3, "a10", "w12", "w11", [] [] byte{}},
-        //		play{0, 2, "a00", "w11", "w10", [] [] byte{}},
-        //		play{2, 4, "w12", "w11", "b21", [] [] byte{}},
-        //		play{3, 2, "w13", "b21", "w23", [] [] byte{}},
-        //		play{1, 4, "w11", "w23", "w21", [] [] byte{}},
-        //		play{0, 3, "w10", "", "b00", [] [] byte{}},
-        //		play{1, 5, "w21", "b00", "c10", [] [] byte{}},
-        //		play{2, 5, "b21", "c10", "w22", [] [] byte{}},
-        //		play{0, 4, "b00", "w22", "w20", [] [] byte{}},
-        //		play{1, 6, "c10", "w20", "w31", [] [] byte{}},
-        //		play{2, 6, "w22", "w31", "w32", [] [] byte{}},
-        //		play{0, 5, "w20", "w32", "w30", [] [] byte{}},
-        //		play{3, 3, "w23", "w32", "w33", [] [] byte{}},
-        //		play{1, 7, "w31", "w33", "d13", [] [] byte{}},
-        //		play{0, 6, "w30", "d13", "w40", [] [] byte{}},
-        //		play{1, 8, "d13", "w40", "w41", [] [] byte{}},
-        //		play{2, 7, "w32", "w41", "w42", [] [] byte{}},
-        //		play{3, 4, "w33", "w42", "w43", [] [] byte{}},
-        //		play{2, 8, "w42", "w43", "e23", [] [] byte{}},
-        //		play{1, 9, "w41", "e23", "w51", [] [] byte{}},
-        //	}
+                var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
 
-        //	for _, p = range plays
-        //{
-        //    e = NewEvent(p.payload,
-        //			[]string{ index[p.selfParent], index[p.otherParent]},
-        //			nodes [p.to].Pub,
-        //			p.index)
-        //		nodes [p.to].signAndAddEvent(e, p.name, index, orderedEvents)
-        //	}
+                node.SignAndAddEvent(ev, $"w0{i}", index, orderedEvents);
+                nodes.Add(node);
+            }
 
-        //participants = make(map[string]int)
-        //	for _, node = range nodes
-        //{
-        //    participants [node.PubHex] = node.ID
-        //}
+            var plays = new[]
+            {
+                new Play(2, 1, "w02", "w03", "a23", new byte[][] { }),
+                new Play(1, 1, "w01", "a23", "a12", new byte[][] { }),
+                new Play(0, 1, "w00", "", "a00", new byte[][] { }),
+                new Play(1, 2, "a12", "a00", "a10", new byte[][] { }),
+                new Play(2, 2, "a23", "a12", "a21", new byte[][] { }),
+                new Play(3, 1, "w03", "a21", "w13", new byte[][] { }),
+                new Play(2, 3, "a21", "w13", "w12", new byte[][] { }),
+                new Play(1, 3, "a10", "w12", "w11", new byte[][] { }),
+                new Play(0, 2, "a00", "w11", "w10", new byte[][] { }),
+                new Play(2, 4, "w12", "w11", "b21", new byte[][] { }),
+                new Play(3, 2, "w13", "b21", "w23", new byte[][] { }),
+                new Play(1, 4, "w11", "w23", "w21", new byte[][] { }),
+                new Play(0, 3, "w10", "", "b00", new byte[][] { }),
+                new Play(1, 5, "w21", "b00", "c10", new byte[][] { }),
+                new Play(2, 5, "b21", "c10", "w22", new byte[][] { }),
+                new Play(0, 4, "b00", "w22", "w20", new byte[][] { }),
+                new Play(1, 6, "c10", "w20", "w31", new byte[][] { }),
+                new Play(2, 6, "w22", "w31", "w32", new byte[][] { }),
+                new Play(0, 5, "w20", "w32", "w30", new byte[][] { }),
+                new Play(3, 3, "w23", "w32", "w33", new byte[][] { }),
+                new Play(1, 7, "w31", "w33", "d13", new byte[][] { }),
+                new Play(0, 6, "w30", "d13", "w40", new byte[][] { }),
+                new Play(1, 8, "d13", "w40", "w41", new byte[][] { }),
+                new Play(2, 7, "w32", "w41", "w42", new byte[][] { }),
+                new Play(3, 4, "w33", "w42", "w43", new byte[][] { }),
+                new Play(2, 8, "w42", "w43", "e23", new byte[][] { }),
+                new Play(1, 9, "w41", "e23", "w51", new byte[][] { })
+            };
 
-        //hashgraph = NewHashgraph(participants,
-        //    NewInmemStore(participants, cacheSize),
-        //    nil, logger)
+            foreach (var p in plays)
+            {
+                var parents = new List<string> {index[p.SelfParent]};
+                index.TryGetValue(p.OtherParent, out var otherParent);
+                parents.Add(otherParent ?? "");
 
-        //	for i, ev = range* orderedEvents
-        //{
-        //		if err = hashgraph.InsertEvent(ev, true); err != nil
-        //    {
-        //        fmt.Printf("ERROR inserting event %d: %s\n", i, err)
+                var e = new Event(p.Payload, parents.ToArray(),
+                    nodes[p.To].Pub,
+                    p.Index);
 
-        //        }
-        //}
+                nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
+            }
 
-        //	return hashgraph, index
-        //}
+            var participants = new Dictionary<string, int>();
+            foreach (var node in nodes)
+            {
+                participants[node.Pub.ToHex()] = node.Id;
+            }
 
-        // [Fact] public void TestFunkyHashgraphFame(t* testing.T)
-        //{
-        //    h, index= initFunkyHashgraph(common.NewTestLogger(t))
+            var hashgraph = new Hashgraph(participants,
+                new InmemStore(participants, CacheSize),
+                null);
 
-        //    h.DivideRounds()
+            i = 0;
+            foreach (var ev in orderedEvents)
+            {
+                var err = hashgraph.InsertEvent(ev, true);
 
-        //    if l = h.Store.LastRound(); l != 5 {
-        //        t.Fatalf("last round should be 5 not %d", l)
+                if (err != null)
+                {
+                    Console.WriteLine($"ERROR inserting event {i}: {err?.Message} ");
+                }
+            }
 
-        //    }
+            return (hashgraph, index);
+        }
 
-        //    for r = 0; r < 6; r++ {
-        //        round, err= h.Store.GetRound(r)
+        [Fact]
+        public void TestFunkyHashgraphFame()
+        {
+            var ( h, index) = InitFunkyHashgraph();
 
-        //        if err != nil {
-        //            t.Fatal(err)
+            h.DivideRounds();
 
-        //        }
-        //        witnessNames= []string{ }
-        //        for _, w = range round.Witnesses() {
-        //            witnessNames = append(witnessNames, getName(index, w))
+            var l = h.Store.LastRound();
+            Assert.Equal(5, l);
 
-        //        }
-        //        t.Logf("Round %d witnesses: %v", r, witnessNames)
+            for (var r = 0; r < 6; r++)
+            {
+                var ( round, err) = h.Store.GetRound(r);
 
-        //    }
+                Assert.Null(err);
 
-        //    h.DecideFame()
+                var witnessNames = new List<string>();
+                foreach (var w in round.Witnesses())
+                {
+                    witnessNames.Add(GetName(index, w));
+                }
 
-        //    //rounds 0,1, 2 and 3 should be decided
-        //    expectedUndecidedRounds= []int{ 4, 5}
-        //    if !reflect.DeepEqual(expectedUndecidedRounds, h.UndecidedRounds) {
-        //        t.Fatalf("UndecidedRounds should be %v, not %v", expectedUndecidedRounds, h.UndecidedRounds)
+                Console.WriteLine("Round {0} witnesses: {1}", r, witnessNames);
+            }
 
-        //    }
-        //}
+            h.DecideFame();
 
-        // [Fact] public void getName(index map[string]string, hash string) string {
-        //	for name, h = range index
-        //{
-        //		if h == hash
-        //    {
-        //        return name
+            //rounds 0,1, 2 and 3 should be decided
+            var expectedUndecidedRounds = new List<int> {4, 5};
 
-        //        }
-        //}
-        //	return ""
-        //}
+            h.UndecidedRounds.ShouldCompareTo(expectedUndecidedRounds);
+        }
 
-        // [Fact] public void disp(index map[string]string, events[]string) string {
-        //	names = [] string{}
-        //	for _, h = range events
-        //{
-        //    names = append(names, getName(index, h))
-        //	}
-        //	return fmt.Sprintf("[%s]", strings.Join(names, " "))
-        //}
+        private static string GetName(Dictionary<string, string> index, string hash)
+
+        {
+            foreach (var h in index)
+            {
+                if (h.Value == hash)
+                {
+                    return h.Key;
+                }
+            }
+
+            return "";
+        }
+
+        private string Disp(Dictionary<string, string> index, string[] events)
+        {
+            var names = new List<string>();
+
+            foreach (var h in events)
+            {
+                names.Add(GetName(index, h));
+            }
+
+            return string.Join(" ", names);
+        }
     }
 }
