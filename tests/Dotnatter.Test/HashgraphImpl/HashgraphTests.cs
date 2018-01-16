@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using Dotnatter.Common;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
@@ -928,350 +929,348 @@ namespace Dotnatter.Test.HashgraphImpl
             }
         }
 
-        //        [Fact]
-        //        public void TestDivideRounds()
-        //{
-        //    h, index= initRoundHashgraph(t)
+        [Fact]
+        public void TestDivideRounds()
+        {
+            var (h, index) = InitRoundHashgraph();
 
-        //    err= h.DivideRounds()
+            var err = h.DivideRounds();
 
-        //    if err != nil {
-        //        t.Fatal(err)
+            Assert.Null(err);
 
-        //    }
+            var l = h.Store.LastRound();
 
-        //    if l = h.Store.LastRound(); l != 1 {
-        //        t.Fatalf("last round should be 1 not %d", l)
+            Assert.Equal(1, l);
 
-        //    }
+            RoundInfo round0;
+            ( round0, err) = h.Store.GetRound(0);
 
-        //    round0, err= h.Store.GetRound(0)
+            Assert.Null(err);
 
-        //    if err != nil {
-        //        t.Fatal(err)
+            l = round0.Witnesses().Length;
+            Assert.Equal(3, l);
 
-        //    }
-        //    if l = len(round0.Witnesses()); l != 3 {
-        //        t.Fatalf("round 0 should have 3 witnesses, not %d", l)
+            Assert.Contains(index["e0"], round0.Witnesses());
 
-        //    }
-        //    if !contains(round0.Witnesses(), index["e0"]) {
-        //        t.Fatalf("round 0 witnesses should contain e0")
+            Assert.Contains(index["e1"], round0.Witnesses());
 
-        //    }
-        //    if !contains(round0.Witnesses(), index["e1"]) {
-        //        t.Fatalf("round 0 witnesses should contain e1")
+            Assert.Contains(index["e2"], round0.Witnesses());
 
-        //    }
-        //    if !contains(round0.Witnesses(), index["e2"]) {
-        //        t.Fatalf("round 0 witnesses should contain e2")
+            RoundInfo round1;
+            (round1, err) = h.Store.GetRound(1);
 
-        //    }
+            Assert.Null(err);
 
-        //    round1, err= h.Store.GetRound(1)
+            l = round1.Witnesses().Length;
 
-        //    if err != nil {
-        //        t.Fatal(err)
+            Assert.Equal(1, l);
 
-        //    }
-        //    if l = len(round1.Witnesses()); l != 1 {
-        //        t.Fatalf("round 1 should have 1 witness, not %d", l)
+            Assert.Contains(index["f1"], round1.Witnesses());
+        }
 
-        //    }
-        //    if !contains(round1.Witnesses(), index["f1"]) {
-        //        t.Fatalf("round 1 witnesses should contain f1")
+        /*
+        		h0  |   h2
+        		| \ | / |
+        		|   h1  |
+        		|  /|   |
+        		g02 |   |
+        		| \ |   |
+        		|   \   |
+        		|   | \ |
+        	---	o02 |  g21 //e02's other-parent is f21. This situation can happen with concurrency
+        	|	|   | / |
+        	|	|  g10  |
+        	|	| / |   |
+        	|	g0  |   g2
+        	|	| \ | / |
+        	|	|   g1  |
+        	|	|  /|   |
+        	|	f02b|   |
+        	|	|   |   |
+        	|	f02 |   |
+        	|	| \ |   |
+        	|	|   \   |
+        	|	|   | \ |
+        	----------- f21
+        		|   | / |
+        		|  f10  |
+        		| / |   |
+        		f0  |   f2
+        		| \ | / |
+        		|  f1b  |
+        		|   |   |
+        		|   f1  |
+        		|  /|   |
+        		e02 |   |
+        		| \ |   |
+        		|   \   |
+        		|   | \ |
+        		|   |  e21b
+        		|   |   |
+        		|   |  e21
+        		|   | / |
+        		|  e10  |
+        		| / |   |
+        		e0 e1  e2
+        		0   1    2
+        */
 
-        //    }
+        public (Hashgraph hashgraph, Dictionary<string, string> index) InitConsensusHashgraph(bool db)
 
-        //}
+        {
+            var index = new Dictionary<string, string>();
 
-        //        [Fact]
-        //        public void contains(s[]string, x string) bool {
-        //	for _, e = range s
-        //{
-        //		if e == x
-        //    {
-        //        return true
+            var nodes = new List<Node> { };
+            var orderedEvents = new List<Event> { };
 
-        //        }
-        //}
-        //	return false
-        //}
+            var i = 0;
+            for ( i = 0; i < N; i++)
 
-        //*
-        //		h0  |   h2
-        //		| \ | / |
-        //		|   h1  |
-        //		|  /|   |
-        //		g02 |   |
-        //		| \ |   |
-        //		|   \   |
-        //		|   | \ |
-        //	---	o02 |  g21 //e02's other-parent is f21. This situation can happen with concurrency
-        //	|	|   | / |
-        //	|	|  g10  |
-        //	|	| / |   |
-        //	|	g0  |   g2
-        //	|	| \ | / |
-        //	|	|   g1  |
-        //	|	|  /|   |
-        //	|	f02b|   |
-        //	|	|   |   |
-        //	|	f02 |   |
-        //	|	| \ |   |
-        //	|	|   \   |
-        //	|	|   | \ |
-        //	----------- f21
-        //		|   | / |
-        //		|  f10  |
-        //		| / |   |
-        //		f0  |   f2
-        //		| \ | / |
-        //		|  f1b  |
-        //		|   |   |
-        //		|   f1  |
-        //		|  /|   |
-        //		e02 |   |
-        //		| \ |   |
-        //		|   \   |
-        //		|   | \ |
-        //		|   |  e21b
-        //		|   |   |
-        //		|   |  e21
-        //		|   | / |
-        //		|  e10  |
-        //		| / |   |
-        //		e0  e1  e2
-        //		0   1    2
-        //*/
-        //        [Fact]
-        //        public void initConsensusHashgraph(db bool, logger* logrus.Logger) (* Hashgraph, map[string]string) {
-        //	index = make(map[string]string)
+            {
+                var key = CryptoUtils.GenerateEcdsaKey();
+                var node = new Node(key, i);
 
-        //    nodes = [] Node{}
-        //	orderedEvents = &[] Event{}
+                var ev = new Event(new byte[]
+                    [] { }, new string[] {"", ""}, node.Pub, 0);
 
-        //	for i = 0; i<n; i++ {
-        //		key, _ = crypto.GenerateECDSAKey()
-        //        node = NewNode(key, i)
+                node.SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
+                nodes.Add(node);
+            }
 
-        //        event = NewEvent([]
-        //[]byte{ }, []string{ "", ""}, node.Pub, 0)
-        //		node.signAndAddEvent(event, fmt.Sprintf("e%d", i), index, orderedEvents)
-        //		nodes = append(nodes, node)
-        //	}
+            var plays = new Play[]
+            {
+                new Play(1, 1, "e1", "e0", "e10", new byte[][] { }),
+                new Play(2, 1, "e2", "e10", "e21", new[] {"e21".StringToBytes()}),
+                new Play(2, 2, "e21", "", "e21b", new byte[][] { }),
+                new Play(0, 1, "e0", "e21b", "e02", new byte[][] { }),
+                new Play(1, 2, "e10", "e02", "f1", new byte[][] { }),
+                new Play(1, 3, "f1", "", "f1b", new[] {"f1b".StringToBytes()}),
+                new Play(0, 2, "e02", "f1b", "f0", new byte[][] { }),
+                new Play(2, 3, "e21b", "f1b", "f2", new byte[][] { }),
+                new Play(1, 4, "f1b", "f0", "f10", new byte[][] { }),
+                new Play(2, 4, "f2", "f10", "f21", new byte[][] { }),
+                new Play(0, 3, "f0", "f21", "f02", new byte[][] { }),
+                new Play(0, 4, "f02", "", "f02b", new[] {"e21".StringToBytes()}),
+                new Play(1, 5, "f10", "f02b", "g1", new byte[][] { }),
+                new Play(0, 5, "f02b", "g1", "g0", new byte[][] { }),
+                new Play(2, 5, "f21", "g1", "g2", new byte[][] { }),
+                new Play(1, 6, "g1", "g0", "g10", new byte[][] { }),
+                new Play(0, 6, "g0", "f21", "o02", new byte[][] { }),
+                new Play(2, 6, "g2", "g10", "g21", new byte[][] { }),
+                new Play(0, 7, "o02", "g21", "g02", new byte[][] { }),
+                new Play(1, 7, "g10", "g02", "h1", new byte[][] { }),
+                new Play(0, 8, "g02", "h1", "h0", new byte[][] { }),
+                new Play(2, 7, "g21", "h1", "h2", new byte[][] { }),
+            };
 
-        //plays = [] play{
-        //		play{1, 1, "e1", "e0", "e10", [] [] byte{}},
-        //		play{2, 1, "e2", "e10", "e21", [] [] byte{[] byte ("e21")}},
-        //		play{2, 2, "e21", "", "e21b", [] [] byte{}},
-        //		play{0, 1, "e0", "e21b", "e02", [] [] byte{}},
-        //		play{1, 2, "e10", "e02", "f1", [] [] byte{}},
-        //		play{1, 3, "f1", "", "f1b", [] [] byte{[] byte ("f1b")}},
-        //		play{0, 2, "e02", "f1b", "f0", [] [] byte{}},
-        //		play{2, 3, "e21b", "f1b", "f2", [] [] byte{}},
-        //		play{1, 4, "f1b", "f0", "f10", [] [] byte{}},
-        //		play{2, 4, "f2", "f10", "f21", [] [] byte{}},
-        //		play{0, 3, "f0", "f21", "f02", [] [] byte{}},
-        //		play{0, 4, "f02", "", "f02b", [] [] byte{[] byte ("e21")}},
-        //		play{1, 5, "f10", "f02b", "g1", [] [] byte{}},
-        //		play{0, 5, "f02b", "g1", "g0", [] [] byte{}},
-        //		play{2, 5, "f21", "g1", "g2", [] [] byte{}},
-        //		play{1, 6, "g1", "g0", "g10", [] [] byte{}},
-        //		play{0, 6, "g0", "f21", "o02", [] [] byte{}},
-        //		play{2, 6, "g2", "g10", "g21", [] [] byte{}},
-        //		play{0, 7, "o02", "g21", "g02", [] [] byte{}},
-        //		play{1, 7, "g10", "g02", "h1", [] [] byte{}},
-        //		play{0, 8, "g02", "h1", "h0", [] [] byte{}},
-        //		play{2, 7, "g21", "h1", "h2", [] [] byte{}},
-        //	}
+            foreach (var p in plays)
+            {
+                var parents = new List<string>();
 
-        //	for _, p = range plays
-        //{
-        //    e = NewEvent(p.payload,
-        //			[]string{ index[p.selfParent], index[p.otherParent]},
-        //			nodes [p.to].Pub,
-        //			p.index)
-        //		nodes [p.to].signAndAddEvent(e, p.name, index, orderedEvents)
-        //	}
+                parents.Add(index[p.SelfParent]);
 
-        //participants = make(map[string]int)
-        //	for _, node = range nodes
-        //{
-        //    participants [node.PubHex] = node.ID
-        //}
+                index.TryGetValue(p.OtherParent, out var otherParent);
 
-        //var store Store
-        //	if db {
-        //		var err error
-        //        store, err = NewBadgerStore(participants, cacheSize, badgerDir)
-        //		if err != nil {
-        //			log.Fatal(err)
-        //		}
-        //	} else {
-        //		store = NewInmemStore(participants, cacheSize)
-        //	}
+                parents.Add(otherParent ?? "");
 
-        //	hashgraph = NewHashgraph(participants, store, nil, logger)
+                var e = new Event(p.Payload,
+                    parents.ToArray(),
+                    nodes[p.To].Pub,
+                    p.Index);
+                nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
+            }
 
-        //	for i, ev = range* orderedEvents
-        //{
-        //		if err = hashgraph.InsertEvent(ev, true); err != nil
-        //    {
-        //        fmt.Printf("ERROR inserting event %d: %s\n", i, err)
+            var participants = new Dictionary<string, int>();
+            foreach (var node in nodes)
+            {
+                participants[node.Pub.ToHex()] = node.Id;
+            }
 
-        //        }
-        //}
+            IStore store;
 
-        //	return hashgraph, index
-        //}
 
-        //        [Fact]
-        //        public voidTestDecideFame()
-        //{
-        //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
+            //if (db) {
+            //var err error
+            //      store, err = NewBadgerStore(participants, cacheSize, badgerDir)
+            //if err != null {
+            //	log.Fatal(err)
+            //}
+            //} else
+            //{
+            store = new InmemStore(participants, CacheSize);
+            //}
 
-        //    h.DivideRounds()
+            var hashgraph = new Hashgraph(participants, store, null);
 
-        //    h.DecideFame()
+            i = 0;
+            foreach (var ev in orderedEvents)
+            {
+                var err = hashgraph.InsertEvent(ev, true);
 
-        //    if r = h.Round(index["g0"]); r != 2 {
-        //        t.Fatalf("g0 round should be 2, not %d", r)
+                if (err != null)
+                {
+                    Console.WriteLine($"ERROR inserting event {i}: {err?.Message}");
 
-        //    }
-        //    if r = h.Round(index["g1"]); r != 2 {
-        //        t.Fatalf("g1 round should be 2, not %d", r)
+                }
 
-        //    }
-        //    if r = h.Round(index["g2"]); r != 2 {
-        //        t.Fatalf("g2 round should be 2, not %d", r)
+                i++;
+            }
 
-        //    }
+            return (hashgraph, index);
+        }
 
-        //    round0, err= h.Store.GetRound(0)
+        [Fact]
+public void TestDecideFame()
+        {
+            var (h, index) = InitConsensusHashgraph(false);
 
-        //    if err != nil {
-        //        t.Fatal(err)
+            h.DivideRounds();
 
-        //    }
-        //    if f = round0.Events[index["e0"]]; !(f.Witness && f.Famous == True) {
-        //        t.Fatalf("e0 should be famous; got %v", f)
+            h.DecideFame();
 
-        //    }
-        //    if f = round0.Events[index["e1"]]; !(f.Witness && f.Famous == True) {
-        //        t.Fatalf("e1 should be famous; got %v", f)
+ 
+           Assert.Equal(2, h.Round(index["g0"]));
 
-        //    }
-        //    if f = round0.Events[index["e2"]]; !(f.Witness && f.Famous == True) {
-        //        t.Fatalf("e2 should be famous; got %v", f)
 
-        //    }
-        //}
+            Assert.Equal(2, h.Round(index["g1"]));
 
-        //        [Fact]
-        //        public void TestOldestSelfAncestorToSee()
-        //{
-        //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
+            Assert.Equal(2, h.Round(index["g2"]));
 
-        //    if a = h.OldestSelfAncestorToSee(index["f0"], index["e1"]); a != index["e02"] {
-        //        t.Fatalf("oldest self ancestor of f0 to see e1 should be e02 not %s", getName(index, a))
 
-        //    }
-        //    if a = h.OldestSelfAncestorToSee(index["f1"], index["e0"]); a != index["e10"] {
-        //        t.Fatalf("oldest self ancestor of f1 to see e0 should be e10 not %s", getName(index, a))
 
-        //    }
-        //    if a = h.OldestSelfAncestorToSee(index["f1b"], index["e0"]); a != index["e10"] {
-        //        t.Fatalf("oldest self ancestor of f1b to see e0 should be e10 not %s", getName(index, a))
+            var (round0, err) = h.Store.GetRound(0);
 
-        //    }
-        //    if a = h.OldestSelfAncestorToSee(index["g2"], index["f1"]); a != index["f2"] {
-        //        t.Fatalf("oldest self ancestor of g2 to see f1 should be f2 not %s", getName(index, a))
+                Assert.Null(err);
 
-        //    }
-        //    if a = h.OldestSelfAncestorToSee(index["e21"], index["e1"]); a != index["e21"] {
-        //        t.Fatalf("oldest self ancestor of e20 to see e1 should be e21 not %s", getName(index, a))
 
-        //    }
-        //    if a = h.OldestSelfAncestorToSee(index["e2"], index["e1"]); a != "" {
-        //        t.Fatalf("oldest self ancestor of e2 to see e1 should be '' not %s", getName(index, a))
+            var f = round0.Events[index["e0"]];
 
-        //    }
-        //}
+            Assert.True(f.Witness && f.Famous == true, $"e0 should be famous; got {f}");
 
-        //        [Fact]
-        //        public void TestDecideRoundReceived()
-        //{
-        //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
+            f = round0.Events[index["e1"]];
 
-        //    h.DivideRounds()
+            Assert.True(f.Witness && f.Famous == true, $"e1 should be famous; got {f}");
 
-        //    h.DecideFame()
+            f = round0.Events[index["e2"]];
 
-        //    h.DecideRoundReceived()
+            Assert.True(f.Witness && f.Famous == true, $"e2 should be famous; got {f}");
 
-        //    for name, hash = range index {
-        //        e, _= h.Store.GetEvent(hash)
 
-        //        if rune(name[0]) == rune('e') {
-        //            if r = *e.roundReceived; r != 1 {
-        //                t.Fatalf("%s round received should be 1 not %d", name, r)
 
-        //            }
-        //        }
-        //    }
+}
 
-        //}
+        [Fact]
+        public void TestOldestSelfAncestorToSee()
+        {
+            var (h, index) = InitConsensusHashgraph(false);
+
+            var a = h.OldestSelfAncestorToSee(index["f0"], index["e1"]);
+
+            Assert.True(a == index["e02"], $"oldest self ancestor of f0 to see e1 should be e02 not {GetName(index, a)}");
+
+            a = h.OldestSelfAncestorToSee(index["f1"], index["e0"]);
+            Assert.True(a == index["e10"], $"oldest self ancestor of f1 to see e0 should be e10 not {GetName(index, a)}");
+
+
+            a = h.OldestSelfAncestorToSee(index["f1b"], index["e0"]);
+            Assert.True(a == index["e10"], $"oldest self ancestor of f1b to see e0 should be e10 not {GetName(index, a)}");
+
+            a = h.OldestSelfAncestorToSee(index["g2"], index["f1"]);
+            Assert.True(a == index["f2"], $"oldest self ancestor of g2 to see f1 should be f2 not {GetName(index, a)}");
+
+   
+            a = h.OldestSelfAncestorToSee(index["e21"], index["e1"]);
+            Assert.True(a == index["e21"], $"oldest self ancestor of e20 to see e1 should be e21 not {GetName(index, a)}");
+
+            a = h.OldestSelfAncestorToSee(index["e2"], index["e1"]);
+            Assert.True(a == "", $"oldest self ancestor of e2 to see e1 should be '' not {GetName(index, a)}");
+
+        }
+
+        [Fact]
+        public void TestDecideRoundReceived()
+        {
+            var (h, index) = InitConsensusHashgraph(false);
+
+            h.DivideRounds();
+
+            h.DecideFame();
+
+            h.DecideRoundReceived();
+
+            foreach ( var item in  index)
+
+            {
+                var name = item.Key;
+                var hash = item.Value;
+
+                Console.WriteLine($"{name} - {hash}");
+
+                var (e, _) = h.Store.GetEvent(hash);
+
+                //Todo: Check rune
+                //if rune(name[0]) == rune('e') {
+
+                if (name.Substring(0,1)=="e")
+                {
+                    var r = e.GetRoundReceived();
+
+                    Assert.True(r == 1, $"{name} round received should be 1 not {r}");
+
+                }
+           
+            }
+
+        }
+
+        [Fact]
+        public void TestFindOrder()
+        {
+            var ( h, index) = InitConsensusHashgraph(false);
+
+            h.DivideRounds();
+
+            h.DecideFame();
+
+            h.FindOrder();
+
+            var i = 0;
+            foreach(var e in h.ConsensusEvents())
+
+            {
+              Console.WriteLine($"consensus[{i}]: {GetName(index, e)}" );
+                i++;
+            }
+
+            var l = h.ConsensusEvents().Length;
+            Assert.True(l == 7, $"length of consensus should be 7 not {l}");
+
+
+            var ple = h.PendingLoadedEvents;
+            Assert.True(ple == 2, $"PendingLoadedEvents should be 2, not {ple}");
+
+            var consensusEvents = h.ConsensusEvents();
+
+            var n = GetName(index, consensusEvents[0]);
+            Assert.True(n == "e0", $"consensus[0] should be e0, not {n}");
+            
+            //events which have the same consensus timestamp are ordered by whitened signature
+            //which is not deterministic.
+
+            n = GetName(index, consensusEvents[6]);
+            Assert.True(n == "e02", $"consensus[6] should be e02, not {n}");
+
+
+        }
 
         //[Fact]
-        //public void TestFindOrder()
-        //{
-        //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
-
-        //    h.DivideRounds()
-
-        //    h.DecideFame()
-
-        //    h.FindOrder()
-
-        //    for i, e = range h.ConsensusEvents() {
-        //        t.Logf("consensus[%d]: %s\n", i, getName(index, e))
-
-        //    }
-
-        //    if l = len(h.ConsensusEvents()); l != 7 {
-        //        t.Fatalf("length of consensus should be 7 not %d", l)
-
-        //    }
-
-        //    if ple = h.PendingLoadedEvents; ple != 2 {
-        //        t.Fatalf("PendingLoadedEvents should be 2, not %d", ple)
-
-        //    }
-
-        //    consensusEvents= h.ConsensusEvents()
-
-        //    if n = getName(index, consensusEvents[0]); n != "e0" {
-        //        t.Fatalf("consensus[0] should be e0, not %s", n)
-
-        //    }
-
-        //    //events which have the same consensus timestamp are ordered by whitened signature
-        //    //which is not deterministic.
-        //    if n = getName(index, consensusEvents[6]); n != "e02" {
-        //        t.Fatalf("consensus[6] should be e02, not %s", n)
-
-        //    }
-
-        //}
-
-        // [Fact] public void BenchmarkFindOrder(b* testing.B)
+        //public void BenchmarkFindOrder(b* testing.B)
         //{
         //    for n = 0; n < b.N; n++ {
         //        //we do not want to benchmark the initialization code
         //        b.StopTimer()
 
-        //        h, _= initConsensusHashgraph(false, common.NewBenchmarkLogger(b))
+        //        h, _ = initConsensusHashgraph(false, common.NewBenchmarkLogger(b))
 
         //        b.StartTimer()
 
@@ -1284,107 +1283,123 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        // [Fact] public void TestKnown()
-        //{
-        //    h, _= initConsensusHashgraph(false, common.NewTestLogger(t))
+        [Fact]
+        public void TestKnown()
+        {
+            var (h, _ ) = InitConsensusHashgraph(false);
 
-        //    expectedKnown= map[int]int{
-        //        0: 8,
-        //		1: 7,
-        //		2: 7,
-        //	}
+            var expectedKnown = new Dictionary<int, int>
+            {
+                {0, 8},
+                {1, 7},
+                {2, 7},
+            };
 
-        //    known= h.Known()
+            var known = h.Known();
 
-        //    for _, id = range h.Participants {
-        //        if l = known[id]; l != expectedKnown[id] {
-        //            t.Fatalf("Known[%d] should be %d, not %d", id, expectedKnown[id], l)
+            foreach (var id in  h.Participants)
+            {
+                var l = known[id.Value];
 
-        //        }
-        //    }
-        //}
+                Assert.True(l == expectedKnown[id.Value], $"Known[{id.Value}] should be {expectedKnown[id.Value]}, not {l}");
 
-        // [Fact] public void TestReset()
-        //{
-        //    h, index= initConsensusHashgraph(false, common.NewTestLogger(t))
+            }
+            
+        }
 
-        //    evs= []string{ "g1", "g0", "g2", "g10", "g21", "o02", "g02", "h1", "h0", "h2"}
+        [Fact]
+        public void TestReset()
+        {
+            var (h, index) = InitConsensusHashgraph(false);
 
-        //    backup= map[string]Event{ }
-        //    for _, ev = range evs {
-        //		event, err= h.Store.GetEvent(index[ev])
+            var evs = new string[] {"g1", "g0", "g2", "g10", "g21", "o02", "g02", "h1", "h0", "h2"};
 
-        //        if err != nil {
-        //            t.Fatal(err)
+            var backup = new Dictionary<string, Event> { };
 
-        //        }
+            Exception err;
+            foreach (var evn in evs)
+            {
+                Event ev;
+                (ev, err) = h.Store.GetEvent(index[evn]);
 
-        //        copyEvent= Event{
-        //            Body: event.Body,
-        //			R:    event.R,
-        //			S:    event.S,
-        //		}
+                Assert.Null(err);
 
-        //        backup[ev] = copyEvent
+                // Todo: Check if deep copy needed here
+                var copyEvent = new Event
+                {
+                    Body = ev.Body,
 
-        //    }
+                };
 
-        //    roots= map[string]Root{ }
-        //    roots[h.ReverseParticipants[0]] = Root{
-        //        X: index["f02b"],
-        //		Y: index["g1"],
-        //		Index: 4,
-        //		Round: 2,
-        //		Others: map[string]string{
-        //            index["o02"]: index["f21"],
-        //		},
-        //	}
-        //    roots[h.ReverseParticipants[1]] = Root{
-        //        X: index["f10"],
-        //		Y: index["f02b"],
-        //		Index: 4,
-        //		Round: 2,
-        //	}
-        //    roots[h.ReverseParticipants[2]] = Root{
-        //        X: index["f21"],
-        //		Y: index["g1"],
-        //		Index: 4,
-        //		Round: 2,
-        //	}
+       copyEvent.SetSigniture(ev.Signiture());
 
-        //    err= h.Reset(roots)
+                backup[evn] = copyEvent;
 
-        //    if err != nil {
-        //        t.Fatal(err)
+            }
 
-        //    }
+            var roots = new Dictionary<string, Root> { };
+            roots[h.ReverseParticipants[0]] = new Root
+            {
+                X = index["f02b"],
+                Y = index["g1"],
+                Index = 4,
+                Round = 2,
+                Others = new Dictionary<string, string>
+                {
+                    {index["o02"], index["f21"]},
+                },
+            };
+            roots[h.ReverseParticipants[1]] = new Root
+            {
+                X = index["f10"],
+                Y = index["f02b"],
+                Index = 4,
+                Round = 2,
+            };
 
-        //    for _, k = range evs {
-        //        if err = h.InsertEvent(backup[k], false); err != nil {
-        //            t.Fatalf("Error inserting %s in reset Hashgraph: %v", k, err)
+            roots[h.ReverseParticipants[2]] = new Root
+            {
+                X = index["f21"],
+                Y = index["g1"],
+                Index = 4,
+                Round = 2,
+            };
 
-        //        }
-        //        if _, err= h.Store.GetEvent(index[k]); err != nil {
-        //            t.Fatalf("Error fetching %s after inserting it in reset Hashgraph: %v", k, err)
+            err = h.Reset(roots);
 
-        //        }
-        //    }
+            Assert.Null(err);
 
-        //    expectedKnown= map[int]int{
-        //        0: 8,
-        //		1: 7,
-        //		2: 7,
-        //	}
+            foreach (var  k in  evs)
+            {
+                err = h.InsertEvent(backup[k], false);
 
-        //    known= h.Known()
+                Assert.True(err == null, $"Error inserting {k} in reset Hashgraph: {err?.Message}");
 
-        //    for _, id = range h.Participants {
-        //        if l = known[id]; l != expectedKnown[id] {
-        //            t.Fatalf("Known[%d] should be %d, not %d", id, expectedKnown[id], l)
+                (_,err) = h.Store.GetEvent(index[k]);
 
-        //        }
-        //    }
-        //}
+                Assert.True(err == null, $"Error fetching {k} after inserting it in reset Hashgraph: {err?.Message}");
+
+
+}
+
+            var expectedKnown = new Dictionary<int, int>
+            {
+               {0, 8},
+                {1, 7},
+                {2, 7},
+            };
+
+            var known = h.Known();
+
+            foreach (var it in h.Participants)
+            {
+                var id = it.Value;
+                var l = known[id];
+                Assert.True(l == expectedKnown[id], $"Known[{id}] should be {expectedKnown[id]}, not {l}");
+
+            }
+
+        }
 
         // [Fact] public void TestGetFrame()
         //{
@@ -1421,7 +1436,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
         //    frame, err= h.GetFrame()
 
-        //    if err != nil {
+        //    if err != null {
         //        t.Fatal(err)
 
         //    }
@@ -1466,14 +1481,14 @@ namespace Dotnatter.Test.HashgraphImpl
         //    for p, r = range frame.Roots {
         //        ee, err= h.Store.ParticipantEvents(p, skip[p])
 
-        //        if err != nil {
+        //        if err != null {
         //            t.Fatal(r)
 
         //        }
         //        for _, e = range ee {
         //            ev, err= h.Store.GetEvent(e)
 
-        //            if err != nil {
+        //            if err != null {
         //                t.Fatal(err)
 
         //            }
@@ -1502,20 +1517,20 @@ namespace Dotnatter.Test.HashgraphImpl
 
         //    frame, err= h.GetFrame()
 
-        //    if err != nil {
+        //    if err != null {
         //        t.Fatal(err)
 
         //    }
 
         //    err = h.Reset(frame.Roots)
 
-        //    if err != nil {
+        //    if err != null {
         //        t.Fatal(err)
 
         //    }
 
         //    for _, ev = range frame.Events {
-        //        if err = h.InsertEvent(ev, false); err != nil {
+        //        if err = h.InsertEvent(ev, false); err != null {
         //            t.Fatalf("Error inserting %s in reset Hashgraph: %v", ev.Hex(), err)
 
         //        }
@@ -1542,10 +1557,10 @@ namespace Dotnatter.Test.HashgraphImpl
 
         //    h.FindOrder()
 
-        //    if r = h.LastConsensusRound; r == nil || *r != 1 {
-        //        disp= "nil"
+        //    if r = h.LastConsensusRound; r == null || *r != 1 {
+        //        disp= "null"
 
-        //        if r != nil {
+        //        if r != null {
         //            disp = strconv.Itoa(*r)
 
         //        }
@@ -1576,11 +1591,11 @@ namespace Dotnatter.Test.HashgraphImpl
         //    //Hashgraph and see if we can boostrap it to the same state.
         //    recycledStore, err= LoadBadgerStore(cacheSize, badgerDir)
 
-        //    nh= NewHashgraph(recycledStore.participants, recycledStore, nil, logger)
+        //    nh= NewHashgraph(recycledStore.participants, recycledStore, null, logger)
 
         //    err = nh.Bootstrap()
 
-        //    if err != nil {
+        //    if err != null {
         //        t.Fatal(err)
 
         //    }
@@ -1806,7 +1821,7 @@ namespace Dotnatter.Test.HashgraphImpl
             //rounds 0,1, 2 and 3 should be decided
             var expectedUndecidedRounds = new List<int> {4, 5};
 
-            h.UndecidedRounds.ShouldCompareTo(expectedUndecidedRounds);
+            h.UndecidedRounds.ToArray().ShouldCompareTo(expectedUndecidedRounds.ToArray());
         }
 
         private static string GetName(Dictionary<string, string> index, string hash)

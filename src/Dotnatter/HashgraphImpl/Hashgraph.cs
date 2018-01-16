@@ -822,7 +822,7 @@ namespace Dotnatter.HashgraphImpl
                 //is not aware of it yet. We need to add the roundNumber to the queue of
                 //undecided rounds so that it will be processed in the other consensus
                 //methods
-                if (err != null && err?.StoreErrorType == StoreErrorType.KeyNotFound)
+                if (err != null && err?.StoreErrorType != StoreErrorType.KeyNotFound)
                 {
                     return err;
                 }
@@ -1070,7 +1070,6 @@ namespace Dotnatter.HashgraphImpl
 
                         break;
                     }
-
                 }
             }
 
@@ -1145,7 +1144,7 @@ namespace Dotnatter.HashgraphImpl
         {
             return Store.Known();
         }
-        public void Reset(Dictionary<string, Root> roots)
+        public Exception Reset(Dictionary<string, Root> roots)
         {
             Store.Reset(roots);
             UndeterminedEvents = new List<string>();
@@ -1159,6 +1158,8 @@ namespace Dotnatter.HashgraphImpl
             StronglySeeCache = new LruCache<string, bool>(cacheSize, null);
             ParentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null);
             RoundCache = new LruCache<string, int>(cacheSize, null);
+
+            return null;
         }
         public (Frame, Exception err) GetFrame()
         {
