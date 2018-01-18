@@ -50,11 +50,14 @@ namespace Dotnatter.HashgraphImpl
 
         public (Event evt, StoreError err) GetEvent(string key)
         {
+            bool ok=false;
+            Event res=null;
+            if (!string.IsNullOrEmpty(key))
+            {
+                (res,ok ) = eventCache.Get(key);
+                logger.Verbose("GetEvent found={ok}; key={key}",ok,key);
+            }
             
-         var (res,ok ) = eventCache.Get(key);
-
-            logger.Verbose("GetEvent found={ok}; key={key}",ok,key);
-
             if (!ok)
             {
                 return (new Event(), new StoreError(StoreErrorType.KeyNotFound, key));
