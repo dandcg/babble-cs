@@ -66,6 +66,10 @@ namespace Dotnatter.HashgraphImpl
         public int Round { get; set; }
         public Dictionary<string, string> Others { get; set; }
 
+        public Root()
+        {
+            
+        }
 
         public static Root NewBaseRoot()
         {

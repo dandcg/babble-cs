@@ -1195,7 +1195,7 @@ namespace Dotnatter.HashgraphImpl
                     X = w.SelfParent,
                     Y = w.OtherParent,
                     Index = w.Index() - 1,
-                    Round = Round(w.SelfParent)
+                    Round = Round(w.SelfParent), Others = new Dictionary<string, string>()
                 });
                 string[] participantEvents;
                 (participantEvents,err) = Store.ParticipantEvents(w.Creator, w.Index());
@@ -1292,8 +1292,12 @@ namespace Dotnatter.HashgraphImpl
         //them to the Hashgraph (in topological order) for consensus ordering. After this
         //method call, the Hashgraph should be in a state coeherent with the 'tip' of the
         //Hashgraph
-        public void Bootstrap()
+        public Exception Bootstrap()
         {
+
+            throw new NotImplementedException();
+
+
             //if badgerStore, ok = Store.(*BadgerStore); ok {
             //    //Retreive the Events from the underlying DB. They come out in topological
             //    //order
