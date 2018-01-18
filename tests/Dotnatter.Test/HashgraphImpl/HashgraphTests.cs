@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -1197,7 +1198,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 //Todo: Check rune
                 //if rune(name[0]) == rune('e') {
 
-                Console.WriteLine(name);
+            
                 if (name.Substring(0, 1) == "e")
                 {
                     var r = e.GetRoundReceived();
@@ -1546,7 +1547,7 @@ namespace Dotnatter.Test.HashgraphImpl
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Badger DB alternative not yet implmented!")]
         public void TestBootstrap()
         {
             //Initialize a first Hashgraph with a DB backend
@@ -1778,7 +1779,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     witnessNames.Add(GetName(index, w));
                 }
 
-                Console.WriteLine("Round {0} witnesses: {1}", r, witnessNames);
+                Console.WriteLine("Round {0} witnesses: {1}", r, string.Join(", ",witnessNames));
             }
 
             h.DecideFame();

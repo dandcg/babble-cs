@@ -858,137 +858,151 @@ namespace Dotnatter.HashgraphImpl
             var votes = new Dictionary<string, Dictionary<string, bool>>(); //[x][y]=>vote(x,y)
 
             var decidedRounds = new Dictionary<int, int>(); // [round number] => index in UndecidedRounds
-            //
-            //defer UpdateUndecidedRounds(decidedRounds)
 
-            int pos = 0;
 
-            foreach (var i in UndecidedRounds)
+            try
             {
-                var (roundInfo, err) = Store.GetRound(i);
 
-                if (err != null)
-                {
-                    return err;
-                }
+                int pos = 0;
 
-                foreach (var x in roundInfo.Witnesses())
+                foreach (var i in UndecidedRounds)
                 {
-                    if (roundInfo.IsDecided(x))
+                    var (roundInfo, err) = Store.GetRound(i);
+
+                    if (err != null)
                     {
-
-                        continue;
+                        return err;
                     }
 
-                    //X:
-
-                    for (var j = i + 1; j <= Store.LastRound(); j++)
-
+                    foreach (var x in roundInfo.Witnesses())
                     {
-                        foreach (var y in Store.RoundWitnesses(j))
+                        if (roundInfo.IsDecided(x))
                         {
-                            var diff = j - i;
 
-                            if (diff == 1)
+                            continue;
+                        }
+
+                        //X:
+
+                        for (var j = i + 1; j <= Store.LastRound(); j++)
+
+                        {
+                            foreach (var y in Store.RoundWitnesses(j))
                             {
-                                SetVote(votes, y, x, See(y, x));
-                            }
-                            else
-                            {
-                                //count votes
-                                var ssWitnesses = new List<string>();
-                                foreach (var w in Store.RoundWitnesses(j - 1))
+                                var diff = j - i;
+
+                                if (diff == 1)
                                 {
-                                    if (StronglySee(y, w))
-                                    {
-                                        ssWitnesses.Add(w);
-                                    }
-                                }
-
-                                var yays = 0;
-
-                                var nays = 0;
-
-                                foreach (var w in ssWitnesses)
-                                {
-                                    if (votes[w][x])
-                                    {
-                                        yays++;
-                                    }
-                                    else
-                                    {
-                                        nays++;
-                                    }
-                                }
-
-                                var v = false;
-
-                                var t = nays;
-
-                                if (yays >= nays)
-                                {
-                                    v = true;
-
-                                    t = yays;
-                                }
-
-                                //normal round
-                                if ((float)diff % Participants.Count > 0)
-                                {
-                                    if (t >= SuperMajority)
-                                    {
-                                        roundInfo.SetFame(x, v);
-
-                                        SetVote(votes, y, x, v);
-
-                                        //break out of j loop
-
-                                        goto X;
-                                    }
-
-                                    SetVote(votes, y, x, v);
+                                    SetVote(votes, y, x, See(y, x));
                                 }
                                 else
                                 {
-                                    //coin round
-                                    if (t >= SuperMajority)
+                                    //count votes
+                                    var ssWitnesses = new List<string>();
+                                    foreach (var w in Store.RoundWitnesses(j - 1))
                                     {
+                                        if (StronglySee(y, w))
+                                        {
+                                            ssWitnesses.Add(w);
+                                        }
+                                    }
+
+                                    var yays = 0;
+
+                                    var nays = 0;
+
+                                    foreach (var w in ssWitnesses)
+                                    {
+                                        if (votes[w][x])
+                                        {
+                                            yays++;
+                                        }
+                                        else
+                                        {
+                                            nays++;
+                                        }
+                                    }
+
+                                    var v = false;
+
+                                    var t = nays;
+
+                                    if (yays >= nays)
+                                    {
+                                        v = true;
+
+                                        t = yays;
+                                    }
+
+                                    //normal round
+                                    if ((float) diff % Participants.Count > 0)
+                                    {
+                                        if (t >= SuperMajority)
+                                        {
+                                            roundInfo.SetFame(x, v);
+
+                                            SetVote(votes, y, x, v);
+
+                                            //break out of j loop
+
+                                            goto X;
+                                        }
+
                                         SetVote(votes, y, x, v);
                                     }
                                     else
                                     {
-                                        SetVote(votes, y, x, MiddleBit(y)); //middle bit of y's hash
+                                        //coin round
+                                        if (t >= SuperMajority)
+                                        {
+                                            SetVote(votes, y, x, v);
+                                        }
+                                        else
+                                        {
+                                            SetVote(votes, y, x, MiddleBit(y)); //middle bit of y's hash
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        X:;
                     }
 
-                    X:;
-                }
-
-                //Update decidedRounds and LastConsensusRound if all witnesses have been decided
-                if (roundInfo.WitnessesDecided())
-                {
-                    decidedRounds[i] = i;
-
-                    if (LastConsensusRound == null || i > LastConsensusRound)
+                    //Update decidedRounds and LastConsensusRound if all witnesses have been decided
+                    if (roundInfo.WitnessesDecided())
                     {
-                        SetLastConsensusRound(i);
+                        decidedRounds[i] = i;
+
+                        if (LastConsensusRound == null || i > LastConsensusRound)
+                        {
+                            SetLastConsensusRound(i);
+                        }
                     }
+
+                    err = Store.SetRound(i, roundInfo);
+
+                    if (err != null)
+                    {
+                        return err;
+                    }
+
+                    pos++;
                 }
 
-                err = Store.SetRound(i, roundInfo);
+                return null;
 
-                if (err != null)
-                {
-                    return err;
-                }
-
-                pos++;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                UpdateUndecidedRounds(decidedRounds);
             }
 
-            return null;
+
         }
 
 
@@ -1024,7 +1038,7 @@ namespace Dotnatter.HashgraphImpl
 
                 {
                     var (tr, err) = Store.GetRound(i);
-                    if (err != null && err.StoreErrorType == StoreErrorType.KeyNotFound)
+                    if (err != null && err.StoreErrorType != StoreErrorType.KeyNotFound)
                     {
                         return err;
                     }
@@ -1032,7 +1046,7 @@ namespace Dotnatter.HashgraphImpl
                     //skip if some witnesses are left undecided
                     if (!(tr.WitnessesDecided() && UndecidedRounds.Peek() > i))
                     {
-                        continue;
+                      continue;
                     }
 
                     var fws = tr.FamousWitnesses();

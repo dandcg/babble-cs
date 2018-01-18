@@ -6,7 +6,6 @@ using System.Numerics;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
-using Newtonsoft.Json;
 
 namespace Dotnatter.HashgraphImpl
 {
@@ -16,13 +15,12 @@ namespace Dotnatter.HashgraphImpl
 
         private byte[] signiture;
 
-
         //creator's digital signature of body
         public byte[] Signiture()
         {
             return signiture;
         }
-        
+
         public void SetSigniture(byte[] value)
         {
             signiture = value;
@@ -39,7 +37,6 @@ namespace Dotnatter.HashgraphImpl
         {
             topologicalIndex = value;
         }
-
 
         public int GetTopologicalIndex()
         {
@@ -97,11 +94,20 @@ namespace Dotnatter.HashgraphImpl
         private EventCoordinates[] firstDescendants;
 
         public string Creator => creator ?? (creator = Body.Creator.ToHex());
-        public byte[] Hash() => hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
-        public string Hex() =>  Hash().ToHex();
+
+        public byte[] Hash()
+        {
+            return hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
+        }
+
+        public string Hex()
+        {
+            return Hash().ToHex();
+        }
 
         public Event()
-        { }
+        {
+        }
 
         public Event(byte[][] transactions, string[] parents, byte[] creator, int index)
         {
@@ -113,13 +119,13 @@ namespace Dotnatter.HashgraphImpl
                 Timestamp = DateTime.UtcNow, //strip monotonic time
                 Index = index
             };
-            
+
             Body = body;
         }
 
         public string SelfParent => Body.Parents[0];
 
-        public string OtherParent => Body.Parents.Length>1? Body.Parents[1]:"";
+        public string OtherParent => Body.Parents.Length > 1 ? Body.Parents[1] : "";
 
         public byte[][] Transactions()
         {
@@ -155,9 +161,8 @@ namespace Dotnatter.HashgraphImpl
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
             var signBytes = Body.Hash();
 
-            return (CryptoUtils.Verify(pubKey, signBytes, Signiture()),null);
+            return (CryptoUtils.Verify(pubKey, signBytes, Signiture()), null);
         }
-
 
         //json encoding of body and signature
         public byte[] Marhsal()
@@ -168,11 +173,6 @@ namespace Dotnatter.HashgraphImpl
         public static Event Unmarshal(byte[] data)
         {
             return data.DeserializeFromByteArray<Event>();
-        }
-
-        public void SetRoundReceived(int rr)
-        {
-            SetRoundReceived(rr);
         }
 
         public void SetWireInfo(int selfParentIndex, int otherParentCreatorId, int otherParentIndex, int creatorId)
@@ -206,109 +206,90 @@ namespace Dotnatter.HashgraphImpl
             };
         }
 
-    
-
-
-
-
-
-    //Sorting
-    public class EventByTimeStamp : IComparer<Event>
-    {
-        public int Compare(Event x, Event y)
+        //Sorting
+        public class EventByTimeStamp : IComparer<Event>
         {
-            Debug.Assert(x != null, nameof(x) + " != null");
-            Debug.Assert(y != null, nameof(y) + " != null");
-            return DateTime.Compare(x.Body.Timestamp, y.Body.Timestamp);
-        }
-    }
-
-    public class EventByTopologicalOrder : IComparer<Event>
-    {
-        public int Compare(Event x, Event y)
-        {
-            Debug.Assert(x != null, nameof(x) + " != null");
-            Debug.Assert(y != null, nameof(y) + " != null");
-            return x.GetTopologicalIndex().CompareTo(y.GetTopologicalIndex());
-        }
-    }
-
-
-
-    public class EventByConsensus : IComparer<Event>
-    {
-
-        private readonly Dictionary<int, RoundInfo> r = new Dictionary<int, RoundInfo>();
-        private readonly Dictionary<int, BigInteger> cache = new Dictionary<int, BigInteger>();
-
-        
-        public int Compare(Event i, Event j)
-        {
-
-            Debug.Assert(i != null, nameof(i) + " != null");
-            Debug.Assert(j != null, nameof(j) + " != null");
-
-
-            var (irr, jrr) = (-1, -1);
-
-            if (i.GetRoundReceived() != null)
+            public int Compare(Event x, Event y)
             {
-                irr = (int) i.GetRoundReceived();
+                Debug.Assert(x != null, nameof(x) + " != null");
+                Debug.Assert(y != null, nameof(y) + " != null");
+                return DateTime.Compare(x.Body.Timestamp, y.Body.Timestamp);
             }
- 
-            if (j.GetRoundReceived() != null)
-            {
-                jrr = (int) j.GetRoundReceived();
-            }
-
-            if (irr != jrr)
-            {
-                return irr.CompareTo( jrr);
-            }
-
-            if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
-            {
-                return DateTime.Compare(i.GetConsensusTimestamp(), i.GetConsensusTimestamp());
-            }
-
-            Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
-
-            var w = GetPseudoRandomNumber((int)i.GetRoundReceived());
-            
-            var wsi =i.SignatureRS().S ^ w;
-            
-           var  wsj = j.SignatureRS().S ^ w;
-
-            return wsi.CompareTo(wsj);
         }
 
-
-
-        public BigInteger GetPseudoRandomNumber(int round)
+        public class EventByTopologicalOrder : IComparer<Event>
         {
-
-            if ( cache.TryGetValue(round, out var ps))
+            public int Compare(Event x, Event y)
             {
+                Debug.Assert(x != null, nameof(x) + " != null");
+                Debug.Assert(y != null, nameof(y) + " != null");
+                return x.GetTopologicalIndex().CompareTo(y.GetTopologicalIndex());
+            }
+        }
+
+        public class EventByConsensus : IComparer<Event>
+        {
+            private readonly Dictionary<int, RoundInfo> r = new Dictionary<int, RoundInfo>();
+            private readonly Dictionary<int, BigInteger> cache = new Dictionary<int, BigInteger>();
+
+            public int Compare(Event i, Event j)
+            {
+                Debug.Assert(i != null, nameof(i) + " != null");
+                Debug.Assert(j != null, nameof(j) + " != null");
+
+                var (irr, jrr) = (-1, -1);
+
+                if (i.GetRoundReceived() != null)
+                {
+                    irr = (int) i.GetRoundReceived();
+                }
+
+                if (j.GetRoundReceived() != null)
+                {
+                    jrr = (int) j.GetRoundReceived();
+                }
+
+                if (irr != jrr)
+                {
+                    return irr.CompareTo(jrr);
+                }
+
+                if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
+                {
+                    return DateTime.Compare(i.GetConsensusTimestamp(), i.GetConsensusTimestamp());
+                }
+
+                Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
+
+                var w = GetPseudoRandomNumber((int) i.GetRoundReceived());
+
+                var wsi = i.SignatureRS().S ^ w;
+
+                var wsj = j.SignatureRS().S ^ w;
+
+                return wsi.CompareTo(wsj);
+            }
+
+            public BigInteger GetPseudoRandomNumber(int round)
+            {
+                if (cache.TryGetValue(round, out var ps))
+                {
+                    return ps;
+                }
+
+                if (!r.TryGetValue(round, out var rd))
+                {
+                    rd = new RoundInfo();
+                }
+
+                ps = rd.PseudoRandomNumber();
+
+                cache[round] = ps;
+
                 return ps;
-
             }
-            var rd = r[round];
-
-            ps = rd.PseudoRandomNumber();
-
-            cache[round] = ps;
-
-            return ps;
         }
-
     }
-
-
-
-    }
-
-
-
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // WireEvent
