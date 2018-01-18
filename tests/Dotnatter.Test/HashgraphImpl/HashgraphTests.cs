@@ -6,7 +6,6 @@ using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
-using Grin.Tests.Unit;
 using Xunit;
 using Xunit.Sdk;
 
