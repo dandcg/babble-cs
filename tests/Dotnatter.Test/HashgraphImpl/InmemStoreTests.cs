@@ -5,12 +5,21 @@ using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
+using Serilog;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
     public class InmemStoreTests
     {
+        private ILogger logger;
+
+        public InmemStoreTests(ITestOutputHelper output)
+        {
+             logger = output.SetupLogging();
+        }
+
         public class Pub
         {
             public int Id { get; set; }
@@ -33,7 +42,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 participants.Add(hex, i);
             }
 
-            var store = new InmemStore(participants, cacheSize);
+            var store = new InmemStore(participants, cacheSize, Log.Logger);
             return (store, participantPubs.ToArray());
         }
 

@@ -9,25 +9,25 @@ namespace Dotnatter.Test.Helpers
 {
     public class XUnitTestOutputSink: ILogEventSink
     {
-        readonly ITestOutputHelper output;
-        readonly ITextFormatter textFormatter;
+        private readonly ITestOutputHelper output;
+        private readonly ITextFormatter textFormatter;
 
         public XUnitTestOutputSink(ITestOutputHelper testOutputHelper, ITextFormatter textFormatter)
         {
-            if (testOutputHelper == null) throw new ArgumentNullException("testOutputHelper");
-            if (textFormatter == null) throw new ArgumentNullException("textFormatter");
-
-            output = testOutputHelper;
-            this.textFormatter = textFormatter;
+            output = testOutputHelper ?? throw new ArgumentNullException(nameof(testOutputHelper));
+            this.textFormatter = textFormatter ?? throw new ArgumentNullException(nameof(textFormatter));
         }
 
         public void Emit(LogEvent logEvent)
         {
-            if (logEvent == null) throw new ArgumentNullException("logEvent");
+            if (logEvent == null) throw new ArgumentNullException(nameof(logEvent));
 
             var renderSpace = new StringWriter();
             textFormatter.Format(logEvent, renderSpace);
             output.WriteLine(renderSpace.ToString());
+           
+         
+
         }
     }
 }

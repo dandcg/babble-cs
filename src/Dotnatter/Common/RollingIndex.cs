@@ -7,7 +7,7 @@ namespace Dotnatter.Common
     {
         public int Size { get; }
         public int LastIndex { get; private set; }
-        public List<T> Items { get; private set;  } = new List<T>();
+        public List<T> Items { get; private set; } = new List<T>();
 
         public RollingIndex(int size)
         {
@@ -23,11 +23,11 @@ namespace Dotnatter.Common
 
         public (T[] items, StoreError err) Get(int skipIndex)
         {
-            var res = new T[]{};
+            var res = new T[] { };
 
             if (skipIndex > LastIndex)
             {
-                return (res,null);
+                return (res, null);
             }
 
             var cachedItems = Items.Count;
@@ -42,7 +42,7 @@ namespace Dotnatter.Common
             //index of 'skipped' in RollingIndex
             var start = skipIndex - oldestCachedIndex + 1;
 
-            return (Items.Skip(start).ToArray(),null);
+            return (Items.Skip(start).ToArray(), null);
         }
 
         public (T item, StoreError err) GetItem(int index)
@@ -60,21 +60,21 @@ namespace Dotnatter.Common
             if (findex >= itemCount)
             {
                 return (default, new StoreError(StoreErrorType.KeyNotFound));
-         }
+            }
+
             return (Items[findex], null);
         }
 
         public StoreError Add(T item, int index)
         {
-
             if (index <= LastIndex)
             {
-                return ( new StoreError(StoreErrorType.PassedIndex, $"{index}"));
+                return new StoreError(StoreErrorType.PassedIndex, $"{index}");
             }
-            
+
             if (LastIndex >= 0 && index > LastIndex + 1)
             {
-                return (new StoreError(StoreErrorType.SkippedIndex, $"{index}"));
+                return new StoreError(StoreErrorType.SkippedIndex, $"{index}");
             }
 
             if (Items.Count >= 2 * Size)
@@ -87,7 +87,6 @@ namespace Dotnatter.Common
             LastIndex = index;
 
             return null;
-
         }
 
         public void Roll()

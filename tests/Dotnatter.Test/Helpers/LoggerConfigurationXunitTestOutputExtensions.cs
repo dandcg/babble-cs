@@ -4,6 +4,7 @@ using Serilog.Configuration;
 using Serilog.Events;
 using Serilog.Formatting.Display;
 using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace Dotnatter.Test.Helpers
 {
@@ -12,7 +13,7 @@ namespace Dotnatter.Test.Helpers
     /// </summary>
     public static class LoggerConfigurationXunitTestOutputExtensions
     {
-        private const string DefaultOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}] {Message}{NewLine}{Exception}";
+        const string DefaultOutputTemplate = "[{Timestamp:HH:mm:ss.ffff} {Level:u3}] {SourceContext} {Message:lj}{Exception}";
 
         /// <summary>
         /// Adds a sink that writes log events to the output of an xUnit test.

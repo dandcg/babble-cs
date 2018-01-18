@@ -1,11 +1,22 @@
 ﻿using System;
 using Dotnatter.Common;
+using Dotnatter.Test.Helpers;
+using Serilog;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Dotnatter.Test.Common
 {
     public class LruTests
     {
+
+        private readonly ILogger logger;
+
+        public LruTests(ITestOutputHelper output)
+        {
+            logger = output.SetupLogging();
+        }
+
         [Fact]
         public void TestLru()
         {
@@ -18,7 +29,7 @@ namespace Dotnatter.Test.Common
                 evictCounter += 1;
             });
 
-            var l = new LruCache<int, int>(128, onEvicted);
+            var l = new LruCache<int, int>(128, onEvicted, logger);
 
             var i = 0;
             for (i = 0; i < 256; i++)
@@ -99,7 +110,7 @@ namespace Dotnatter.Test.Common
                 evictCounter += 1;
             });
 
-            var l = new LruCache<int,int>(1, onEvicted);
+            var l = new LruCache<int,int>(1, onEvicted, logger);
             
             //should not have an eviction
             Assert.False(l.Add(1, 1));
@@ -115,7 +126,7 @@ namespace Dotnatter.Test.Common
         [Fact]
         public void TestLru_Contains()
         {
-            var l = new LruCache<int, int>(2, null);
+            var l = new LruCache<int, int>(2, null, logger);
             
             l.Add(1, 1);
 
@@ -133,7 +144,7 @@ namespace Dotnatter.Test.Common
         [Fact]
         public void TestLru_Peek()
         {
-            var l = new LruCache<int, int>(2, null);
+            var l = new LruCache<int, int>(2, null, logger);
 
             l.Add(1, 1);
 

@@ -4,11 +4,17 @@ using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
     public class EventTests
     {
+        public EventTests(ITestOutputHelper output)
+        {
+            output.SetupLogging();
+        }
+
         private static EventBody CreateDummyEventBody()
         {
             var body = new EventBody

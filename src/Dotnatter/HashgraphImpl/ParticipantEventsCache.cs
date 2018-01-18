@@ -2,16 +2,20 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Dotnatter.Common;
+using Dotnatter.Util;
+using Serilog;
 
 namespace Dotnatter.HashgraphImpl
 {
     public class ParticipantEventsCache
     {
+        private readonly ILogger logger;
+
         public int Size { get; set; }
         public Dictionary<string, int> Participants { get; set; } //[public key] => id
         public Dictionary<string, RollingIndex<string>> ParticipantEvents { get; set; }
         
-        public ParticipantEventsCache(int size, Dictionary<string, int> participants)
+        public ParticipantEventsCache(int size, Dictionary<string, int> participants, ILogger logger, string instanceName = null)
         {
             var items = new Dictionary<string, RollingIndex<string>>();
 
@@ -22,6 +26,7 @@ namespace Dotnatter.HashgraphImpl
             
             Size = size;
             Participants = participants;
+            this.logger = logger.AddNamedContext("ParticipantEventsCache");
             ParticipantEvents = items;
         }
 

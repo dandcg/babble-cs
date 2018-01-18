@@ -6,18 +6,31 @@ using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
+using Serilog;
 using Xunit;
+using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
-    public class HashgraphTests : IClassFixture<LoggingFixture>
+    public class HashgraphTests
+
+
+
     {
+
+        public HashgraphTests(ITestOutputHelper output)
+        {
+           logger= output.SetupLogging().ForContext<HashgraphTests>();
+
+        }
+
         private const int CacheSize = 100;
 
         private const int N = 3;
 
         private readonly string badgerDir = "test_data/badger";
+        private ILogger logger;
 
         public class Node
         {
@@ -184,9 +197,9 @@ namespace Dotnatter.Test.HashgraphImpl
                 participants[node.Pub.ToHex()] = node.Id;
             }
 
-            var store = new InmemStore(participants, CacheSize);
+            var store = new InmemStore(participants, CacheSize,logger);
 
-            var h = new Hashgraph(participants, store, null);
+            var h = new Hashgraph(participants, store, null, logger);
             foreach (var ev in orderedEvents)
             {
                 h.InitEventCoordinates(ev);
@@ -391,9 +404,9 @@ namespace Dotnatter.Test.HashgraphImpl
                 participants.Add(node.Pub.ToHex(), node.Id);
             }
 
-            var store = new InmemStore(participants, CacheSize);
+            var store = new InmemStore(participants, CacheSize,logger);
 
-            var hashgraph = new Hashgraph(participants, store, null);
+            var hashgraph = new Hashgraph(participants, store, null, logger);
 
             for (var i = 0; i < N; i++)
             {
@@ -519,7 +532,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 participants.Add(node.Pub.ToHex(), node.Id);
             }
 
-            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize), null);
+            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize,logger), null, logger);
 
             foreach (var ev in orderedEvents)
             {
@@ -1095,10 +1108,10 @@ namespace Dotnatter.Test.HashgraphImpl
             //}
             //} else
             //{
-            store = new InmemStore(participants, CacheSize);
+            store = new InmemStore(participants, CacheSize,logger);
             //}
 
-            var hashgraph = new Hashgraph(participants, store, null);
+            var hashgraph = new Hashgraph(participants, store, null, logger);
 
             i = 0;
             foreach (var ev in orderedEvents)
@@ -1567,7 +1580,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 //Hashgraph and see if we can boostrap it to the same state.
                 var (recycledStore, err) = LoadBadgerStore(CacheSize, badgerDir);
 
-                var nh = new Hashgraph(recycledStore.Participants().participents, recycledStore, null);
+                var nh = new Hashgraph(recycledStore.Participants().participents, recycledStore, null, logger);
 
                 err = nh.Bootstrap();
 
@@ -1738,9 +1751,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 participants[node.Pub.ToHex()] = node.Id;
             }
 
-            var hashgraph = new Hashgraph(participants,
-                new InmemStore(participants, CacheSize),
-                null);
+            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize,logger), null, logger);
 
             i = 0;
             foreach (var ev in orderedEvents)

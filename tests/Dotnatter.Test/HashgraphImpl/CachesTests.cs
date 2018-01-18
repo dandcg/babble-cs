@@ -1,15 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.Test.Helpers;
+using Serilog;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Dotnatter.Test.HashgraphImpl
 {
     public class CachesTests
     {
+        private readonly ILogger logger;
+
+        public CachesTests(ITestOutputHelper output)
+        {
+            logger = output.SetupLogging();
+        }
+ 
+
         [Fact]
         public void TestParticipantEventsCache()
         {
@@ -24,7 +35,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {"charlie", 2}
             };
 
-            var pec = new ParticipantEventsCache(size, participants);
+            var pec = new ParticipantEventsCache(size, participants,logger);
 
             var items = new Dictionary<string, List<string>>();
 
@@ -153,7 +164,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {"charlie", 2}
             };
 
-            var pec = new ParticipantEventsCache(size, participants);
+            var pec = new ParticipantEventsCache(size, participants,logger);
 
             var items = new Dictionary<string, List<string>>();
             

@@ -35,13 +35,79 @@
         <FixtureName>Dotnatter.Test.HashgraphImpl.CachesTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
-      </FixtureTestSelector>
-      <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.InmemStoreTests</FixtureName>
       </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFunkyHashgraphFame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestParentRound</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReadWireInfo</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRound</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundInc</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSigningIssue</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestStronglySee</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestWitness</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDivideRounds</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideFame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestOldestSelfAncestorToSee</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideRoundReceived</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFindOrder</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestKnown</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReset</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestResetFromFrame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundDiff</TestName>
+      </NamedTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.HashgraphTests</FixtureName>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
       </FixtureTestSelector>
     </IgnoredTests>
   </Settings>

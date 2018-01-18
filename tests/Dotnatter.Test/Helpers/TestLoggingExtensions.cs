@@ -1,27 +1,19 @@
-﻿using System;
-using Serilog;
+﻿using Serilog;
 using Serilog.Events;
 using Xunit.Abstractions;
 
 namespace Dotnatter.Test.Helpers
 {
-    public class LoggingFixture : IDisposable
+    public static class TestLoggingExtensions
     {
-        public LoggingFixture(ITestOutputHelper output)
+        public static ILogger SetupLogging(this ITestOutputHelper output)
         {
-            Log.Logger = new LoggerConfiguration()
+            return Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                 .Enrich.FromLogContext()
                 .WriteTo.XunitTestOutput(output)
                 .CreateLogger();
         }
-
-        public void Dispose()
-        {
-           Log.CloseAndFlush();
-        }
-
-   
     }
 }

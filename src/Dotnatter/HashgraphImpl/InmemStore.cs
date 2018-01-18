@@ -1,11 +1,14 @@
 ﻿using System.Collections.Generic;
 using Dotnatter.Common;
+using Dotnatter.Util;
+using Serilog;
 
 namespace Dotnatter.HashgraphImpl
 {
     public class InmemStore : IStore
     {
         private readonly int cacheSize;
+        private readonly ILogger logger;
         private readonly Dictionary<string, int> participants;
         private LruCache<string, Event> eventCache;
         private LruCache<int, RoundInfo> roundCache;
@@ -15,7 +18,7 @@ namespace Dotnatter.HashgraphImpl
         private Dictionary<string, Root> roots;
         private int lastRound;
         
-        public InmemStore(Dictionary<string, int> participants, int cacheSize)
+        public InmemStore(Dictionary<string, int> participants, int cacheSize, ILogger logger)
         {
             var rts = new Dictionary<string, Root>();
 
@@ -26,10 +29,11 @@ namespace Dotnatter.HashgraphImpl
 
             this.participants = participants;
             this.cacheSize = cacheSize;
-            eventCache = new LruCache<string, Event>(cacheSize, null);
-            roundCache = new LruCache<int, RoundInfo>(cacheSize, null);
+            this.logger = logger.AddNamedContext("InmemStore");
+            eventCache = new LruCache<string, Event>(cacheSize, null, logger,"EventCache");
+            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger,"RoundCache");
             consensusCache = new RollingIndex<string>(cacheSize);
-            participantEventsCache = new ParticipantEventsCache(cacheSize, participants);
+            participantEventsCache = new ParticipantEventsCache(cacheSize, participants,logger);
             roots = rts;
             lastRound = -1;
         }
@@ -47,11 +51,14 @@ namespace Dotnatter.HashgraphImpl
         public (Event evt, StoreError err) GetEvent(string key)
         {
             
-            var (res,ok ) = eventCache.Get(key);
+         var (res,ok ) = eventCache.Get(key);
+
+            logger.Verbose("GetEvent found={ok}; key={key}",ok,key);
 
             if (!ok)
             {
                 return (new Event(), new StoreError(StoreErrorType.KeyNotFound, key));
+                
             }
             
             return (res,null);
@@ -223,9 +230,9 @@ namespace Dotnatter.HashgraphImpl
         {
             roots = newRoots;
 
-            eventCache = new LruCache<string, Event>(cacheSize, null);
+            eventCache = new LruCache<string, Event>(cacheSize, null, logger,"EventCache");
 
-            roundCache = new LruCache<int, RoundInfo>(cacheSize, null);
+            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger,"RoundCache");
 
             consensusCache = new RollingIndex<string>(cacheSize);
 

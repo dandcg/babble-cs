@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Dotnatter.Common;
 using Dotnatter.Util;
+using Serilog;
 
 namespace Dotnatter.HashgraphImpl
 {
     public class Hashgraph
     {
+        private readonly ILogger logger;
         public Dictionary<string, int> Participants { get; set; } //[public key] => id
         public Dictionary<int, string> ReverseParticipants { get; set; } //[id] => public key
         public IStore Store { get; set; } //store of Events and Rounds
@@ -28,8 +30,9 @@ namespace Dotnatter.HashgraphImpl
         public LruCache<string, ParentRoundInfo> ParentRoundCache { get; set; }
         public LruCache<string, int> RoundCache { get; set; }
 
-        public Hashgraph(Dictionary<string, int> participants, IStore store, Channel<Event> commitCh)
+        public Hashgraph(Dictionary<string, int> participants, IStore store, Channel<Event> commitCh, ILogger logger)
         {
+            this.logger = logger.AddNamedContext("HashGraph");
             var reverseParticipants = participants.ToDictionary(p => p.Value, p => p.Key);
             var cacheSize = store.CacheSize();
 
@@ -37,12 +40,12 @@ namespace Dotnatter.HashgraphImpl
             ReverseParticipants = reverseParticipants;
             Store = store;
             CommitChannel = commitCh;
-            AncestorCache = new LruCache<string, bool>(cacheSize, null);
-            SelfAncestorCache = new LruCache<string, bool>(cacheSize, null);
-            OldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null);
-            StronglySeeCache = new LruCache<string, bool>(cacheSize, null);
-            ParentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null);
-            RoundCache = new LruCache<string, int>(cacheSize, null);
+            AncestorCache = new LruCache<string, bool>(cacheSize, null, logger,"AncestorCache");
+            SelfAncestorCache = new LruCache<string, bool>(cacheSize, null, logger,"SelfAncestorCache");
+            OldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null, logger,"OldestAncestorCache");
+            StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger,"StronglySeeCache");
+            ParentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null, logger,"ParentRoundCache");
+            RoundCache = new LruCache<string, int>(cacheSize, null, logger,"RoundCache");
             UndeterminedEvents = new List<string>();
             SuperMajority = 2 * participants.Count / 3 + 1;
             UndecidedRounds = new Queue<int>(); //initialize
@@ -1166,12 +1169,12 @@ namespace Dotnatter.HashgraphImpl
             PendingLoadedEvents = 0;
             TopologicalIndex = 0;
             var cacheSize = Store.CacheSize();
-            AncestorCache = new LruCache<string, bool>(cacheSize, null);
-            SelfAncestorCache = new LruCache<string, bool>(cacheSize, null);
-            OldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null);
-            StronglySeeCache = new LruCache<string, bool>(cacheSize, null);
-            ParentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null);
-            RoundCache = new LruCache<string, int>(cacheSize, null);
+            AncestorCache = new LruCache<string, bool>(cacheSize, null, logger,"AncestorCache");
+            SelfAncestorCache = new LruCache<string, bool>(cacheSize, null, logger,"SelfAncestorCache");
+            OldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null, logger,"OldestAncestorCache");
+            StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger,"StronglySeeCache");
+            ParentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null, logger,"ParentRoundCache");
+            RoundCache = new LruCache<string, int>(cacheSize, null, logger,"RoundCache");
 
             return null;
         }

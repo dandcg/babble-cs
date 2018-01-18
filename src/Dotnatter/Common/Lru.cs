@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Dotnatter.Util;
+using Serilog;
 
 namespace Dotnatter.Common
 {
@@ -11,12 +13,14 @@ namespace Dotnatter.Common
         private readonly LinkedList<LruCacheItem> evictList = new LinkedList<LruCacheItem>();
         private readonly int size;
         private readonly Action<TKey, TValue> evictAction;
-        
+        private readonly ILogger logger;
+
         // NewLRU constructs an LRU of the given size
-        public LruCache(int size, Action<TKey, TValue> evictAction)
+        public LruCache(int size, Action<TKey, TValue> evictAction, ILogger logger, string instanceName = null)
         {
             this.size = size;
             this.evictAction = evictAction;
+            this.logger = logger.AddNamedContext("LruCache", instanceName);
         }
 
         // Purge is used to completely clear the cache
@@ -31,7 +35,7 @@ namespace Dotnatter.Common
 
             evictList.Clear();
         }
-        
+
         // Add adds a value to the cache.  Returns true if an eviction occurred.
         [MethodImpl(MethodImplOptions.Synchronized)]
         public bool Add(TKey key, TValue value)
@@ -49,7 +53,7 @@ namespace Dotnatter.Common
             items.TryAdd(key, node);
             return flag;
         }
-        
+
         public (TValue value, bool success) Get(TKey key)
         {
             if (items.TryGetValue(key, out var node))
@@ -59,9 +63,10 @@ namespace Dotnatter.Common
                 evictList.AddLast(node);
                 return (value, true);
             }
-            return (default(TValue), false);
+
+            return (default, false);
         }
-        
+
         // Check if a key is in the cache, without updating the recent-ness
         // or deleting it for being stale.
         [MethodImpl(MethodImplOptions.Synchronized)]
@@ -80,9 +85,10 @@ namespace Dotnatter.Common
                 var value = node.Value.Value;
                 return (value, true);
             }
-            return (default(TValue), false);
+
+            return (default, false);
         }
-        
+
         // Remove removes the provided key from the cache, returning if the
         // key was contained.
         [MethodImpl(MethodImplOptions.Synchronized)]
@@ -94,7 +100,7 @@ namespace Dotnatter.Common
             // Remove from cache
             return items.Remove(key);
         }
-        
+
         // RemoveOldest removes the oldest item from the cache.
         private void RemoveFirst()
         {
@@ -108,7 +114,7 @@ namespace Dotnatter.Common
                 evictAction?.Invoke(node.Key, node.Value);
             }
         }
-        
+
         // GetOldest returns the oldest entry
         [MethodImpl(MethodImplOptions.Synchronized)]
         public (TKey key, TValue value, bool success) GetOldest()
@@ -120,9 +126,10 @@ namespace Dotnatter.Common
             {
                 return (node.Key, node.Value, true);
             }
-            return (default(TKey), default(TValue), false);
+
+            return (default, default, false);
         }
-        
+
         // Len returns the number of items in the cache.
         [MethodImpl(MethodImplOptions.Synchronized)]
         public int Len()
@@ -135,7 +142,7 @@ namespace Dotnatter.Common
         {
             return items.Keys;
         }
-        
+
         private class LruCacheItem
         {
             public LruCacheItem(TKey k, TValue v)
@@ -147,8 +154,5 @@ namespace Dotnatter.Common
             public TKey Key { get; }
             public TValue Value { get; }
         }
-
     }
-
-
 }
