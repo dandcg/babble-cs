@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Dotnatter.Common;
+using Dotnatter.HashgraphImpl.Model;
 
 namespace Dotnatter.HashgraphImpl
 {

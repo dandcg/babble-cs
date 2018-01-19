@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Model
 {
     public class WireBody
     {

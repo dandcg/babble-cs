@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.HashgraphImpl
+﻿namespace Dotnatter.HashgraphImpl.Model
 {
     public class WireEvent
     {

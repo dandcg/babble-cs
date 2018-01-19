@@ -1,38 +1,97 @@
-﻿namespace Dotnatter.NodeImpl
+﻿using System.Security.Cryptography;
+using System.Threading.Tasks;
+using Dotnatter.HashgraphImpl;
+using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.NetImpl;
+using Dotnatter.ProxyImpl;
+using Dotnatter.Util;
+using Serilog;
+
+namespace Dotnatter.NodeImpl
 {
     public class Node
     {
+        private readonly NodeState nodeState;
+        private readonly Config conf;
+        private readonly int id;
+        private readonly Peer[] participants;
+        private readonly ITransport trans;
+        private readonly IAppProxy proxy;
+        private Core core;
+        private readonly string localAddr;
+        private ILogger logger;
+        private RandomPeerSelector peerSelector;
+        private Channel<Shutdown> shutdownCh;
+        private object netCh;
+        private Channel<byte[]> submitCh;
+        private readonly ControlTimer controlTimer;
 
-        //nodeState
+        public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
+        {
+            localAddr = trans.LocalAddr();
 
-        public Config conf { get; set; }
+            var (pmap, _) = store.Participants();
 
-//        int id      
-//       Core core
-//    coreLock sync.Mutex
+            var commitCh = new Channel<Event>(); //400 
 
-//    localAddr string
+            core = new Core(id, key, pmap, store, commitCh, logger);
 
-//    peerSelector PeerSelector
-//    selectorLock sync.Mutex
+            peerSelector = new RandomPeerSelector(participants, localAddr);
 
-//    trans net.Transport
-//    netCh <-chan net.RPC
+            this.id = id;
+            this.conf = conf;
 
-//proxy    proxy.AppProxy
-//submitCh chan[]byte
+            this.logger = logger.ForContext("node", localAddr);
 
-//    commitCh chan[] hg.Event
+            this.trans = trans;
+            netCh = trans.Consumer();
+            this.proxy = proxy;
+            submitCh = proxy.SubmitCh();
+            shutdownCh = new Channel<Shutdown>();
+            controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
-//shutdownCh chan struct{ }
+            //Initialize as Babbling
+            nodeState.SetStarting(true);
+            nodeState.SetState(NodeStateEnum.Babbling);
+        }
 
-//controlTimer* ControlTimer
+        public async Task RunAsync(bool gossip)
+        {
+            //The ControlTimer allows the background routines to control the
+            //heartbeat timer when the node is in the Babbling state. The timer should
+            //only be running when there are uncommitted transactions in the system.
 
+            var timer = controlTimer.RunAsync();
 
-//        public DateTime start time.Time
+            //Execute some background work regardless of the state of the node.
+            //Process RPC requests as well as SumbitTx and CommitTx requests
 
-//        public int syncRequests
-//        public int syncErrors   
+            var backgroundWork = DoBackgroundWork();
+
+            //n.goFunc(n.doBackgroundWork)
+
+            //Execute Node State Machine
+            //for {
+            //    // Run different routines depending on node state
+            //    state := n.getState()
+            //    n.logger.WithField("state", state.String()).Debug("Run loop")
+
+            //    switch state {
+            //        case Babbling:
+            //        n.babble(gossip)
+            //        case CatchingUp:
+            //        n.fastForward()
+            //        case Shutdown:
+            //        return
+            //    }
+            //}
+
+            Task.WaitAll(timer, backgroundWork);
+        }
+
+        public async Task DoBackgroundWork()
+        {
+        }
     }
 }

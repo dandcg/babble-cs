@@ -1,9 +1,8 @@
 ﻿using System;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
-using Newtonsoft.Json;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Model
 {
     public class EventBody
     {

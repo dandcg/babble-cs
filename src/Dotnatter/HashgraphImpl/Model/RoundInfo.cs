@@ -3,7 +3,7 @@ using System.Linq;
 using System.Numerics;
 using Dotnatter.Util;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Model
 {
     public class RoundInfo
     {

@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.Util;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Model
 {
     public class Event
     {
