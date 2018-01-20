@@ -50,7 +50,7 @@ namespace Dotnatter.Common
             var cacheItem = new LruCacheItem(key, value);
             var node = new LinkedListNode<LruCacheItem>(cacheItem);
             evictList.AddLast(node);
-            items.Add(key, node);
+            items[key]= node;
             return flag;
         }
 
