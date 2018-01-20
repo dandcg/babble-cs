@@ -30,7 +30,7 @@ namespace Dotnatter.Common
             foreach (var i in items.ToArray())
             {
                 evictAction?.Invoke(i.Key, i.Value.Value.Value);
-                items.Remove(i.Key, out var _);
+                items.Remove(i.Key);
             }
 
             evictList.Clear();
@@ -50,7 +50,7 @@ namespace Dotnatter.Common
             var cacheItem = new LruCacheItem(key, value);
             var node = new LinkedListNode<LruCacheItem>(cacheItem);
             evictList.AddLast(node);
-            items.TryAdd(key, node);
+            items.Add(key, node);
             return flag;
         }
 
