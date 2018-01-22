@@ -6,10 +6,10 @@ namespace Dotnatter.Test.Helpers
 {
     public static class TestLoggingExtensions
     {
-        public static ILogger SetupLogging(this ITestOutputHelper output)
+        public static ILogger SetupLogging(this ITestOutputHelper output, LogEventLevel logEventLevel= LogEventLevel.Debug)
         {
             return Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Verbose()
+                .MinimumLevel.Is(logEventLevel)
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                 .Enrich.FromLogContext()
                 .WriteTo.XunitTestOutput(output)
