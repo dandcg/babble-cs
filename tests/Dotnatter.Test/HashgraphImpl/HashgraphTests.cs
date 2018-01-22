@@ -22,7 +22,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
         public HashgraphTests(ITestOutputHelper output)
         {
-           logger= output.SetupLogging().ForContext<HashgraphTests>();
+           logger= output.SetupLogging().ForContext("SourceContext","HashGraphTests");
 
         }
 

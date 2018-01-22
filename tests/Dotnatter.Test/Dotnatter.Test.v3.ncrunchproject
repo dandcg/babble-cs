@@ -109,6 +109,9 @@
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
       </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

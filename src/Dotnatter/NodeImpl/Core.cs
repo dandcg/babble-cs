@@ -58,7 +58,7 @@ namespace Dotnatter.NodeImpl
 
         public string HexId()
         {
-            if (hexId != "")
+            if (!string.IsNullOrEmpty(hexId))
             {
                 return hexId;
             }
