@@ -139,6 +139,12 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestSync</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensus</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestOverSyncLimit</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

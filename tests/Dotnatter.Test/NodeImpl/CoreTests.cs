@@ -8,7 +8,6 @@ using Dotnatter.NodeImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
-using Serilog.Events;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -432,13 +431,13 @@ e0  e1  e2
         }
 
         [Fact]
-       public void TestConsensus()
+        public void TestConsensus()
         {
             var cores = InitConsensusHashgraph();
 
             var l = cores[0].GetConsensusEvents().Length;
-           
-            Assert.Equal(6,l); //length of consensus should be 6
+
+            Assert.Equal(6, l); //length of consensus should be 6
 
             var core0Consensus = cores[0].GetConsensusEvents();
             var core1Consensus = cores[1].GetConsensusEvents();
@@ -449,25 +448,22 @@ e0  e1  e2
             //    output.WriteLine("{0}: {1}, {2}, {3}", i ,core0Consensus[i],core1Consensus[i],core2Consensus[i] );
             //}
 
-            for (var i=0; i<l; i++)
-
+            for (var i = 0; i < l; i++)
 
             {
-                var e=core0Consensus[i];
+                var e = core0Consensus[i];
 
-                Assert.Equal(e,core1Consensus[i]); //core 1 consensus[%d] does not match core 0's
-                Assert.Equal(e,core2Consensus[i]); //core 2 consensus[%d] does not match core 0's
-          
+                Assert.Equal(e, core1Consensus[i]); //core 1 consensus[%d] does not match core 0's
+                Assert.Equal(e, core2Consensus[i]); //core 2 consensus[%d] does not match core 0's
             }
         }
-
 
         [Fact]
         public void TestOverSyncLimit()
         {
             var cores = InitConsensusHashgraph();
 
-            var known = new Dictionary<int, int> ();
+            var known = new Dictionary<int, int>();
 
             var syncLimit = 10;
 
@@ -478,7 +474,7 @@ e0  e1  e2
             }
 
             Assert.True(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return true");
-     
+
             //negative
             for (var i = 0; i < 3; i++)
             {
@@ -486,20 +482,127 @@ e0  e1  e2
             }
 
             Assert.False(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
-            
+
             //edge
-            known = new Dictionary<int, int>()
+            known = new Dictionary<int, int>
             {
                 {0, 2},
                 {1, 3},
-                {2, 3},
+                {2, 3}
             };
 
             Assert.False(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
-            
         }
 
-        
+        /*
+
+    |   |   |   |-----------------
+	|   w31 |   | R3
+	|	| \ |   |
+    |   |  w32  |
+    |   |   | \ |
+    |   |   |  w33
+    |   |   | / |-----------------
+    |   |  g21  | R2
+	|   | / |   |
+	|   w21 |   |
+	|	| \ |   |
+    |   |   \   |
+    |   |   | \ |
+    |   |   |  w23
+    |   |   | / |
+    |   |  w22  |
+	|   | / |   |-----------------
+	|  f13  |   | R1
+	|	| \ |   | LastConsensusRound for nodes 1, 2 and 3 because it is the last
+    |   |   \   | Round that has all its witnesses decided
+    |   |   | \ |
+	|   |   |  w13
+	|   |   | / |
+	|   |  w12  |
+    |   | / |   |
+    |  w11  |   |
+	|	| \ |   |-----------------
+    |   |   \   | R0
+    |   |   | \ |
+    |   |   |  e32
+    |   |   | / |
+    |   |  e21  | All Events in Round 0 are Consensus Events.
+    |   | / |   |
+    |  e10  |   |
+	| / |   |   |
+   e0   e1  e2  e3
+    0	1	2	3
+*/
+        private void InitFFHashgraph(Core[] cores)
+        {
+            var playbook = new[]
+            {
+                new Play(0, 1, new[] {"e10".StringToBytes()}),
+                new Play(1, 2, new[] {"e21".StringToBytes()}),
+                new Play(2, 3, new[] {"e32".StringToBytes()}),
+                new Play(3, 1, new[] {"w11".StringToBytes()}),
+                new Play(1, 2, new[] {"w12".StringToBytes()}),
+                new Play(2, 3, new[] {"w13".StringToBytes()}),
+                new Play(3, 1, new[] {"f13".StringToBytes()}),
+                new Play(1, 2, new[] {"w22".StringToBytes()}),
+                new Play(2, 3, new[] {"w23".StringToBytes()}),
+                new Play(3, 1, new[] {"w21".StringToBytes()}),
+                new Play(1, 2, new[] {"g21".StringToBytes()}),
+                new Play(2, 3, new[] {"w33".StringToBytes()}),
+                new Play(3, 2, new[] {"w32".StringToBytes()}),
+                new Play(2, 1, new[] {"w31".StringToBytes()})
+            };
+
+            foreach (var play in playbook)
+            {
+                var err = SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
+
+                Assert.Null(err);
+            }
+        }
+
+        [Fact]
+        public void TestConsensusFF()
+        {
+            var (cores, _, _ ) = InitCores(4);
+            InitFFHashgraph(cores);
+
+            var r = cores[0].GetLastConsensusRoundIndex();
+
+            if (r != null)
+            {
+                output.WriteLine($"Cores[0] last consensus Round should be nil, not {r}");
+                Assert.Null(r);
+            }
+
+            r = cores[1].GetLastConsensusRoundIndex();
+
+            if (r == null || r != 1)
+            {
+                output.WriteLine($"Cores[1] last consensus Round should be 1, not {r.ToString() ?? "nill"}");
+            }
+
+            var l = cores[0].GetConsensusEvents().Length;
+
+            Assert.Equal(0, l);
+
+            l = cores[1].GetConsensusEvents().Length;
+
+            Assert.Equal(7, l);
+
+            var core1Consensus = cores[1].GetConsensusEvents();
+            var core2Consensus = cores[2].GetConsensusEvents();
+            var core3Consensus = cores[3].GetConsensusEvents();
+
+            for (var i = 0; i < core1Consensus.Length; i++)
+            {
+                var e = core1Consensus[i];
+
+                Assert.Equal(e, core2Consensus[i]); //Node 2 consensus[%d] does not match Node 1's
+                Assert.Equal(e, core3Consensus[i]); //Node 3 consensus[%d] does not match Node 1's
+            }
+        }
 
         private Exception SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
         {
