@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
+using Dotnatter.Util;
 
 namespace Dotnatter.Crypto
 {
@@ -28,15 +29,17 @@ namespace Dotnatter.Crypto
             {
                 return null;
             }
-            // Todo: Will need to align blob formats for interpolority
+
+            // Todo: Will need to align blob formats for interop
             var key = CngKey.Import(pub, CngKeyBlobFormat.GenericPublicBlob);
             return key;
         }
 
         public static byte[] FromEcdsaPub(CngKey pub)
         {
-            // Todo: Will need to align blob formats for interpolority
+            // Todo: Will need to align blob formats for interop
             var bytes = pub?.Export(CngKeyBlobFormat.GenericPublicBlob);
+
             return bytes;
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -194,7 +195,7 @@ namespace Dotnatter.NodeImpl
             return hg.GetFrame();
         }
 
-//returns events that c knowns about that are not in 'known'
+        //returns events that c knowns about that are not in 'known'
         public (Event[] events, Exception err ) Diff(Dictionary<int, int> known)
         {
             var unknown = new List<Event>();
@@ -235,7 +236,7 @@ namespace Dotnatter.NodeImpl
 
         public Exception Sync(WireEvent[] unknown)
         {
-            logger.Debug("Sync unknown={unknown}; txPool={txPool}", unknown, transactionPool);
+            logger.Debug("Sync unknown={@unknown}; txPool={txPool}", unknown.Select(s=>s.Body.Index), transactionPool);
 
             string otherHead = "";
 
@@ -245,6 +246,9 @@ namespace Dotnatter.NodeImpl
             foreach (var we in unknown)
 
             {
+
+                //logger.Debug("wev={wev}",we.Body.CreatorId);
+
                 Event ev;
                 (ev, err) = hg.ReadWireInfo(we);
 
@@ -252,6 +256,8 @@ namespace Dotnatter.NodeImpl
                 {
                     return err;
                 }
+
+                //logger.Debug("ev={ev}",ev.Creator());
 
                 err = InsertEvent(ev, false);
 
@@ -265,6 +271,8 @@ namespace Dotnatter.NodeImpl
                 {
                     otherHead = ev.Hex();
                 }
+
+                k++;
             }
 
             //create new event with self head and other head

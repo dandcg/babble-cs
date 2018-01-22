@@ -260,7 +260,7 @@ namespace Dotnatter.HashgraphImpl.Model
 
                 if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
                 {
-                    return DateTime.Compare(i.GetConsensusTimestamp(), i.GetConsensusTimestamp());
+                    return DateTime.Compare(i.GetConsensusTimestamp(), j.GetConsensusTimestamp());
                 }
 
                 Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");

@@ -8,6 +8,7 @@ using Dotnatter.NodeImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
+using Serilog.Events;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -94,7 +95,6 @@ namespace Dotnatter.Test.NodeImpl
             {
                 if (i != participant)
                 {
-                    
                     var evh = index[$"e{i}"];
 
                     var ( ev, _) = cores[i].GetEvent(evh);
@@ -213,35 +213,332 @@ namespace Dotnatter.Test.NodeImpl
             }
         }
 
+        [Fact]
+        public void TestSync()
+
+        {
+            var (cores, _, index) = InitCores(3);
+
+            /*
+               core 0           core 1          core 2
+        
+               e0  |   |        |   e1  |       |   |   e2
+               0   1   2        0   1   2       0   1   2
+            */
+
+            //core 1 is going to tell core 0 everything it knows
+
+            var err = SynchronizeCores(cores, 1, 0, new byte[][] { });
+
+            Assert.Null(err);
+
+            /*
+               core 0           core 1          core 2
+        
+               e01 |   |
+               | \ |   |
+               e0  e1  |        |   e1  |       |   |   e2
+               0   1   2        0   1   2       0   1   2
+            */
+
+            var knownBy0 = cores[0].Known();
+
+            var k = knownBy0[cores[0].Id()];
+            Assert.False(k != 1, "core 0 should have last-index 1 for core 0, not {k}");
+
+            k = knownBy0[cores[1].Id()];
+            Assert.False(k != 0, "core 0 should have last-index 0 for core 1, not {k}");
+
+            k = knownBy0[cores[2].Id()];
+
+            Assert.False(k != -1, "core 0 should have last-index -1 for core 2, not {k}");
+
+            var (core0Head, _ ) = cores[0].GetHead();
+
+            Assert.False(core0Head.SelfParent != index["e0"], "core 0 head self-parent should be e0");
+
+            Assert.False(core0Head.OtherParent != index["e1"], "core 0 head other-parent should be e1");
+
+            index["e01"] = core0Head.Hex();
+
+            //core 0 is going to tell core 2 everything it knows
+            err = SynchronizeCores(cores, 0, 2, new byte[][] { });
+
+            Assert.Null(err);
+
+            /*
+        
+               core 0           core 1          core 2
+        
+                                                |   |  e20
+                                                |   | / |
+                                                |   /   |
+                                                | / |   |
+               e01 |   |                        e01 |   |
+               | \ |   |                        | \ |   |
+               e0  e1  |        |   e1  |       e0  e1  e2
+               0   1   2        0   1   2       0   1   2
+            */
+
+            var knownBy2 = cores[2].Known();
+
+            k = knownBy2[cores[0].Id()];
+            Assert.False(k != 1, "core 2 should have last-index 1 for core 0, not {k}");
+
+            k = knownBy2[cores[1].Id()];
+            Assert.False(k != 0, "core 2 should have last-index 0 core 1, not {k}");
+
+            k = knownBy2[cores[2].Id()];
+            Assert.False(k != 1, "core 2 should have last-index 1 for core 2, not {k}");
+
+            var (core2Head, _) = cores[2].GetHead();
+
+            Assert.Equal(index["e2"], core2Head.SelfParent); // core 2 head self-parent should be e2
+            Assert.Equal(index["e01"], core2Head.OtherParent); // core 2 head other-parent should be e01
+
+            index["e20"] = core2Head.Hex();
+
+            //core 2 is going to tell core 1 everything it knows
+            err = SynchronizeCores(cores, 2, 1, new byte[][] { });
+
+            Assert.Null(err);
+
+            /*
+        
+               core 0           core 1          core 2
+        
+                                |  e12  |
+                                |   | \ |
+                                |   |  e20      |   |  e20
+                                |   | / |       |   | / |
+                                |   /   |       |   /   |
+                                | / |   |       | / |   |
+               e01 |   |        e01 |   |       e01 |   |
+               | \ |   |        | \ |   |       | \ |   |
+               e0  e1  |        e0  e1  e2      e0  e1  e2
+               0   1   2        0   1   2       0   1   2
+            */
+
+            var knownBy1 = cores[1].Known();
+            k = knownBy1[cores[0].Id()];
+
+            Assert.False(k != 1, "core 1 should have last-index 1 for core 0, not {k}");
+
+            k = knownBy1[cores[1].Id()];
+
+            Assert.False(k != 1, "core 1 should have last-index 1 for core 1, not {k}");
+
+            k = knownBy1[cores[2].Id()];
+
+            Assert.False(k != 1, "core 1 should have last-index 1 for core 2, not {k}");
+
+            var (core1Head, _) = cores[1].GetHead();
+            Assert.False(core1Head.SelfParent != index["e1"], "core 1 head self-parent should be e1");
+
+            Assert.False(core1Head.OtherParent != index["e20"], "core 1 head other-parent should be e20");
+
+            index["e12"] = core1Head.Hex();
+        }
+
+/*
+h0  |   h2
+| \ | / |
+|   h1  |
+|  /|   |--------------------
+g02 |   | R2
+| \ |   |
+|   \   |
+|   | \ |
+|   |  g21
+|   | / |
+|  g10  |
+| / |   |
+g0  |   g2
+| \ | / |
+|   g1  |
+|  /|   |--------------------
+f02 |   | R1
+| \ |   |
+|   \   |
+|   | \ |
+|   |  f21
+|   | / |
+|  f10  |
+| / |   |
+f0  |   f2
+| \ | / |
+|   f1  |
+|  /|   |--------------------
+e02 |   | R0 Consensus
+| \ |   |
+|   \   |
+|   | \ |
+|   |  e21
+|   | / |
+|  e10  |
+| / |   |
+e0  e1  e2
+0   1    2
+*/
+        public class Play
+        {
+            public int From { get; }
+            public int To { get; }
+            public byte[][] Payload { get; }
+
+            public Play(int from, int to, byte[][] payload)
+            {
+                From = from;
+                To = to;
+                Payload = payload;
+            }
+        }
+
+        private Core[] InitConsensusHashgraph()
+        {
+            var (cores, _, _) = InitCores(3);
+            var playbook = new[]
+            {
+                new Play(0, 1, new[] {"e10".StringToBytes()}),
+                new Play(1, 2, new[] {"e21".StringToBytes()}),
+                new Play(2, 0, new[] {"e02".StringToBytes()}),
+                new Play(0, 1, new[] {"f1".StringToBytes()}),
+                new Play(1, 0, new[] {"f0".StringToBytes()}),
+                new Play(1, 2, new[] {"f2".StringToBytes()}),
+
+                new Play(0, 1, new[] {"f10".StringToBytes()}),
+                new Play(1, 2, new[] {"f21".StringToBytes()}),
+                new Play(2, 0, new[] {"f02".StringToBytes()}),
+                new Play(0, 1, new[] {"g1".StringToBytes()}),
+                new Play(1, 0, new[] {"g0".StringToBytes()}),
+                new Play(1, 2, new[] {"g2".StringToBytes()}),
+
+                new Play(0, 1, new[] {"g10".StringToBytes()}),
+                new Play(1, 2, new[] {"g21".StringToBytes()}),
+                new Play(2, 0, new[] {"g02".StringToBytes()}),
+                new Play(0, 1, new[] {"h1".StringToBytes()}),
+                new Play(1, 0, new[] {"h0".StringToBytes()}),
+                new Play(1, 2, new[] {"h2".StringToBytes()})
+            };
+
+            foreach (var play in playbook)
+            {
+                var err = SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
+
+                Assert.Null(err);
+            }
+
+            return cores;
+        }
+
+        [Fact]
+       public void TestConsensus()
+        {
+            var cores = InitConsensusHashgraph();
+
+            var l = cores[0].GetConsensusEvents().Length;
+           
+            Assert.Equal(6,l); //length of consensus should be 6
+
+            var core0Consensus = cores[0].GetConsensusEvents();
+            var core1Consensus = cores[1].GetConsensusEvents();
+            var core2Consensus = cores[2].GetConsensusEvents();
+
+            //for (var i = 0; i < l; i++)
+            //{
+            //    output.WriteLine("{0}: {1}, {2}, {3}", i ,core0Consensus[i],core1Consensus[i],core2Consensus[i] );
+            //}
+
+            for (var i=0; i<l; i++)
 
 
+            {
+                var e=core0Consensus[i];
+
+                Assert.Equal(e,core1Consensus[i]); //core 1 consensus[%d] does not match core 0's
+                Assert.Equal(e,core2Consensus[i]); //core 2 consensus[%d] does not match core 0's
+          
+            }
+        }
 
 
+        [Fact]
+        public void TestOverSyncLimit()
+        {
+            var cores = InitConsensusHashgraph();
 
+            var known = new Dictionary<int, int> ();
 
+            var syncLimit = 10;
 
+            //positive
+            for (var i = 0; i < 3; i++)
+            {
+                known[i] = 1;
+            }
 
+            Assert.True(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return true");
+     
+            //negative
+            for (var i = 0; i < 3; i++)
+            {
+                known[i] = 6;
+            }
 
+            Assert.False(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
+            
+            //edge
+            known = new Dictionary<int, int>()
+            {
+                {0, 2},
+                {1, 3},
+                {2, 3},
+            };
 
+            Assert.False(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
+            
+        }
 
+        
 
+        private Exception SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
+        {
+            var knownByTo = cores[to].Known();
+            var ( unknownByTo, err) = cores[from].Diff(knownByTo);
+            if (err != null)
+            {
+                return err;
+            }
 
+            WireEvent[] unknownWire;
+            ( unknownWire, err) = cores[from].ToWire(unknownByTo);
+            if (err != null)
+            {
+                return err;
+            }
 
+            cores[to].AddTransactions(payload);
 
+            //output.WriteLine($"From: {from}; To: {to}");
+            //output.WriteLine(unknownWire.DumpToString());
 
+            return cores[to].Sync(unknownWire);
+        }
 
+        private Exception SyncAndRunConsensus(Core[] cores, int from, int to, byte[][] payload)
+        {
+            var err = SynchronizeCores(cores, from, to, payload);
 
+            if (err != null)
+            {
+                return err;
+            }
 
+            cores[to].RunConsensus();
+            return null;
+        }
 
-
-
-
-
-
-
-
-
-        public string GetName(Dictionary<string, string> index, string hash)
+        private string GetName(Dictionary<string, string> index, string hash)
         {
             foreach (var i in index)
             {

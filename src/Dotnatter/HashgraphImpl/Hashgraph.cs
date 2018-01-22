@@ -438,6 +438,9 @@ namespace Dotnatter.HashgraphImpl
 
         public Exception InsertEvent(Event ev, bool setWireInfo)
         {
+
+
+
             //verify signature
             var (ok, err) = ev.Verify();
 
@@ -759,14 +762,10 @@ namespace Dotnatter.HashgraphImpl
         {
             var selfParent = "";
             var otherParent = "";
+            Exception err;
 
             var creator = ReverseParticipants[wev.Body.CreatorId];
-            var (creatorBytes, err) = creator.Substring(3).StringToBytesWithErr();
-
-            if (err != null)
-            {
-                return (null, err);
-            }
+            var creatorBytes = creator.FromHex();
 
             if (wev.Body.SelfParentIndex >= 0)
             {
@@ -1120,7 +1119,9 @@ namespace Dotnatter.HashgraphImpl
                 }
             }
             UndeterminedEvents = newUndeterminedEvents;
+            
             newConsensusEvents.Sort(new Event.EventByConsensus());
+
             foreach (var e in newConsensusEvents)
             {
                 Store.AddConsensusEvent(e.Hex());

@@ -106,11 +106,38 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundDiff</TestName>
       </NamedTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
-      </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestBigIntegerSignitureEncoding</TestName>
+      </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInitCores</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestDiff</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestIsLoaded</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallBody</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestSignEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestWireEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestSync</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>
