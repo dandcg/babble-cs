@@ -559,7 +559,7 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.True(e0.Body.GetSelfParentIndex() == -1 &&
                         e0.Body.GetOtherParentCreatorId() == -1 &&
                         e0.Body.GetOtherParentIndex() == -1 &&
-                        e0.Body.GetCreatorId() == h.Participants[e0.Creator], "Invalid wire info on e0");
+                        e0.Body.GetCreatorId() == h.Participants[e0.Creator()], "Invalid wire info on e0");
 
             expectedFirstDescendants.Add(new EventCoordinates
             {
@@ -610,9 +610,9 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.Null(err);
 
             Assert.True(e21.Body.GetSelfParentIndex() == 1 &&
-                        e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator] &&
+                        e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator()] &&
                         e21.Body.GetOtherParentIndex() == 1 &&
-                        e21.Body.GetCreatorId() == h.Participants[e21.Creator]
+                        e21.Body.GetCreatorId() == h.Participants[e21.Creator()]
                 , "Invalid wire info on e21"
             );
 
@@ -667,9 +667,9 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.Null(err);
 
             Assert.True(f1.Body.GetSelfParentIndex() == 2 &&
-                        f1.Body.GetOtherParentCreatorId() == h.Participants[e0.Creator] &&
+                        f1.Body.GetOtherParentCreatorId() == h.Participants[e0.Creator()] &&
                         f1.Body.GetOtherParentIndex() == 2 &&
-                        f1.Body.GetCreatorId() == h.Participants[f1.Creator], "Invalid wire info on f1");
+                        f1.Body.GetCreatorId() == h.Participants[f1.Creator()], "Invalid wire info on f1");
 
             // -------------
 

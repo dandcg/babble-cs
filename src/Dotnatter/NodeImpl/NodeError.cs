@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.NodeImpl
 {
     public class NodeError : ApplicationException
     {
@@ -21,4 +21,27 @@ namespace Dotnatter.HashgraphImpl
         {
         }
     }
+
+
+
+    public class CoreError : ApplicationException
+    {
+        public CoreError()
+        {
+        }
+
+        public CoreError(string message) : base(message)
+        {
+        }
+
+        public CoreError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+
+        protected CoreError(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+        }
+    }
+
+
 }

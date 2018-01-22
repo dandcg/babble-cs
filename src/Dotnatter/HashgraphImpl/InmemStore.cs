@@ -80,7 +80,7 @@ namespace Dotnatter.HashgraphImpl
 
             if (err != null && err.StoreErrorType == StoreErrorType.KeyNotFound)
             {
-                err =AddParticpantEvent(ev.Creator, key, ev.Index());
+                err =AddParticpantEvent(ev.Creator(), key, ev.Index());
                 if (err != null)
                 {
                     return err;

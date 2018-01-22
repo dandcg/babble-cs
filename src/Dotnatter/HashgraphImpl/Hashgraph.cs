@@ -89,7 +89,7 @@ namespace Dotnatter.HashgraphImpl
                 return false;
             }
 
-            var eyCreator = Participants[ey.Creator];
+            var eyCreator = Participants[ey.Creator()];
             var lastAncestorKnownFromYCreator = ex.GetLastAncestors()[eyCreator].Index;
 
             return lastAncestorKnownFromYCreator >= ey.Index();
@@ -124,7 +124,7 @@ namespace Dotnatter.HashgraphImpl
                 return false;
             }
 
-            var exCreator = Participants[ex.Creator];
+            var exCreator = Participants[ex.Creator()];
 
             var (ey, erry) = Store.GetEvent(y);
             if (erry != null)
@@ -132,7 +132,7 @@ namespace Dotnatter.HashgraphImpl
                 return false;
             }
 
-            var eyCreator = Participants[ey.Creator];
+            var eyCreator = Participants[ey.Creator()];
 
             return exCreator == eyCreator && ex.Index() >= ey.Index();
         }
@@ -177,7 +177,7 @@ namespace Dotnatter.HashgraphImpl
                 return "";
             }
 
-            var a = ey.GetFirstDescendants()[Participants[ex.Creator]];
+            var a = ey.GetFirstDescendants()[Participants[ex.Creator()]];
 
             if (a.Index <= ex.Index())
             {
@@ -258,7 +258,7 @@ namespace Dotnatter.HashgraphImpl
             }
 
             //We are going to need the Root later
-            var (root, errr) = Store.GetRoot(ex.Creator);
+            var (root, errr) = Store.GetRoot(ex.Creator());
 
             if (errr != null)
             {
@@ -333,7 +333,7 @@ namespace Dotnatter.HashgraphImpl
                 return false;
             }
 
-            var (root, err) = Store.GetRoot(ex.Creator);
+            var (root, err) = Store.GetRoot(ex.Creator());
 
             if (err != null)
             {
@@ -512,7 +512,7 @@ namespace Dotnatter.HashgraphImpl
         public Exception CheckSelfParent(Event ev)
         {
             var selfParent = ev.SelfParent;
-            var creator = ev.Creator;
+            var creator = ev.Creator();
 
             var (creatorLastKnown, _, err) = Store.LastFrom(creator);
             if (err != null)
@@ -543,7 +543,7 @@ namespace Dotnatter.HashgraphImpl
                 if (err != null)
                 {
                     //it might still be in the Root
-                    var (root, errr) = Store.GetRoot(ev.Creator);
+                    var (root, errr) = Store.GetRoot(ev.Creator());
 
                     if (errr != null)
                     {
@@ -630,7 +630,7 @@ namespace Dotnatter.HashgraphImpl
 
             var index = ev.Index();
 
-            var creator = ev.Creator;
+            var creator = ev.Creator();
 
             var ok = Participants.TryGetValue(creator, out var fakeCreatorId);
 
@@ -650,11 +650,11 @@ namespace Dotnatter.HashgraphImpl
         //update first decendant of each last ancestor to point to ev
         public Exception UpdateAncestorFirstDescendant(Event ev)
         {
-            var ok = Participants.TryGetValue(ev.Creator, out int fakeCreatorId);
+            var ok = Participants.TryGetValue(ev.Creator(), out int fakeCreatorId);
 
             if (!ok)
             {
-                return new HashgraphError($"Could not find fake creator id {ev.Creator}");
+                return new HashgraphError($"Could not find fake creator id {ev.Creator()}");
             }
 
             var index = ev.Index();
@@ -709,11 +709,11 @@ namespace Dotnatter.HashgraphImpl
             var otherParentIndex = -1;
 
             //could be the first Event inserted for this creator. In this case, use Root
-            var (lf, isRoot, _) = Store.LastFrom(ev.Creator);
+            var (lf, isRoot, _) = Store.LastFrom(ev.Creator());
 
             if (isRoot && lf == ev.SelfParent)
             {
-                var (root, err) = Store.GetRoot(ev.Creator);
+                var (root, err) = Store.GetRoot(ev.Creator());
 
                 if (err != null)
                 {
@@ -743,14 +743,14 @@ namespace Dotnatter.HashgraphImpl
                     return err;
                 }
 
-                otherParentCreatorId = Participants[otherParent.Creator];
+                otherParentCreatorId = Participants[otherParent.Creator()];
                 otherParentIndex = otherParent.Index();
             }
 
             ev.SetWireInfo(selfParentIndex,
                 otherParentCreatorId,
                 otherParentIndex,
-                Participants[ev.Creator]);
+                Participants[ev.Creator()]);
 
             return null;
         }
@@ -1180,7 +1180,7 @@ namespace Dotnatter.HashgraphImpl
 
             return null;
         }
-        public (Frame, Exception err) GetFrame()
+        public (Frame frame, Exception err) GetFrame()
         {
             Exception err;
 
@@ -1209,7 +1209,7 @@ namespace Dotnatter.HashgraphImpl
                     return (new Frame(),err);
                 }
                 evs.Add(w);
-                roots.Add(w.Creator, new Root
+                roots.Add(w.Creator(), new Root
                 {
                     X = w.SelfParent,
                     Y = w.OtherParent,
@@ -1217,7 +1217,7 @@ namespace Dotnatter.HashgraphImpl
                     Round = Round(w.SelfParent), Others = new Dictionary<string, string>()
                 });
                 string[] participantEvents;
-                (participantEvents,err) = Store.ParticipantEvents(w.Creator, w.Index());
+                (participantEvents,err) = Store.ParticipantEvents(w.Creator(), w.Index());
                 if (err != null)
                 {
                     return (new Frame(),err);
@@ -1292,9 +1292,9 @@ namespace Dotnatter.HashgraphImpl
                     var ok = treated.TryGetValue(otherParent, out var opt);
                     if (!opt || !ok)
                     {
-                        if (ev.SelfParent != roots[ev.Creator].X)
+                        if (ev.SelfParent != roots[ev.Creator()].X)
                         {
-                            roots[ev.Creator].Others[ev.Hex()] = otherParent;
+                            roots[ev.Creator()].Others[ev.Hex()] = otherParent;
                         }
                     }
                 }

@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
+using Dotnatter.NodeImpl;
 using Dotnatter.Util;
 
 namespace Dotnatter.HashgraphImpl.Model
@@ -93,7 +95,7 @@ namespace Dotnatter.HashgraphImpl.Model
         private EventCoordinates[] lastAncestors;
         private EventCoordinates[] firstDescendants;
 
-        public string Creator => creator ?? (creator = Body.Creator.ToHex());
+        public string Creator() => creator ?? (creator = Body.Creator.ToHex());
 
         public byte[] Hash()
         {
@@ -149,10 +151,12 @@ namespace Dotnatter.HashgraphImpl.Model
         }
 
         //ecdsa sig
-        public void Sign(CngKey privKey)
+        public HashgraphError Sign(CngKey privKey)
         {
             var signBytes = Body.Hash();
             SetSigniture(CryptoUtils.Sign(privKey, signBytes));
+            return null;
+
         }
 
         public (bool res, Exception err) Verify()
