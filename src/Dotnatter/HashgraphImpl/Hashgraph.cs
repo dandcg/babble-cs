@@ -5,6 +5,7 @@ using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.NodeImpl;
 using Dotnatter.Util;
+using Nito.AsyncEx;
 using Serilog;
 
 namespace Dotnatter.HashgraphImpl
@@ -21,7 +22,7 @@ namespace Dotnatter.HashgraphImpl
         public int LastCommitedRoundEvents { get; set; } //number of evs in round before LastConsensusRound
         public int ConsensusTransactions { get; set; } //number of consensus transactions
         public int PendingLoadedEvents { get; set; } //number of loaded evs that are not yet committed
-        public Channel<Event> CommitChannel { get; set; } //channel for committing evs
+        public AsyncProducerConsumerQueue<Event> CommitChannel { get; set; } //channel for committing evs
         public int TopologicalIndex { get; set; } //counter used to order evs in topological order
         public int SuperMajority { get; set; }
 
@@ -32,7 +33,7 @@ namespace Dotnatter.HashgraphImpl
         public LruCache<string, ParentRoundInfo> ParentRoundCache { get; set; }
         public LruCache<string, int> RoundCache { get; set; }
 
-        public Hashgraph(Dictionary<string, int> participants, IStore store, Channel<Event> commitCh, ILogger logger)
+        public Hashgraph(Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event> commitCh, ILogger logger)
         {
             this.logger = logger.AddNamedContext("HashGraph");
             var reverseParticipants = participants.ToDictionary(p => p.Value, p => p.Key);
@@ -1137,7 +1138,7 @@ namespace Dotnatter.HashgraphImpl
             {
                 foreach (var nce in newConsensusEvents)
                 {
-                    CommitChannel.Send(nce);
+                    CommitChannel.Enqueue(nce);
                 }
             }
 

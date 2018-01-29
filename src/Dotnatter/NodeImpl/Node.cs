@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.ObjectModel;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +27,7 @@ namespace Dotnatter.NodeImpl
         private Core core;
         private readonly AsyncLock coreLock;
         private readonly string localAddr;
-        private ILogger logger;
+        private readonly ILogger logger;
         private RandomPeerSelector peerSelector;
         private AsyncProducerConsumerQueue<Shutdown> shutdownCh;
         private readonly ControlTimer controlTimer;
@@ -41,10 +40,10 @@ namespace Dotnatter.NodeImpl
 
             var (pmap, _) = store.Participants();
 
-            var commitCh = new Channel<Event>(); //400 
+            var commitCh = new AsyncProducerConsumerQueue<Event>(400);
 
             core = new Core(id, key, pmap, store, commitCh, logger);
-            coreLock= new AsyncLock();
+            coreLock = new AsyncLock();
             peerSelector = new RandomPeerSelector(participants, localAddr);
 
             this.id = id;
@@ -53,7 +52,7 @@ namespace Dotnatter.NodeImpl
             this.logger = logger.ForContext("node", localAddr);
 
             this.trans = trans;
-            this.netCh = trans.Consumer;
+            netCh = trans.Consumer;
             this.proxy = proxy;
             submitCh = proxy.SubmitCh();
             shutdownCh = new AsyncProducerConsumerQueue<Shutdown>();
@@ -79,8 +78,8 @@ namespace Dotnatter.NodeImpl
 
             //Execute Node State Machine
 
-            var stateMachine = StateMachineRunAsync(gossip,ct);
-            
+            var stateMachine = StateMachineRunAsync(gossip, ct);
+
             await Task.WhenAll(timer, backgroundWork, stateMachine);
         }
 
@@ -90,93 +89,91 @@ namespace Dotnatter.NodeImpl
             {
                 //    // Run different routines depending on node state
                 var state = nodeState.GetState();
-                logger.Debug("Run Lopp {state}", state);
+                logger.Debug("Run Loop {state}", state);
 
                 switch (state)
                 {
-                       case NodeStateEnum.Babbling:
-                           await babble(gossip,ct);
-                           break;
+                    case NodeStateEnum.Babbling:
+                        await babble(gossip, ct);
+                        break;
 
-                           case NodeStateEnum.CatchingUp:
-                               await fastForward();
-                               break;
+                    case NodeStateEnum.CatchingUp:
+                        await fastForward();
+                        break;
 
-                               case NodeStateEnum.Shutdown:
-                                   return;
-                                   break;
-
+                    case NodeStateEnum.Shutdown:
+                        return;
+            
                 }
-
-      
-            } ;
+            }
         }
-
-    
 
         public async Task BackgroundWorkRunAsync(CancellationToken ct)
         {
+            var processingRpcTask = new Task(
+                async () =>
+                {
+                    while (!ct.IsCancellationRequested)
+                    {
+                        await netCh.OutputAvailableAsync(ct);
+                        var rpc = await netCh.DequeueAsync(ct);
+                        await ProcessRpc(rpc, ct);
+                    }
+                });
 
-            var processingRpcTask = ProcessRpc(ct);
+            var addingTransactionsTask = AddTransaction(ct);
 
-
-
+            var commitEventsTask = Commit(ct);
 
             await Task.WhenAll(processingRpcTask);
-
-
         }
 
-
-
-        public async Task ProcessRpc(CancellationToken ct)
+        private Task Commit(CancellationToken ct)
         {
+            throw new NotImplementedException();
+        }
 
-            while (!ct.IsCancellationRequested)
+        private Task AddTransaction(CancellationToken ct)
+        {
+            throw new NotImplementedException();
+        }
+
+        private Task babble(bool gossip, CancellationToken ct)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task ProcessRpc(Rpc rpc, CancellationToken ct)
+        {
+            var s = nodeState.GetState();
+
+            if (s != NodeStateEnum.Babbling)
             {
-                await netCh.OutputAvailableAsync(ct);
-
-                var rpc = await netCh.DequeueAsync(ct);
-
-
-                var s = nodeState.GetState();
-                
-                if (s != NodeStateEnum.Babbling)
-                {
-                    logger.Debug("Discarding RPC Request {state}",s);
-                    var resp = new RpcResponse(){Error = new NetError($"not ready: {s}"), Response = new SyncResponse(){From=localAddr}};
-                    await rpc.RespChan.EnqueueAsync(resp, ct);
-                }
-                else
-                {
-                    
-                    switch(rpc.Command)
-                    {
-                        case SyncRequest cmd:
-                            await ProcessSyncRequest(rpc,cmd);
-                            break;
-
-                        case EagerSyncRequest cmd:
-                            await ProcessEagerSyncRequest(rpc,cmd);
-                            break;
-
-                            default:
-
-                                logger.Error("Discarding RPC Request {@cmd}",rpc.Command);
-                                var resp = new RpcResponse(){Error = new NetError($"unexpected command"), Response = null};
-                                await rpc.RespChan.EnqueueAsync(resp, ct);
-                      
-                                break;
-                    }
-
-
-
-                }
-
-
-
+                logger.Debug("Discarding RPC Request {state}", s);
+                var resp = new RpcResponse {Error = new NetError($"not ready: {s}"), Response = new SyncResponse {From = localAddr}};
+                await rpc.RespChan.EnqueueAsync(resp, ct);
             }
+            else
+            {
+                switch (rpc.Command)
+                {
+                    case SyncRequest cmd:
+                        await ProcessSyncRequest(rpc, cmd);
+                        break;
 
+                    case EagerSyncRequest cmd:
+                        await ProcessEagerSyncRequest(rpc, cmd);
+                        break;
+
+                    default:
+
+                        logger.Error("Discarding RPC Request {@cmd}", rpc.Command);
+                        var resp = new RpcResponse {Error = new NetError($"unexpected command"), Response = null};
+                        await rpc.RespChan.EnqueueAsync(resp, ct);
+
+                        break;
+                }
+            }
         }
 
         private Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
@@ -189,17 +186,9 @@ namespace Dotnatter.NodeImpl
             throw new NotImplementedException();
         }
 
-
         private Task fastForward()
         {
             throw new NotImplementedException();
         }
-
-        private Task babble(bool gossip, CancellationToken ct)
-        {
-            throw new NotImplementedException();
-        }
-
-
     }
 }
