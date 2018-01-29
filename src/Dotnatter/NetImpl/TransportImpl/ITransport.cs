@@ -1,24 +1,24 @@
-﻿using Dotnatter.HashgraphImpl;
-using Dotnatter.Util;
+﻿using System.Threading.Tasks;
+using Nito.AsyncEx;
 
-namespace Dotnatter.NetImpl
+namespace Dotnatter.NetImpl.TransportImpl
 {
     public interface ITransport
     {
         // Consumer returns a channel that can be used to
         // consume and respond to RPC requests.
-        Channel<Rpc> Consumer();
+        AsyncProducerConsumerQueue<Rpc> Consumer { get; }
 
         // LocalAddr is used to return our local address to distinguish from our peers.
-        string LocalAddr();
+        string LocalAddr { get; }
 
         // Sync sends the appropriate RPC to the target node.
-        NetError Sync(string target, SyncRequest args, SyncResponse resp);
+        Task<(SyncResponse resp, NetError err)> Sync(string target, SyncRequest args);
 
-        NetError EagerSync(string target, EagerSyncRequest args, EagerSyncResponse resp);
+        Task<(EagerSyncResponse resp, NetError err)> EagerSync(string target, EagerSyncRequest args);
 
         // Close permanently closes a transport, stopping
         // any associated goroutines and freeing other resources.
-        NetError Close();
+        Task<NetError> Close();
     }
 }

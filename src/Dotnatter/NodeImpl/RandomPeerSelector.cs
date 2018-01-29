@@ -1,5 +1,6 @@
 ﻿using System;
 using Dotnatter.NetImpl;
+using Dotnatter.NetImpl.PeerImpl;
 
 namespace Dotnatter.NodeImpl
 {

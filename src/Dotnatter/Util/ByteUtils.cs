@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using Dotnatter.Common;
 using Newtonsoft.Json;
@@ -8,6 +9,29 @@ namespace Dotnatter.Util
 {
     public static class ByteUtils
     {
+
+        public static byte[] GetBytes(byte value, int length)
+        {
+            var bytes = new byte[length];
+
+
+            for (var i = 0; i < bytes.Length; i++)
+                bytes[i] = value;
+
+            return bytes;
+
+        }
+
+
+        public static byte[] GetRandomBytes(RandomNumberGenerator rng, uint len)
+
+        {
+            var rw = new byte[len];
+            rng.GetBytes(rw);
+            return rw;
+        }
+
+
         /// Decode a hex string into bytes.
         public static byte[] FromHex(this string hex)
         {

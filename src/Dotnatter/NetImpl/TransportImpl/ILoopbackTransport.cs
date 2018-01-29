@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.NetImpl
+﻿namespace Dotnatter.NetImpl.TransportImpl
 {
     public interface ILoopbackTransport
     {

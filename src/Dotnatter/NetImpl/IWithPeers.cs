@@ -1,4 +1,6 @@
-﻿namespace Dotnatter.NetImpl
+﻿using Dotnatter.NetImpl.TransportImpl;
+
+namespace Dotnatter.NetImpl
 {
     public interface IWithPeers
     {
