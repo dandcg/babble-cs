@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,14 +22,17 @@ namespace Dotnatter.NodeImpl
         private readonly int id;
         private readonly Peer[] participants;
         private readonly ITransport trans;
+        private readonly AsyncProducerConsumerQueue<Rpc> netCh;
+
         private readonly IAppProxy proxy;
         private Core core;
         private readonly AsyncLock coreLock;
         private readonly string localAddr;
         private ILogger logger;
         private RandomPeerSelector peerSelector;
-        private Channel<Shutdown> shutdownCh;
+        private AsyncProducerConsumerQueue<Shutdown> shutdownCh;
         private readonly ControlTimer controlTimer;
+        private AsyncProducerConsumerQueue<byte[]> submitCh;
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
@@ -49,10 +53,10 @@ namespace Dotnatter.NodeImpl
             this.logger = logger.ForContext("node", localAddr);
 
             this.trans = trans;
-   
+            this.netCh = trans.Consumer;
             this.proxy = proxy;
             submitCh = proxy.SubmitCh();
-            shutdownCh = new Channel<Shutdown>();
+            shutdownCh = new AsyncProducerConsumerQueue<Shutdown>();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
             //Initialize as Babbling
@@ -108,15 +112,66 @@ namespace Dotnatter.NodeImpl
             } ;
         }
 
+    
+
         public async Task BackgroundWorkRunAsync(CancellationToken ct)
+        {
+
+            var processingRpcTask = ProcessRpc(ct);
+
+
+
+
+            await Task.WhenAll(processingRpcTask);
+
+
+        }
+
+
+
+        public async Task ProcessRpc(CancellationToken ct)
         {
 
             while (!ct.IsCancellationRequested)
             {
+                await netCh.OutputAvailableAsync(ct);
 
-                //var rpc = netCh.
+                var rpc = await netCh.DequeueAsync(ct);
 
 
+                var s = nodeState.GetState();
+                
+                if (s != NodeStateEnum.Babbling)
+                {
+                    logger.Debug("Discarding RPC Request {state}",s);
+                    var resp = new RpcResponse(){Error = new NetError($"not ready: {s}"), Response = new SyncResponse(){From=localAddr}};
+                    await rpc.RespChan.EnqueueAsync(resp, ct);
+                }
+                else
+                {
+                    
+                    switch(rpc.Command)
+                    {
+                        case SyncRequest cmd:
+                            await ProcessSyncRequest(rpc,cmd);
+                            break;
+
+                        case EagerSyncRequest cmd:
+                            await ProcessEagerSyncRequest(rpc,cmd);
+                            break;
+
+                            default:
+
+                                logger.Error("Discarding RPC Request {@cmd}",rpc.Command);
+                                var resp = new RpcResponse(){Error = new NetError($"unexpected command"), Response = null};
+                                await rpc.RespChan.EnqueueAsync(resp, ct);
+                      
+                                break;
+                    }
+
+
+
+                }
 
 
 
@@ -124,11 +179,26 @@ namespace Dotnatter.NodeImpl
 
         }
 
+        private Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
+        {
+            throw new NotImplementedException();
+        }
+
+        private Task ProcessSyncRequest(Rpc rpc, SyncRequest req)
+        {
+            throw new NotImplementedException();
+        }
 
 
+        private Task fastForward()
+        {
+            throw new NotImplementedException();
+        }
 
-
-
+        private Task babble(bool gossip, CancellationToken ct)
+        {
+            throw new NotImplementedException();
+        }
 
 
     }

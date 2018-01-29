@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Dotnatter.Util;
 
@@ -44,9 +45,10 @@ namespace Dotnatter.NodeImpl
 
 
 
-        public async Task RunAsync()
+        public async Task RunAsync(CancellationToken ct)
         {
             throw new NotImplementedException();
         }
+
     }
 }

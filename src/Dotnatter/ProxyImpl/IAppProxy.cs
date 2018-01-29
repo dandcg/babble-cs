@@ -1,16 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Dotnatter.HashgraphImpl;
-using Dotnatter.NodeImpl;
-using Dotnatter.Util;
+﻿using Dotnatter.NodeImpl;
+using Nito.AsyncEx;
 
 namespace Dotnatter.ProxyImpl
 {
 
 public interface IAppProxy
 {
-    Channel<byte[]> SubmitCh();
+    AsyncProducerConsumerQueue<byte[]> SubmitCh();
     ProxyError CommitTx(byte[] tx);
 }
 }
