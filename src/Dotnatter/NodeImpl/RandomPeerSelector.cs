@@ -10,5 +10,15 @@ namespace Dotnatter.NodeImpl
         {
             throw new NotImplementedException();
         }
+
+        public Peer Next()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UpdateLast(string peerAddr)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

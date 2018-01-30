@@ -18,7 +18,7 @@ namespace Dotnatter.NodeImpl
         private readonly CngKey key;
         private byte[] pubKey;
         private string hexId;
-        private readonly Hashgraph hg;
+        public readonly Hashgraph hg;
         //private readonly Dictionary<string, int> participants;
         private readonly Dictionary<int, string> reverseParticipants;
         //private readonly IStore store;

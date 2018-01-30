@@ -93,5 +93,9 @@ namespace Dotnatter.NodeImpl
 
             await Task.WhenAny(Task.WhenAll(timerTask, resetTask, stopTask), shutdownTask, Task.Delay(Timeout.Infinite, ct));
         }
+
+        public async Task Shutdown() {
+          await ShutdownCh.EnqueueAsync(true);
+        }
     }
 }
