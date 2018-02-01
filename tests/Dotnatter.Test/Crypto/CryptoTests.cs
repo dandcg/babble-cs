@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using Dotnatter.Crypto;
 using Dotnatter.Crypto.Asn;
 using Dotnatter.Util;
@@ -12,58 +13,50 @@ namespace Dotnatter.Test.Crypto
 {
     public class CryptoTests
     {
-
-        internal static byte[] ReadFile (string fileName)
+        internal static byte[] ReadFile(string fileName)
         {
             FileStream f = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-            int size = (int)f.Length;
+            int size = (int) f.Length;
             byte[] data = new byte[size];
             size = f.Read(data, 0, size);
             f.Close();
             return data;
         }
 
-        byte[] GetBytesFromPEM( string pemString, string section )
+        private byte[] GetBytesFromPEM(string pemString, string section)
         {
-            var header = String.Format("-----BEGIN {0}-----", section);
-            var footer = String.Format("-----END {0}-----", section);
+            var header = string.Format("-----BEGIN {0}-----", section);
+            var footer = string.Format("-----END {0}-----", section);
 
-            var start= pemString.IndexOf(header, StringComparison.Ordinal);
-            if( start < 0 )
+            var start = pemString.IndexOf(header, StringComparison.Ordinal);
+            if (start < 0)
                 return null;
 
             start += header.Length;
             var end = pemString.IndexOf(footer, start, StringComparison.Ordinal) - start;
 
-            if( end < 0 )
+            if (end < 0)
                 return null;
 
-            return Convert.FromBase64String( pemString.Substring( start, end ) );
+            return Convert.FromBase64String(pemString.Substring(start, end));
         }
-
 
         [Fact]
         public void TryOutput()
         {
-
-            var pem = System.IO.File.ReadAllText("Crypto\\text.pem");
-            byte[] certBuffer = GetBytesFromPEM( pem, "EC PRIVATE KEY" );
+            var pem = File.ReadAllText("Crypto\\text.pem");
+            byte[] certBuffer = GetBytesFromPEM(pem, "EC PRIVATE KEY");
 
             Console.WriteLine(certBuffer.BytesToString());
-            var t = new AsnEncodedData(new Oid("1.2.840.10045.3.1.7"),certBuffer);
+            var t = new AsnEncodedData(new Oid("1.2.840.10045.3.1.7"), certBuffer);
 
             Console.WriteLine(t.Format(true));
 
-           var  p= new AsnEncodedData(new byte[] {05, 00});
-            var x= new System.Security.Cryptography.X509Certificates.PublicKey(t.Oid,p,t);
+            var p = new AsnEncodedData(new byte[] {05, 00});
+            var x = new PublicKey(t.Oid, p, t);
             Console.WriteLine(x.EncodedKeyValue.Format(true));
 
-
-
-
             //var certificate = new X509Certificate2(t.Oid.Value);
-
-
 
             //Console.WriteLine(Directory.GetCurrentDirectory());
 
@@ -75,38 +68,19 @@ namespace Dotnatter.Test.Crypto
 
             //  Console.WriteLine(vdc.BytesToString());
 
-
             //  var cert = new X509Certificate2(data);
 
             //var priv =cert.GetECDsaPrivateKey();
 
             //var p2 = priv as ECDsaCng;
             //var key = p2.Key;
-
-
-
         }
 
-
-        public byte[] IntListToByteArray(string str)
-        {
-            var bytes = new List<byte>();
-            string[] split = str.Split(" ");
-            foreach (var s in split)
-            {
-                var b = (byte) Int32.Parse(s);
-                bytes.Add(b);
-
-            }
-
-            return bytes.ToArray();
-
-        }
         [Fact]
         public void TryWithRaw()
         {
             var pubHex = "046A347F0488ABC7D92E2208794E327ECA15B0C2B27018B2B5B89DD8CB736FD7CC38F37D2D10822530AD97359ACBD837A65C2CA62D44B0CE569BD222C2DABF268F";
-            var privBytes =IntListToByteArray("48 119 2 1 1 4 32 36 32 85 234 114 73 227 18 64 63 130 39 155 80 70 109 242 211 48 21 9 238 238 96 191 178 8 11 9 221 183 246 160 10 6 8 42 134 72 206 61 3 1 7 161 68 3 66 0 4 106 52 127 4 136 171 199 217 46 34 8 121 78 50 126 202 21 176 194 178 112 24 178 181 184 157 216 203 115 111 215 204 56 243 125 45 16 130 37 48 173 151 53 154 203 216 55 166 92 44 166 45 68 176 206 86 155 210 34 194 218 191 38 143");
+            var privBytes = "48 119 2 1 1 4 32 36 32 85 234 114 73 227 18 64 63 130 39 155 80 70 109 242 211 48 21 9 238 238 96 191 178 8 11 9 221 183 246 160 10 6 8 42 134 72 206 61 3 1 7 161 68 3 66 0 4 106 52 127 4 136 171 199 217 46 34 8 121 78 50 126 202 21 176 194 178 112 24 178 181 184 157 216 203 115 111 215 204 56 243 125 45 16 130 37 48 173 151 53 154 203 216 55 166 92 44 166 45 68 176 206 86 155 210 34 194 218 191 38 143".FromIntList();
             var pubBytes = pubHex.FromHex();
 
             var msgBytes = "time for beer".StringToBytes();
@@ -115,13 +89,12 @@ namespace Dotnatter.Test.Crypto
             Console.WriteLine(privBytes.ToHex());
 
             var pk = d.Nodes.First(n => n.NodeType == Asn1UniversalNodeType.OctetString).GetBytes().Skip(2).ToArray();
-           // var oid = d.Nodes.First(n => n.NodeType == Asn1UniversalNodeType.ObjectId);
+            // var oid = d.Nodes.First(n => n.NodeType == Asn1UniversalNodeType.ObjectId);
             Console.WriteLine(pk.Length);
 
             //var npb = new List<byte>();
             //npb.AddRange("45435332".FromHex());
             //npb.AddRange("20000000".FromHex());
-
 
             //var keyType = new byte[] {0x45, 0x43, 0x53, 0x31};
             //var keyLength = new byte[] {0x20, 0x00, 0x00, 0x00};
@@ -132,8 +105,6 @@ namespace Dotnatter.Test.Crypto
 
             //var cngKey = CngKey.Import(keyImport, CngKeyBlobFormat.EccPublicBlob);
 
-
-
             var keyType = new byte[] {0x45, 0x43, 0x53, 0x32};
             var keyLength = new byte[] {0x20, 0x00, 0x00, 0x00};
 
@@ -142,21 +113,14 @@ namespace Dotnatter.Test.Crypto
             var keyImport = keyType.Concat(keyLength).Concat(key).Concat(pk.Take(32)).ToArray();
 
             var cngKey = CngKey.Import(keyImport, CngKeyBlobFormat.EccPrivateBlob);
-            
 
-    
             Console.WriteLine(msgBytes.ToIntList());
 
             Console.WriteLine(cngKey.Algorithm);
 
-           
-
-
             using (var ecdsa = new ECDsaCng(cngKey))
             {
-
-         
-            ;
+                ;
 
                 var sig = ecdsa.SignHash(msgBytes);
 
@@ -169,49 +133,33 @@ namespace Dotnatter.Test.Crypto
 
             var sm = new List<byte>();
 
-            sm.AddRange(IntListToByteArray("4 125 215 32 233 142 70 85 201 154 76 249 192 224 47 110 137 143 196 200 134 41 40 215 145 53 16 48 70 137 141 220"));
-            sm.AddRange(IntListToByteArray("13 204 63 209 196 150 249 28 161 192 197 238 187 28 49 93 64 81 111 132 87 13 150 77 41 62 144 197 244 173 110 176"));
-            
+            sm.AddRange("4 125 215 32 233 142 70 85 201 154 76 249 192 224 47 110 137 143 196 200 134 41 40 215 145 53 16 48 70 137 141 220".FromIntList());
+            sm.AddRange("13 204 63 209 196 150 249 28 161 192 197 238 187 28 49 93 64 81 111 132 87 13 150 77 41 62 144 197 244 173 110 176".FromIntList());
+
             Console.WriteLine(sm.Count);
-            
+
             using (var ecdsa = new ECDsaCng(cngKey))
             {
-               Assert.True( ecdsa.VerifyHash(msgBytes, sm.ToArray()));
+                Assert.True(ecdsa.VerifyHash(msgBytes, sm.ToArray()));
             }
 
             //npb.AddRange(pubBytes.Skip(1));
             //npb.AddRange(pk);
 
-
             //var cngKey = CngKey.Import(npb.ToArray(), CngKeyBlobFormat.EccPrivateBlob);
-
-
-
-
-
         }
-
-
-
 
         [Fact]
         public void TestOut()
         {
-
-
         }
-
-
-
 
         [Fact]
         public void TestCryptoConsistencySigning()
         {
             var key = CryptoUtils.GenerateEcdsaKey();
 
-           //var key= CngKey.Import();
-
-
+            //var key= CngKey.Import();
 
             var bytes = "You grot boy!".StringToBytes();
 

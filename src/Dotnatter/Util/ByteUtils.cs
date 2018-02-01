@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Dotnatter.Common;
 using Newtonsoft.Json;
 
 namespace Dotnatter.Util
@@ -58,7 +58,13 @@ namespace Dotnatter.Util
         {
             return string.Join(" ", bytes.Select((b) => (int) b));
         }
+        
+        public static byte[] FromIntList(this string str)
+        {
+            var split = str.Split(' ');
+            return split.Select(s => (byte) Int32.Parse(s)).ToArray();
 
+        }
 
         // string encoding 
         public static byte[] StringToBytes(this string str)
@@ -107,10 +113,6 @@ namespace Dotnatter.Util
                 }
                 return stream.ToArray();
             }
-
         }
-
-
-
     }
 }

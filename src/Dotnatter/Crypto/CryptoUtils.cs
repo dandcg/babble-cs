@@ -30,14 +30,20 @@ namespace Dotnatter.Crypto
                 return null;
             }
 
+
+
             // Todo: Will need to align blob formats for interop
             var key = CngKey.Import(pub, CngKeyBlobFormat.GenericPublicBlob);
             return key;
         }
 
+     
+
         public static byte[] FromEcdsaPub(CngKey pub)
         {
             // Todo: Will need to align blob formats for interop
+
+
             var bytes = pub?.Export(CngKeyBlobFormat.GenericPublicBlob);
 
             return bytes;
@@ -46,8 +52,6 @@ namespace Dotnatter.Crypto
         public static (BigInteger r, BigInteger s) SignToBigInt(CngKey priv, byte[] hash)
         {
             var sig = Sign(priv, hash);
-
-            // Todo: Check endian
 
             var r = new BigInteger(sig.Take(32).ToArray());
             var s = new BigInteger(sig.Skip(32).ToArray());
