@@ -24,4 +24,10 @@
     <ProjectReference Include="..\..\src\Dotnatter\Dotnatter.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Crypto\text.pem">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

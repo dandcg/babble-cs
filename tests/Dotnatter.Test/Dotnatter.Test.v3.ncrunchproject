@@ -29,9 +29,6 @@
         <FixtureName>Dotnatter.Test.Common.RollingIndexTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.Crypto.CryptoTests</FixtureName>
-      </FixtureTestSelector>
-      <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.CachesTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
@@ -144,6 +141,24 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestOverSyncLimit</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.NodeImpl.CoreTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.NodeImpl.NodeTests</FixtureName>
+      </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencySigning</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestOut</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryOutput</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

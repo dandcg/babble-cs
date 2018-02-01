@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Dotnatter.Common;
@@ -50,6 +51,12 @@ namespace Dotnatter.Util
                 hex.AppendFormat("{0:x2}", b);
 
             return hex.ToString();
+        }
+
+
+        public static string ToIntList(this byte[] bytes)
+        {
+            return string.Join(" ", bytes.Select((b) => (int) b));
         }
 
 

@@ -62,6 +62,7 @@ namespace Dotnatter.NodeImpl
             shutdownCh = new AsyncProducerConsumerQueue<bool>();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
+            nodeState= new NodeState();
             //Initialize as Babbling
             nodeState.SetStarting(true);
             nodeState.SetState(NodeStateEnum.Babbling);
