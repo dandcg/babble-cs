@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Util.Crypto.Asn {
+﻿namespace Dotnatter.Crypto.Asn {
     public enum Asn1UniversalNodeType {
         Boolean = 0x01,
         Integer = 0x02,

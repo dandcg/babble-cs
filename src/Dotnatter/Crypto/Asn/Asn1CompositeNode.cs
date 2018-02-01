@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Xml.Linq;
 
-namespace Dotnatter.Util.Crypto.Asn {
+namespace Dotnatter.Crypto.Asn {
     public abstract class Asn1CompositeNode : Asn1Node {
 
         public override Asn1TagForm TagForm => Asn1TagForm.Constructed;

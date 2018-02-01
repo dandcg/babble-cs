@@ -30,7 +30,7 @@ namespace Dotnatter.NodeImpl
         private readonly List<byte[]> transactionPool = new List<byte[]>();
         private readonly ILogger logger;
 
-        public Core(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event> commitCh, ILogger logger)
+        public Core(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event[]> commitCh, ILogger logger)
         {
             this.id = id;
             this.key = key;

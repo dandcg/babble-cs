@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Xml.Linq;
 
-namespace Dotnatter.Util.Crypto.Asn {
+namespace Dotnatter.Crypto.Asn {
     public class Asn1Real : Asn1Node {
 
         public override Asn1UniversalNodeType NodeType { get; }

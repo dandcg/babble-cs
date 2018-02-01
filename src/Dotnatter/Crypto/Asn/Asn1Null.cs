@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Xml.Linq;
 
-namespace Dotnatter.Util.Crypto.Asn {
+namespace Dotnatter.Crypto.Asn {
     public class Asn1Null : Asn1Node {
 
         public const string NODE_NAME = "Null";

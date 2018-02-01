@@ -37,14 +37,14 @@ namespace Dotnatter.NodeImpl
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private AsyncProducerConsumerQueue<Event[]> commitCh;
 
-        public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
+        public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger, Peer[] participants1)
 
         {
             localAddr = trans.LocalAddr;
 
             var (pmap, _) = store.Participants();
 
-            var commitCh = new AsyncProducerConsumerQueue<Event>(400);
+            commitCh = new AsyncProducerConsumerQueue<Event[]>(400);
 
             core = new Core(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
@@ -58,6 +58,7 @@ namespace Dotnatter.NodeImpl
             this.trans = trans;
             netCh = trans.Consumer;
             this.proxy = proxy;
+            this.participants = participants1;
             submitCh = proxy.SubmitCh();
             shutdownCh = new AsyncProducerConsumerQueue<bool>();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);

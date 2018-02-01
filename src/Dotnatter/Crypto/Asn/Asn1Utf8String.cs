@@ -2,7 +2,7 @@
 using System.Text;
 using System.Xml.Linq;
 
-namespace Dotnatter.Util.Crypto.Asn {
+namespace Dotnatter.Crypto.Asn {
     public class Asn1Utf8String : Asn1Node {
 
         public const string NODE_NAME = "UTF8";

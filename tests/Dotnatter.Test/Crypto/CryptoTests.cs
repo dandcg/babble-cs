@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
+using Dotnatter.Crypto.Asn;
 using Dotnatter.Util;
-using Dotnatter.Util.Crypto.Asn;
 using Xunit;
 
 namespace Dotnatter.Test.Crypto
