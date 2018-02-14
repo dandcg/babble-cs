@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Dotnatter.Crypto;
@@ -86,11 +87,11 @@ namespace Dotnatter.Test.Crypto
             var msgBytes = "time for beer".StringToBytes();
 
             var d = Asn1Node.ReadNode(privBytes);
-            Console.WriteLine(privBytes.ToHex());
+            //Console.WriteLine(privBytes.ToHex());
 
             var pk = d.Nodes.First(n => n.NodeType == Asn1UniversalNodeType.OctetString).GetBytes().Skip(2).ToArray();
             // var oid = d.Nodes.First(n => n.NodeType == Asn1UniversalNodeType.ObjectId);
-            Console.WriteLine(pk.Length);
+            //Console.WriteLine(pk.Length);
 
             //var npb = new List<byte>();
             //npb.AddRange("45435332".FromHex());
@@ -114,9 +115,9 @@ namespace Dotnatter.Test.Crypto
 
             var cngKey = CngKey.Import(keyImport, CngKeyBlobFormat.EccPrivateBlob);
 
-            Console.WriteLine(msgBytes.ToIntList());
+           // Console.WriteLine(msgBytes.ToIntList());
 
-            Console.WriteLine(cngKey.Algorithm);
+           // Console.WriteLine(cngKey.Algorithm);
 
             using (var ecdsa = new ECDsaCng(cngKey))
             {
@@ -127,16 +128,33 @@ namespace Dotnatter.Test.Crypto
                 var r = sig.Take(32).ToArray().ToIntList();
                 var s = sig.Skip(32).ToArray().ToIntList();
 
-                Console.WriteLine($"r={r}");
-                Console.WriteLine($"s={s}");
+               // Console.WriteLine($"r={r}");
+                //Console.WriteLine($"s={s}");
             }
 
             var sm = new List<byte>();
 
-            sm.AddRange("4 125 215 32 233 142 70 85 201 154 76 249 192 224 47 110 137 143 196 200 134 41 40 215 145 53 16 48 70 137 141 220".FromIntList());
-            sm.AddRange("13 204 63 209 196 150 249 28 161 192 197 238 187 28 49 93 64 81 111 132 87 13 150 77 41 62 144 197 244 173 110 176".FromIntList());
+            var rb = "4 125 215 32 233 142 70 85 201 154 76 249 192 224 47 110 137 143 196 200 134 41 40 215 145 53 16 48 70 137 141 220".FromIntList();
+            var sb = "13 204 63 209 196 150 249 28 161 192 197 238 187 28 49 93 64 81 111 132 87 13 150 77 41 62 144 197 244 173 110 176".FromIntList();
 
-            Console.WriteLine(sm.Count);
+
+            var ri = new BigInteger(rb.Reverse().ToArray());
+            
+
+
+
+
+            Console.WriteLine(ri);
+
+            var bi = BigInteger.Parse("2031592040209509309444738411503462520448943330036365867913793138397723332060");
+            var bib = bi.ToByteArray();
+
+            Console.WriteLine(bib.ToIntList());
+
+            sm.AddRange(rb);
+            sm.AddRange(sb);
+
+            //Console.WriteLine(sm.Count);
 
             using (var ecdsa = new ECDsaCng(cngKey))
             {

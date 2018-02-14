@@ -155,10 +155,10 @@
         <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencySigning</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestOut</TestName>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryOutput</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryOutput</TestName>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryWithRaw</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>
