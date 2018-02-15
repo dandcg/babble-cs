@@ -5,7 +5,7 @@ using Nito.AsyncEx;
 
 namespace Dotnatter.NetImpl.TransportImpl
 {
-    public class InMemTransport : ITransport
+    public class InMemTransport : ILoopbackTransport
     {
         private readonly AsyncLock sync;
         private Dictionary<string, ITransport> peers;

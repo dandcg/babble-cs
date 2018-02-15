@@ -6,14 +6,14 @@ using Nito.AsyncEx;
 
 namespace Dotnatter.NetImpl.TransportImpl
 {
-    public class WampTransport:ITransport
+    public class TcpTransport:ITransport
     {
 
         private readonly AsyncLock sync;
         private Dictionary<string, ITransport> peers;
         private readonly TimeSpan timeout;
 
-        public WampTransport()
+        public TcpTransport()
         {
             sync = new AsyncLock();
             Consumer = new AsyncProducerConsumerQueue<Rpc>(16);

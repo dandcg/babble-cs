@@ -1,4 +1,6 @@
-﻿namespace Dotnatter.NetImpl.PeerImpl
+﻿using System.Collections.Generic;
+
+namespace Dotnatter.NetImpl.PeerImpl
 {
     public class Peer
     {
@@ -13,6 +15,27 @@
      
         }
 
+        // ExcludePeer is used to exclude a single peer from a list of peers.
+        public static (int, Peer[]) ExcludePeer(Peer[] peers, string peer)
+        {
+            var index = -1;
+            var otherPeers = new List<Peer>();
 
+            int i = 0;
+            foreach (var p in peers)
+            {
+                if (p.NetAddr != peer)
+                {
+                    otherPeers.Add(p);
+                } else
+                {
+                    index = i;
+                }
+
+                i++;
+            }
+
+            return (index, otherPeers.ToArray());
+        }
     }
 }

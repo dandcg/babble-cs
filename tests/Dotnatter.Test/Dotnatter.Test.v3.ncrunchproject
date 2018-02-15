@@ -145,9 +145,6 @@
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.NodeImpl.CoreTests</FixtureName>
       </FixtureTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.NodeImpl.NodeTests</FixtureName>
-      </FixtureTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
       </NamedTestSelector>
@@ -160,6 +157,12 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Crypto.CryptoTests.TryWithRaw</TestName>
       </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.Crypto.CryptoTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.Net.InMemTransportTests</FixtureName>
+      </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

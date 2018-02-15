@@ -1,6 +1,4 @@
-﻿using Dotnatter.HashgraphImpl;
-using Dotnatter.NodeImpl;
-using Dotnatter.Util;
+﻿using Dotnatter.NodeImpl;
 using Nito.AsyncEx;
 
 namespace Dotnatter.ProxyImpl

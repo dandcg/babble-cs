@@ -3,10 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Dotnatter.Crypto;
+using Dotnatter.HashgraphImpl;
+using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.NetImpl;
 using Dotnatter.NetImpl.PeerImpl;
+using Dotnatter.NetImpl.TransportImpl;
 using Dotnatter.NodeImpl;
+using Dotnatter.ProxyImpl;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
@@ -62,7 +68,7 @@ namespace Dotnatter.Test.NodeImpl
         }
 
         [Fact]
-        public void TestProcessSync()
+        public async Task TestProcessSync()
         {
             var (keys, peers, pmap) = InitPeers(2);
 
@@ -70,114 +76,87 @@ namespace Dotnatter.Test.NodeImpl
 
             //Start two nodes
 
-//	var peer0Trans, err := net.NewTCPTransport(peers[0].NetAddr, nil, 2, time.Second, testLogger)
-//	if err != nil {
-//		t.Fatalf("err: %v", err)
-//	}
-//	defer peer0Trans.Close()
+            var cts = new CancellationTokenSource();
+
+            var peer0Trans = new InMemTransport();
+           var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap,config.CacheSize,logger),peer0Trans, new InMemAppProxy(logger),logger  );
+            node0.Init(false);
+        var node0Task = node0.RunAsync(false,cts.Token);
 
 
-//    node0:= NewNode(config, pmap[peers[0].PubKeyHex], keys[0], peers,
-//       hg.NewInmemStore(pmap, config.CacheSize),
-//       peer0Trans,
-//       aproxy.NewInmemAppProxy(testLogger))
-
-//    node0.Init(false)
+            var peer1Trans = new InMemTransport();
+            var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap,config.CacheSize,logger),peer1Trans, new InMemAppProxy(logger),logger  );
+            node1.Init(false);
+            var node1Task = node1.RunAsync(false,cts.Token);
 
 
-//    node0.RunAsync(false)
 
+   //Manually prepare SyncRequest and expected SyncResponse
 
-//    peer1Trans, err:= net.NewTCPTransport(peers[1].NetAddr, nil, 2, time.Second, testLogger)
+            var node0Known = node0.Core.Known();
 
-//    if err != nil {
-//                t.Fatalf("err: %v", err)
+            var node1Known = node1.Core.Known();
+            
+            Exception err;
+            
+            Event[] unknown;
+          (unknown, err) = node1.Core.Diff(node0Known);
+            Assert.Null(err);
 
-//    }
-//            defer peer1Trans.Close()
+            WireEvent[] unknownWire;
+            (unknownWire, err) = node1.Core.ToWire(unknown);
+       Assert.Null(err);
 
+            var args = new SyncRequest
+            {
+                From = node0.LocalAddr,
+                Known = node0Known,
+            };
 
-//    node1:= NewNode(config, pmap[peers[1].PubKeyHex], keys[1], peers,
-//       hg.NewInmemStore(pmap, config.CacheSize),
-//       peer1Trans,
-//       aproxy.NewInmemAppProxy(testLogger))
+            var expectedResp = new SyncResponse
+            {
+                From = node1.LocalAddr,
+                Events = unknownWire,
+                Known = node1Known,
+            };
 
-//    node1.Init(false)
+            //Make actual SyncRequest and check SyncResponse
 
+           // var out net.SyncResponse
 
-//    node1.RunAsync(false)
+            SyncResponse resp;
+            (resp, err) = await peer0Trans.Sync(peers[1].NetAddr, args);
+            Assert.Null(err);
 
-//    //Manually prepare SyncRequest and expected SyncResponse
+            // Verify the response
 
-//            node0Known:= node0.core.Known()
+            Assert.Equal(expectedResp, resp);
+           
 
-//    node1Known:= node1.core.Known()
+            //if l := len(out.Events); l != len(expectedResp.Events) {
+            //    t.Fatalf("SyncResponse.Events should contain %d items, not %d",
+            //        len(expectedResp.Events), l)
 
+            //    }
 
-//    unknown, err:= node1.core.Diff(node0Known)
+            //for i, e := range expectedResp.Events {
+            //    ex:= out.Events[i]
 
-//    if err != nil {
-//                t.Fatal(err)
+            //        if !reflect.DeepEqual(e.Body, ex.Body) {
+            //        t.Fatalf("SyncResponse.Events[%d] should be %v, not %v", i, e.Body,
+            //            ex.Body)
 
-//    }
+            //        }
+            //}
 
-//            unknownWire, err:= node1.core.ToWire(unknown)
+            //if !reflect.DeepEqual(expectedResp.Known, out.Known) {
+            //    t.Fatalf("SyncResponse.Known should be %#v, not %#v", expectedResp.Known, out.Known)
 
-//    if err != nil {
-//                t.Fatal(err)
+            //    }
 
-//    }
+            await node0.Shutdown();
 
-//            args:= net.SyncRequest{
-//                From: node0.localAddr,
-//		Known: node0Known,
-//	}
-//            expectedResp:= net.SyncResponse{
-//                From: node1.localAddr,
-//		Events: unknownWire,
-//		Known: node1Known,
-//	}
-
-//            //Make actual SyncRequest and check SyncResponse
-
-//            var out net.SyncResponse
-
-//    if err := peer0Trans.Sync(peers[1].NetAddr, &args, &out); err != nil {
-//                t.Fatalf("err: %v", err)
-
-//    }
-
-//            // Verify the response
-//            if expectedResp.From != out.From {
-//                t.Fatalf("SyncResponse.From should be %s, not %s", expectedResp.From, out.From)
-
-//    }
-
-//            if l := len(out.Events); l != len(expectedResp.Events) {
-//                t.Fatalf("SyncResponse.Events should contain %d items, not %d",
-//                    len(expectedResp.Events), l)
-
-//    }
-
-//            for i, e := range expectedResp.Events {
-//                ex:= out.Events[i]
-
-//        if !reflect.DeepEqual(e.Body, ex.Body) {
-//                    t.Fatalf("SyncResponse.Events[%d] should be %v, not %v", i, e.Body,
-//                        ex.Body)
-
-//        }
-//            }
-
-//            if !reflect.DeepEqual(expectedResp.Known, out.Known) {
-//                t.Fatalf("SyncResponse.Known should be %#v, not %#v", expectedResp.Known, out.Known)
-
-//    }
-
-//            node0.Shutdown()
-
-//    node1.Shutdown()
-//}
+            await node1.Shutdown();
 
 
 

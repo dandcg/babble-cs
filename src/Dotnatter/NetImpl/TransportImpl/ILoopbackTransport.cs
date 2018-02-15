@@ -1,8 +1,7 @@
 ﻿namespace Dotnatter.NetImpl.TransportImpl
 {
-    public interface ILoopbackTransport
+    public interface ILoopbackTransport:   ITransport, IWithPeers
     {
-        ITransport Transport { get; set; } // Embedded transport reference
-        IWithPeers WithPeers { get; set; } // Embedded peer management
+
     }
 }
