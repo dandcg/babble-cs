@@ -8,16 +8,23 @@ namespace Dotnatter.NetImpl.TransportImpl
     public class InMemTransport : ILoopbackTransport
     {
         private readonly AsyncLock sync;
-        private Dictionary<string, ITransport> peers;
-        private readonly TimeSpan timeout;
+        public Dictionary<string, ITransport> Peers { get;private set; }
+        public TimeSpan Timeout { get; set; }
 
-        public InMemTransport()
+        public InMemTransport(string addr)
         {
+            if (addr == "")
+            {
+                addr = GenerateUuid();
+            }
+
+
             sync = new AsyncLock();
             Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
-            LocalAddr = GenerateUuid();
-            peers = new Dictionary<string, ITransport>();
-            timeout = new TimeSpan(0, 0, 0, 50);
+            LocalAddr = addr;
+            Peers = new Dictionary<string, ITransport>();
+            Timeout = TimeSpan.FromMilliseconds(50);
+
         }
 
         public AsyncProducerConsumerQueue<Rpc> Consumer { get; }
@@ -26,20 +33,30 @@ namespace Dotnatter.NetImpl.TransportImpl
 
         public async Task<(SyncResponse resp, NetError err)> Sync(string target, SyncRequest args)
         {
-            var (rpcResp, err) = await MakeRpc(target, args, timeout);
+            var (rpcResp, err) = await MakeRpc(target, args, Timeout);
+
+            if (err != null)
+            {
+                return (null, err);
+            }
 
             var syncResp = (SyncResponse) rpcResp.Response;
 
-            return (syncResp, err);
+            return (syncResp, null);
         }
 
         public async Task<(EagerSyncResponse resp, NetError err)> EagerSync(string target, EagerSyncRequest args)
         {
-            var (rpcResp, err) = await MakeRpc(target, args, timeout);
+            var (rpcResp, err) = await MakeRpc(target, args, Timeout);
+
+            if (err != null)
+            {
+                return (null, err);
+            }
 
             var syncResp = (EagerSyncResponse) rpcResp.Response;
 
-            return (syncResp, err);
+            return (syncResp, null);
         }
 
         private string GenerateUuid()
@@ -54,7 +71,8 @@ namespace Dotnatter.NetImpl.TransportImpl
 
             using (await sync.LockAsync())
             {
-                ok = peers.TryGetValue(target, out peer);
+                ok = Peers.TryGetValue(target, out peer);
+        
             }
 
             if (!ok || peer == null)
@@ -72,7 +90,7 @@ namespace Dotnatter.NetImpl.TransportImpl
 
             await Task.WhenAny(responseTask, timeoutTask);
 
-            if (!responseTask.IsCompleted) return (null, new NetError($"command timed out"));
+            if (!responseTask.IsCompleted) return (null, new NetError("command timed out"));
 
             var rpcResp = await rpc.RespChan.DequeueAsync();
 
@@ -85,7 +103,7 @@ namespace Dotnatter.NetImpl.TransportImpl
         {
             using (await sync.LockAsync())
             {
-                peers[peer] = trans;
+                Peers[peer] = trans;
             }
         }
 
@@ -94,7 +112,7 @@ namespace Dotnatter.NetImpl.TransportImpl
         {
             using (await sync.LockAsync())
             {
-                peers.Remove(peer);
+                Peers.Remove(peer);
             }
         }
 
@@ -103,7 +121,7 @@ namespace Dotnatter.NetImpl.TransportImpl
         {
             using (await sync.LockAsync())
             {
-                peers = new Dictionary<string, ITransport>();
+                Peers = new Dictionary<string, ITransport>();
             }
         }
 

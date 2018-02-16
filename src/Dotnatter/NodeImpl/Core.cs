@@ -172,6 +172,7 @@ namespace Dotnatter.NodeImpl
             var totUnknown = 0;
             var myKnown = Known();
 
+            //int i = 0;
             foreach (var kn in myKnown)
             {
                 var i = kn.Key;

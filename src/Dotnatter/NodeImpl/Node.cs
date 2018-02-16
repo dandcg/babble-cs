@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,7 +37,7 @@ namespace Dotnatter.NodeImpl
         private readonly AsyncProducerConsumerQueue<bool> shutdownCh;
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
-        private AsyncProducerConsumerQueue<Event[]> commitCh;
+        private readonly AsyncProducerConsumerQueue<Event[]> commitCh;
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
@@ -65,6 +66,7 @@ namespace Dotnatter.NodeImpl
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
             nodeState= new NodeState();
+
             //Initialize as Babbling
             nodeState.SetStarting(true);
             nodeState.SetState(NodeStateEnum.Babbling);
@@ -119,11 +121,11 @@ namespace Dotnatter.NodeImpl
                 switch (state)
                 {
                     case NodeStateEnum.Babbling:
-                        await babble(gossip, ct);
+                        await Babble(gossip, ct);
                         break;
 
                     case NodeStateEnum.CatchingUp:
-                        await fastForward();
+                        await FastForward();
                         break;
 
                     case NodeStateEnum.Shutdown:
@@ -134,8 +136,8 @@ namespace Dotnatter.NodeImpl
 
         public async Task BackgroundWorkRunAsync(CancellationToken ct)
         {
-            var processingRpcTask = new Task(
-                async () =>
+          async Task ProcessingRpc() 
+           
                 {
                     while (!ct.IsCancellationRequested)
                     {
@@ -144,10 +146,10 @@ namespace Dotnatter.NodeImpl
                         logger.Debug("Processing RPC");
                         await ProcessRpc(rpc, ct);
                     }
-                });
+                };
 
-            var addingTransactionsTask = new Task(
-                async () =>
+         async Task AddingTransactions()
+               
                 {
                     while (!ct.IsCancellationRequested)
                     {
@@ -156,10 +158,10 @@ namespace Dotnatter.NodeImpl
                         logger.Debug("Adding Transaction");
                         await AddTransaction(tx, ct);
                     }
-                });
+                };
 
-            var commitEventsTask = new Task(
-                async () =>
+            async Task CommitEvents ()
+
                 {
                     while (!ct.IsCancellationRequested)
                     {
@@ -173,19 +175,18 @@ namespace Dotnatter.NodeImpl
                         }
                     }
                 }
-            );
+            ;
 
-            await Task.WhenAll(processingRpcTask);
+            await Task.WhenAll(ProcessingRpc(),AddingTransactions(),CommitEvents());
         }
 
-        private async Task babble(bool gossip, CancellationToken ct)
+        private async Task Babble(bool gossip, CancellationToken ct)
         {
             while (!ct.IsCancellationRequested)
             {
                 var oldState = nodeState.GetState();
 
-                var timerTask =
-                    new Task(async () =>
+                async Task timerTask ()
                     {
                         while (!ct.IsCancellationRequested)
                         {
@@ -218,15 +219,15 @@ namespace Dotnatter.NodeImpl
                                 break;
                             }
                         }
-                    });
+                    }
 
-                var shutDownTask = new Task(async () =>
+             async Task shutDownTask()
                 {
                     await shutdownCh.OutputAvailableAsync(ct);
                     await shutdownCh.DequeueAsync(ct);
-                });
+                };
 
-                await Task.WhenAny(timerTask, shutDownTask, Task.Delay(Timeout.Infinite, ct));
+                await Task.WhenAny(timerTask(), shutDownTask(), Task.Delay(Timeout.Infinite, ct));
             }
         }
 
@@ -263,9 +264,84 @@ namespace Dotnatter.NodeImpl
             }
         }
 
-        private Task ProcessSyncRequest(Rpc rpc, SyncRequest req)
+        private async Task ProcessSyncRequest(Rpc rpc, SyncRequest cmd)
         {
-            throw new NotImplementedException();
+            logger.ForContext("Fields", new
+            {
+                From = cmd.From,
+                Know = cmd.Known,
+            }).Debug("Process SyncRequest");
+
+            var resp = new SyncResponse
+            {
+                From = LocalAddr,
+            };
+
+            Exception respErr=null;
+
+            //Check sync limit
+            bool overSyncLimit;
+            using (await coreLock.LockAsync())
+            {
+                overSyncLimit = Core.OverSyncLimit(cmd.Known, conf.SyncLimit);
+            }
+
+
+            if (overSyncLimit)
+            {
+                logger.Debug("SyncLimit");
+                resp.SyncLimit = true;
+            } else {
+                //Compute Diff
+                var start = Stopwatch.StartNew();
+                Event[] diff;
+                Exception err;
+                using (await coreLock.LockAsync())
+                {
+                    (diff, err) = Core.Diff(cmd.Known);
+                }
+
+
+                logger.Debug("Diff() duration={duration}", start.Nanoseconds());
+                if (err != null)
+                {
+                    logger.Error("Calculating Diff {err}", err);
+                    respErr = err;
+                }
+
+                //Convert to WireEvents
+                WireEvent[] wireEvents;
+                (wireEvents, err) = Core.ToWire(diff);
+                if (err != null) {
+                    logger.Debug("Converting to WireEvent {err}", err);
+                    respErr = err;
+                } else
+                {
+                    resp.Events = wireEvents;
+                }
+            }
+
+            //Get Self Known
+            Dictionary<int, int> known;
+            using (await coreLock.LockAsync())
+            {
+                known = Core.Known().Clone();
+            }
+
+            resp.Known = known;
+
+            logger.ForContext("Fields", new
+            {
+                Events = resp.Events.Length,
+                Known = resp.Known,
+                SyncLimit = resp.SyncLimit,
+                Error = respErr
+            }).Debug("Responding to SyncRequest");
+
+
+            await  rpc.RespondAsync(resp, respErr!=null? new NetError(resp.From,respErr) : null );
+
+
         }
 
         private Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
@@ -368,7 +444,7 @@ namespace Dotnatter.NodeImpl
             //Add Events to Hashgraph and create new Head if necessary
             using (await coreLock.LockAsync())
             {
-                err = await sync(resp.Events);
+                err = await Sync(resp.Events);
             }
 
             if (err != null)
@@ -442,7 +518,7 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        private Task fastForward()
+        private Task FastForward()
         {
             logger.Debug("IN CATCHING-UP STATE");
             logger.Debug("fast-sync not implemented yet");
@@ -478,7 +554,7 @@ namespace Dotnatter.NodeImpl
             return (resp, err);
         }
 
-        private async Task<Exception> sync(WireEvent[] events)
+        private async Task<Exception> Sync(WireEvent[] events)
         {
             //Insert Events in Hashgraph and create new Head if necessary
             var start = new Stopwatch();

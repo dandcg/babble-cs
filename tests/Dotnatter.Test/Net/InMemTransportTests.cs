@@ -12,7 +12,7 @@ namespace Dotnatter.Test.Net
         [Fact]
         public void TestInmemTransportImpl()
         {
-            var t= new InMemTransport();
+            var t= new InMemTransport("test");
             Assert.True(t is ITransport);
             Assert.True(t is ILoopbackTransport);
             Assert.True(t is IWithPeers);

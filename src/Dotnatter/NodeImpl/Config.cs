@@ -49,10 +49,12 @@ namespace Dotnatter.NodeImpl
 
         public static Config TestConfig()
         {
-            return new Config
-            {
-                StoreType = "inmem"
-            };
+            var config = DefaultConfig();
+
+            config.StoreType = "inmem";
+
+            return config;
+
         }
     }
 }

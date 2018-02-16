@@ -78,20 +78,27 @@ namespace Dotnatter.Test.NodeImpl
 
             var cts = new CancellationTokenSource();
 
-            var peer0Trans = new InMemTransport();
-           var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap,config.CacheSize,logger),peer0Trans, new InMemAppProxy(logger),logger  );
+            var peer0Trans = new InMemTransport(peers[0].NetAddr);
+            var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap,config.CacheSize,logger),peer0Trans, new InMemAppProxy(logger),logger  );
             node0.Init(false);
-        var node0Task = node0.RunAsync(false,cts.Token);
 
+            var node0Task = node0.RunAsync(false, cts.Token);
 
-            var peer1Trans = new InMemTransport();
+            
+
+            var peer1Trans = new InMemTransport(peers[1].NetAddr);
+
+            await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
+            await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
+            
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap,config.CacheSize,logger),peer1Trans, new InMemAppProxy(logger),logger  );
             node1.Init(false);
-            var node1Task = node1.RunAsync(false,cts.Token);
+
+            var node1Task =node1.RunAsync(false, cts.Token);
 
 
 
-   //Manually prepare SyncRequest and expected SyncResponse
+            //Manually prepare SyncRequest and expected SyncResponse
 
             var node0Known = node0.Core.Known();
 
@@ -100,12 +107,12 @@ namespace Dotnatter.Test.NodeImpl
             Exception err;
             
             Event[] unknown;
-          (unknown, err) = node1.Core.Diff(node0Known);
+            (unknown, err) = node1.Core.Diff(node0Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
             (unknownWire, err) = node1.Core.ToWire(unknown);
-       Assert.Null(err);
+            Assert.Null(err);
 
             var args = new SyncRequest
             {
@@ -122,16 +129,15 @@ namespace Dotnatter.Test.NodeImpl
 
             //Make actual SyncRequest and check SyncResponse
 
-           // var out net.SyncResponse
+            // var out net.SyncResponse
 
             SyncResponse resp;
             (resp, err) = await peer0Trans.Sync(peers[1].NetAddr, args);
             Assert.Null(err);
 
             // Verify the response
-
-            Assert.Equal(expectedResp, resp);
-           
+            resp.ShouldCompareTo(expectedResp);
+          
 
             //if l := len(out.Events); l != len(expectedResp.Events) {
             //    t.Fatalf("SyncResponse.Events should contain %d items, not %d",
@@ -157,7 +163,6 @@ namespace Dotnatter.Test.NodeImpl
             await node0.Shutdown();
 
             await node1.Shutdown();
-
 
 
 
