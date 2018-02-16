@@ -129,51 +129,33 @@ namespace Dotnatter.Test.NodeImpl
 
             //Make actual SyncRequest and check SyncResponse
 
-            // var out net.SyncResponse
-
             SyncResponse resp;
             (resp, err) = await peer0Trans.Sync(peers[1].NetAddr, args);
             Assert.Null(err);
 
             // Verify the response
+            
             resp.ShouldCompareTo(expectedResp);
           
+            Assert.Equal(expectedResp.Events.Length, resp.Events.Length);
+            
+            int i = 0;
+            foreach (var e in expectedResp.Events)
 
-            //if l := len(out.Events); l != len(expectedResp.Events) {
-            //    t.Fatalf("SyncResponse.Events should contain %d items, not %d",
-            //        len(expectedResp.Events), l)
+            {
+                var ex = resp.Events[i];
+                e.Body.ShouldCompareTo(ex.Body);
+                i++;
+            }
+            
+            resp.Known.ShouldCompareTo(expectedResp.Known);
 
-            //    }
-
-            //for i, e := range expectedResp.Events {
-            //    ex:= out.Events[i]
-
-            //        if !reflect.DeepEqual(e.Body, ex.Body) {
-            //        t.Fatalf("SyncResponse.Events[%d] should be %v, not %v", i, e.Body,
-            //            ex.Body)
-
-            //        }
-            //}
-
-            //if !reflect.DeepEqual(expectedResp.Known, out.Known) {
-            //    t.Fatalf("SyncResponse.Known should be %#v, not %#v", expectedResp.Known, out.Known)
-
-            //    }
+            // shutdown nodes
 
             await node0.Shutdown();
 
             await node1.Shutdown();
 
-          
-
-
-
-
-
-
-
         }
-
-
     }
 }
