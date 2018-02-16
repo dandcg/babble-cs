@@ -221,13 +221,13 @@ namespace Dotnatter.NodeImpl
                         }
                     }
 
-             async Task shutDownTask()
+             async Task ShutDownTask()
                 {
                     await shutdownCh.OutputAvailableAsync(ct);
                     await shutdownCh.DequeueAsync(ct);
                 };
 
-                await Task.WhenAny(timerTask(), shutDownTask(), Task.Delay(Timeout.Infinite, ct));
+                await Task.WhenAny(timerTask(), ShutDownTask(), Task.Delay(Timeout.Infinite, ct));
             }
         }
 

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using Dotnatter.NodeImpl;
 using Nito.AsyncEx;
 using Serilog;
 
@@ -8,7 +7,7 @@ namespace Dotnatter.ProxyImpl
 {
     public class InMemAppProxy : IAppProxy
     {
-        public AsyncProducerConsumerQueue<byte[]> submitCh;
+        private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private readonly List<byte[]> commitedTxs;
         private readonly ILogger logger;
 
