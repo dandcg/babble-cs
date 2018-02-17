@@ -125,9 +125,12 @@ namespace Dotnatter.NetImpl.TransportImpl
             }
         }
 
-        public async Task<NetError> Close()
+        public NetError Close()
         {
-            await DisconnectAllAsync();
+            using ( sync.Lock())
+            {
+                Peers = new Dictionary<string, ITransport>();
+            }
             return null;
         }
     }

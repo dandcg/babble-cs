@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +14,6 @@ using Dotnatter.ProxyImpl;
 using Dotnatter.Util;
 using Nito.AsyncEx;
 using Serilog;
-using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace Dotnatter.NodeImpl
 {
@@ -38,6 +37,7 @@ namespace Dotnatter.NodeImpl
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private readonly AsyncProducerConsumerQueue<Event[]> commitCh;
+        private CancellationTokenSource cts;
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
@@ -65,7 +65,7 @@ namespace Dotnatter.NodeImpl
             shutdownCh = new AsyncProducerConsumerQueue<bool>();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
-            nodeState= new NodeState();
+            nodeState = new NodeState();
 
             //Initialize as Babbling
             nodeState.SetStarting(true);
@@ -74,8 +74,8 @@ namespace Dotnatter.NodeImpl
 
         public Exception Init(bool bootstrap)
         {
-            var peerAddresses = new List<string> { };
-            foreach (var  p  in peerSelector.Peers()) 
+            var peerAddresses = new List<string>();
+            foreach (var p in peerSelector.Peers())
             {
                 peerAddresses.Add(p.NetAddr);
             }
@@ -90,22 +90,24 @@ namespace Dotnatter.NodeImpl
             return Core.Init();
         }
 
-        public async Task RunAsync(bool gossip, CancellationToken ct)
+        public async Task RunAsync(bool gossip, CancellationToken ct = default)
         {
+            cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
             //The ControlTimer allows the background routines to control the
             //heartbeat timer when the node is in the Babbling state. The timer should
             //only be running when there are uncommitted transactions in the system.
 
-            var timer = controlTimer.RunAsync(ct);
+            var timer = controlTimer.RunAsync(cts.Token);
 
             //Execute some background work regardless of the state of the node.
             //Process RPC requests as well as SumbitTx and CommitTx requests
 
-            var backgroundWork = BackgroundWorkRunAsync(ct);
+            var backgroundWork = BackgroundWorkRunAsync(cts.Token);
 
             //Execute Node State Machine
 
-            var stateMachine = StateMachineRunAsync(gossip, ct);
+            var stateMachine = StateMachineRunAsync(gossip, cts.Token);
 
             await Task.WhenAll(timer, backgroundWork, stateMachine);
         }
@@ -136,48 +138,53 @@ namespace Dotnatter.NodeImpl
 
         public async Task BackgroundWorkRunAsync(CancellationToken ct)
         {
-          async Task ProcessingRpc() 
-           
-                {
-                    while (!ct.IsCancellationRequested)
-                    {
-                        await netCh.OutputAvailableAsync(ct);
-                        var rpc = await netCh.DequeueAsync(ct);
-                        logger.Debug("Processing RPC");
-                        await ProcessRpc(rpc, ct);
-                    }
-                };
+            async Task ProcessingRpc()
 
-         async Task AddingTransactions()
-               
+            {
+                while (!ct.IsCancellationRequested)
                 {
-                    while (!ct.IsCancellationRequested)
-                    {
-                        await submitCh.OutputAvailableAsync(ct);
-                        var tx = await submitCh.DequeueAsync(ct);
-                        logger.Debug("Adding Transaction");
-                        await AddTransaction(tx, ct);
-                    }
-                };
-
-            async Task CommitEvents ()
-
-                {
-                    while (!ct.IsCancellationRequested)
-                    {
-                        await commitCh.OutputAvailableAsync(ct);
-                        var events = await commitCh.DequeueAsync(ct);
-                        logger.Debug("Committing Events {events}", events.Length);
-                        var err = await Commit(events, ct);
-                        if (err != null)
-                        {
-                            logger.Error("Committing Event", err);
-                        }
-                    }
+                    await netCh.OutputAvailableAsync(ct);
+                    var rpc = await netCh.DequeueAsync(ct);
+                    logger.Debug("Processing RPC");
+                    await ProcessRpc(rpc, ct);
                 }
+            }
+
             ;
 
-            await Task.WhenAll(ProcessingRpc(),AddingTransactions(),CommitEvents());
+            async Task AddingTransactions()
+
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    await submitCh.OutputAvailableAsync(ct);
+                    var tx = await submitCh.DequeueAsync(ct);
+                    logger.Debug("Adding Transaction");
+                    await AddTransaction(tx, ct);
+                }
+            }
+
+            ;
+
+            async Task CommitEvents()
+
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    await commitCh.OutputAvailableAsync(ct);
+                    var events = await commitCh.DequeueAsync(ct);
+                    logger.Debug("Committing Events {events}", events.Length);
+                    var err = await Commit(events, ct);
+                    if (err != null)
+                    {
+                        logger.Error("Committing Event", err);
+                    }
+                }
+            }
+
+            ;
+
+            await Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitEvents());
         }
 
         private async Task Babble(bool gossip, CancellationToken ct)
@@ -186,48 +193,34 @@ namespace Dotnatter.NodeImpl
             {
                 var oldState = nodeState.GetState();
 
-                async Task timerTask ()
+                await controlTimer.TickCh.OutputAvailableAsync(ct);
+                await controlTimer.TickCh.DequeueAsync(ct);
+
+                if (gossip)
+                {
+                    var (proceed, err) = await PreGossip();
+                    if (proceed && err == null)
                     {
-                        while (!ct.IsCancellationRequested)
-                        {
-                            await controlTimer.TickCh.OutputAvailableAsync(ct);
-                            await controlTimer.TickCh.DequeueAsync(ct);
-
-                            if (gossip)
-                            {
-                                var (proceed, err) = await PreGossip();
-                                if (proceed && err == null)
-                                {
-                                    logger.Debug("Time to gossip!");
-                                    var peer = peerSelector.Next();
-                                    await Gossip(peer.NetAddr);
-                                }
-
-                                if (!Core.NeedGossip())
-                                {
-                                    await controlTimer.StopCh.EnqueueAsync(true, ct);
-                                }
-                                else if (!controlTimer.Set)
-                                {
-                                    await controlTimer.ResetCh.EnqueueAsync(true, ct);
-                                }
-                            }
-
-                            var newState = nodeState.GetState();
-                            if (newState != oldState)
-                            {
-                                break;
-                            }
-                        }
+                        logger.Debug("Time to gossip!");
+                        var peer = peerSelector.Next();
+                        await Gossip(peer.NetAddr);
                     }
 
-             async Task ShutDownTask()
-                {
-                    await shutdownCh.OutputAvailableAsync(ct);
-                    await shutdownCh.DequeueAsync(ct);
-                };
+                    if (!Core.NeedGossip())
+                    {
+                        await controlTimer.StopCh.EnqueueAsync(true, ct);
+                    }
+                    else if (!controlTimer.Set)
+                    {
+                        await controlTimer.ResetCh.EnqueueAsync(true, ct);
+                    }
+                }
 
-                await Task.WhenAny(timerTask(), ShutDownTask(), Task.Delay(Timeout.Infinite, ct));
+                var newState = nodeState.GetState();
+                if (newState != oldState)
+                {
+                    break;
+                }
             }
         }
 
@@ -268,16 +261,16 @@ namespace Dotnatter.NodeImpl
         {
             logger.ForContext("Fields", new
             {
-                From = cmd.From,
-                Know = cmd.Known,
+                cmd.From,
+                Know = cmd.Known
             }).Debug("Process SyncRequest");
 
             var resp = new SyncResponse
             {
-                From = LocalAddr,
+                From = LocalAddr
             };
 
-            Exception respErr=null;
+            Exception respErr = null;
 
             //Check sync limit
             bool overSyncLimit;
@@ -286,12 +279,13 @@ namespace Dotnatter.NodeImpl
                 overSyncLimit = Core.OverSyncLimit(cmd.Known, conf.SyncLimit);
             }
 
-
             if (overSyncLimit)
             {
                 logger.Debug("SyncLimit");
                 resp.SyncLimit = true;
-            } else {
+            }
+            else
+            {
                 //Compute Diff
                 var start = Stopwatch.StartNew();
                 Event[] diff;
@@ -300,7 +294,6 @@ namespace Dotnatter.NodeImpl
                 {
                     (diff, err) = Core.Diff(cmd.Known);
                 }
-
 
                 logger.Debug("Diff() duration={duration}", start.Nanoseconds());
                 if (err != null)
@@ -312,10 +305,12 @@ namespace Dotnatter.NodeImpl
                 //Convert to WireEvents
                 WireEvent[] wireEvents;
                 (wireEvents, err) = Core.ToWire(diff);
-                if (err != null) {
+                if (err != null)
+                {
                     logger.Debug("Converting to WireEvent {err}", err);
                     respErr = err;
-                } else
+                }
+                else
                 {
                     resp.Events = wireEvents;
                 }
@@ -333,15 +328,12 @@ namespace Dotnatter.NodeImpl
             logger.ForContext("Fields", new
             {
                 Events = resp.Events.Length,
-                Known = resp.Known,
-                SyncLimit = resp.SyncLimit,
+                resp.Known,
+                resp.SyncLimit,
                 Error = respErr
             }).Debug("Responding to SyncRequest");
 
-
-            await  rpc.RespondAsync(resp, respErr!=null? new NetError(resp.From,respErr) : null );
-
-
+            await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.From, respErr) : null);
         }
 
         private Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
@@ -602,7 +594,7 @@ namespace Dotnatter.NodeImpl
             }
         }
 
-        public async Task Shutdown()
+        public  void Shutdown()
 
         {
             if (nodeState.GetState() != NodeStateEnum.Shutdown)
@@ -613,15 +605,11 @@ namespace Dotnatter.NodeImpl
                 nodeState.SetState(NodeStateEnum.Shutdown);
 
                 //Stop and wait for concurrent operations
-                await shutdownCh.EnqueueAsync(true);
-
-                //For some reason this needs to be called after closing the shutdownCh
-                //Not entirely sure why...
-                await controlTimer.Shutdown();
+                cts.Cancel();
 
                 //transport and store should only be closed once all concurrent operations
                 //are finished otherwise they will panic trying to use close objects
-                await trans.Close();
+                trans.Close();
                 Core.hg.Store.Close();
             }
         }

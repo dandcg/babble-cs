@@ -35,7 +35,7 @@ namespace Dotnatter.NetImpl.TransportImpl
             throw new NotImplementedException();
         }
 
-        public Task<NetError> Close()
+        public NetError Close()
         {
             throw new NotImplementedException();
         }

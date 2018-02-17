@@ -152,9 +152,12 @@ namespace Dotnatter.Test.NodeImpl
 
             // shutdown nodes
 
-            await node0.Shutdown();
+         node0.Shutdown();
 
-            await node1.Shutdown();
+       node1.Shutdown();
+
+
+
 
         }
     }
