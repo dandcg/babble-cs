@@ -262,7 +262,7 @@ namespace Dotnatter.NodeImpl
             logger.ForContext("Fields", new
             {
                 cmd.From,
-                Know = cmd.Known
+                Known = cmd.Known
             }).Debug("Process SyncRequest");
 
             var resp = new SyncResponse
@@ -336,9 +336,37 @@ namespace Dotnatter.NodeImpl
             await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.From, respErr) : null);
         }
 
-        private Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
+        private async Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
         {
-            throw new NotImplementedException();
+
+            logger.ForContext("Fields", new
+            {
+                cmd.From,
+                Events = cmd.Events.Length
+
+            }).Debug("EagerSyncRequest");
+
+            var success = true;
+
+            Exception respErr;
+            using (await coreLock.LockAsync())
+            {
+                respErr = await Sync(cmd.Events);
+            }
+
+            if (respErr != null)
+            {
+                logger.ForContext("error", respErr).Error("sync()");
+                success = false;
+            }
+
+            var resp = new EagerSyncResponse
+            {
+                From = LocalAddr,
+                Success = success,
+            };
+
+            await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.From, respErr) : null);
         }
 
         private async Task<(bool proceed, Exception error)> PreGossip()

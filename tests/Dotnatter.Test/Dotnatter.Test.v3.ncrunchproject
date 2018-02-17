@@ -163,6 +163,9 @@
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.Net.InMemTransportTests</FixtureName>
       </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>
