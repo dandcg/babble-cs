@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using System.Threading;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -145,7 +144,6 @@ namespace Dotnatter.Test.NodeImpl
 
             node0.Shutdown();
             node1.Shutdown();
-            
         }
 
         [Fact]
@@ -156,7 +154,6 @@ namespace Dotnatter.Test.NodeImpl
             var config = Config.TestConfig();
 
             //Start two nodes
-
 
             var peer0Trans = new InMemTransport(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
@@ -190,13 +187,13 @@ namespace Dotnatter.Test.NodeImpl
             var args = new EagerSyncRequest
             {
                 From = node0.LocalAddr,
-                Events = unknownWire,
+                Events = unknownWire
             };
 
             var expectedResp = new EagerSyncResponse
             {
                 From = node1.LocalAddr,
-                Success = true,
+                Success = true
             };
 
             //Make actual EagerSyncRequest and check EagerSyncResponse
@@ -211,16 +208,67 @@ namespace Dotnatter.Test.NodeImpl
             // shutdown nodes
             node0.Shutdown();
             node1.Shutdown();
-
-
-
         }
 
+        [Fact]
+        public async Task TestAddTransaction()
+        {
+            var (keys, peers, pmap) = InitPeers(2);
 
+            var config = Config.TestConfig();
 
+            //Start two nodes
 
+            var peer0Trans = new InMemTransport(peers[0].NetAddr);
+            var peer0Proxy = new InMemAppProxy(logger);
+            var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, peer0Proxy, logger);
+            node0.Init(false);
 
+            var node0Task = node0.RunAsync(false);
 
+            var peer1Trans = new InMemTransport(peers[1].NetAddr);
+            var peer1Proxy = new InMemAppProxy(logger);
+            var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, peer1Proxy, logger);
+            node1.Init(false);
 
+            var node1Task = node1.RunAsync(false);
+
+            await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
+            await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
+
+            //Submit a Tx to node0
+
+            var message = "Hello World!";
+            await peer0Proxy.SubmitTx(message.StringToBytes());
+
+            //simulate a SyncRequest from node0 to node1
+
+            var node0Known = node0.Core.Known();
+            var args = new SyncRequest
+            {
+                From = node0.LocalAddr,
+                Known = node0Known
+            };
+
+            Exception err;
+            SyncResponse resp;
+
+            (resp, err) = await peer0Trans.Sync(peers[1].NetAddr, args);
+            Assert.Null(err);
+
+            err = await node0.Sync(resp.Events);
+            Assert.Null(err);
+
+            ////check the Tx was removed from the transactionPool and added to the new Head
+            Assert.Equal(0, node0.Core.TransactionPool.Count);
+
+            var (node0Head, _) = node0.Core.GetHead();
+            Assert.Equal(1,node0Head.Transactions().Length);
+            
+            Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
+            
+            node0.Shutdown();
+            node1.Shutdown();
+        }
     }
 }

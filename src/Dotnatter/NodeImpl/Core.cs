@@ -27,7 +27,7 @@ namespace Dotnatter.NodeImpl
         public string Head { get; private set; }
         public int Seq { get; private set; }
 
-        private readonly List<byte[]> transactionPool = new List<byte[]>();
+        public List<byte[]> TransactionPool { get; } = new List<byte[]>();
         private readonly ILogger logger;
 
         public Core(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event[]> commitCh, ILogger logger)
@@ -238,7 +238,7 @@ namespace Dotnatter.NodeImpl
 
         public Exception Sync(WireEvent[] unknown)
         {
-            logger.Debug("Sync unknown={@unknown}; txPool={txPool}", unknown.Select(s=>s.Body.Index), transactionPool);
+            logger.Debug("Sync unknown={@unknown}; txPool={txPool}", unknown.Select(s=>s.Body.Index), TransactionPool);
 
             string otherHead = "";
 
@@ -279,9 +279,9 @@ namespace Dotnatter.NodeImpl
 
             //create new event with self head and other head
             //only if there are pending loaded events or the transaction pool is not empty
-            if (unknown.Length > 0 || transactionPool.Count > 0)
+            if (unknown.Length > 0 || TransactionPool.Count > 0)
             {
-                var newHead = new Event(transactionPool.ToArray(),
+                var newHead = new Event(TransactionPool.ToArray(),
                     new[] {Head, otherHead},
                     PubKey(),
                     Seq + 1);
@@ -294,7 +294,7 @@ namespace Dotnatter.NodeImpl
                 }
 
                 //empty the transaction pool
-                transactionPool.Clear();
+                TransactionPool.Clear();
             }
 
             return null;
@@ -302,7 +302,7 @@ namespace Dotnatter.NodeImpl
 
         public Exception AddSelfEvent()
         {
-            if (transactionPool.Count == 0)
+            if (TransactionPool.Count == 0)
             {
                 logger.Debug("Empty TxPool");
                 return null;
@@ -310,7 +310,7 @@ namespace Dotnatter.NodeImpl
 
             //create new event with self head and empty other parent
             //empty transaction pool in its payload
-            var newHead = new Event(transactionPool.ToArray(),
+            var newHead = new Event(TransactionPool.ToArray(),
                 new[] {Head, ""},
                 PubKey(), Seq + 1);
 
@@ -321,9 +321,9 @@ namespace Dotnatter.NodeImpl
                 return new CoreError($"Error inserting new head: {err.Message}", err);
             }
 
-            logger.Debug("Created Self-Event Transactions={TransactionCount}", transactionPool.Count);
+            logger.Debug("Created Self-Event Transactions={TransactionCount}", TransactionPool.Count);
 
-            transactionPool.Clear();
+            TransactionPool.Clear();
 
             return null;
         }
@@ -406,7 +406,7 @@ namespace Dotnatter.NodeImpl
 
         public void AddTransactions(byte[][] txs)
         {
-            transactionPool.AddRange(txs);
+            TransactionPool.AddRange(txs);
         }
 
         public (Event ev, Exception err) GetHead()
@@ -465,6 +465,6 @@ namespace Dotnatter.NodeImpl
 
         public int GetLastCommitedRoundEventsCount() => hg.LastCommitedRoundEvents;
 
-        public bool NeedGossip() => hg.PendingLoadedEvents > 0 || transactionPool.Count > 0;
+        public bool NeedGossip() => hg.PendingLoadedEvents > 0 || TransactionPool.Count > 0;
     }
 }

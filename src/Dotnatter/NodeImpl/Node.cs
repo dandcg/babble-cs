@@ -574,7 +574,7 @@ namespace Dotnatter.NodeImpl
             return (resp, err);
         }
 
-        private async Task<Exception> Sync(WireEvent[] events)
+        public async Task<Exception> Sync(WireEvent[] events)
         {
             //Insert Events in Hashgraph and create new Head if necessary
             var start = new Stopwatch();

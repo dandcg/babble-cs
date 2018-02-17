@@ -166,6 +166,9 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>
