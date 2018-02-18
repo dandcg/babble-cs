@@ -21,10 +21,12 @@ namespace Dotnatter.NetImpl.TransportImpl
         {
             var trans = new InMemRouterTransport(this, addr);
             var peer = trans.LocalAddr;
+            
             using (await sync.LockAsync())
             {
                 Peers.Add(peer, trans);
             }
+
             return trans;
         }
 

@@ -20,20 +20,19 @@ namespace Dotnatter.NodeImpl
     public class Node
     {
         private readonly NodeState nodeState;
-        private readonly Config conf;
-        private readonly int id;
+        public Config Conf { get; }
+        public int Id { get; }
+        public IStore Store { get; }
         private readonly Peer[] participants;
-        private readonly ITransport trans;
+        public ITransport Trans { get; }
         private readonly AsyncProducerConsumerQueue<Rpc> netCh;
-
         private readonly IAppProxy proxy;
         public Core Core { get; }
         private readonly AsyncLock coreLock;
         public string LocalAddr { get; }
         private readonly ILogger logger;
-        private readonly IPeerSelector peerSelector;
+        public IPeerSelector PeerSelector { get; }
         private readonly AsyncLock selectorLock;
-        private readonly AsyncProducerConsumerQueue<bool> shutdownCh;
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private readonly AsyncProducerConsumerQueue<Event[]> commitCh;
@@ -50,19 +49,19 @@ namespace Dotnatter.NodeImpl
 
             Core = new Core(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
-            peerSelector = new RandomPeerSelector(participants, LocalAddr);
+            PeerSelector = new RandomPeerSelector(participants, LocalAddr);
             selectorLock = new AsyncLock();
-            this.id = id;
-            this.conf = conf;
+            Id = id;
+            Store = store;
+            Conf = conf;
 
             this.logger = logger.ForContext("node", LocalAddr);
 
-            this.trans = trans;
+            this.Trans = trans;
             netCh = trans.Consumer;
             this.proxy = proxy;
             this.participants = participants;
             submitCh = proxy.SubmitCh();
-            shutdownCh = new AsyncProducerConsumerQueue<bool>();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
             nodeState = new NodeState();
@@ -75,7 +74,7 @@ namespace Dotnatter.NodeImpl
         public Exception Init(bool bootstrap)
         {
             var peerAddresses = new List<string>();
-            foreach (var p in peerSelector.Peers())
+            foreach (var p in PeerSelector.Peers())
             {
                 peerAddresses.Add(p.NetAddr);
             }
@@ -202,7 +201,7 @@ namespace Dotnatter.NodeImpl
                     if (proceed && err == null)
                     {
                         logger.Debug("Time to gossip!");
-                        var peer = peerSelector.Next();
+                        var peer = PeerSelector.Next();
                         await Gossip(peer.NetAddr);
                     }
 
@@ -262,7 +261,7 @@ namespace Dotnatter.NodeImpl
             logger.ForContext("Fields", new
             {
                 cmd.From,
-                Known = cmd.Known
+                cmd.Known
             }).Debug("Process SyncRequest");
 
             var resp = new SyncResponse
@@ -276,7 +275,7 @@ namespace Dotnatter.NodeImpl
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = Core.OverSyncLimit(cmd.Known, conf.SyncLimit);
+                overSyncLimit = Core.OverSyncLimit(cmd.Known, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -338,12 +337,10 @@ namespace Dotnatter.NodeImpl
 
         private async Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
         {
-
             logger.ForContext("Fields", new
             {
                 cmd.From,
                 Events = cmd.Events.Length
-
             }).Debug("EagerSyncRequest");
 
             var success = true;
@@ -363,7 +360,7 @@ namespace Dotnatter.NodeImpl
             var resp = new EagerSyncResponse
             {
                 From = LocalAddr,
-                Success = success,
+                Success = success
             };
 
             await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.From, respErr) : null);
@@ -421,7 +418,7 @@ namespace Dotnatter.NodeImpl
             //update peer selector
             using (selectorLock.Lock())
             {
-                peerSelector.UpdateLast(peerAddr);
+                PeerSelector.UpdateLast(peerAddr);
             }
 
             logStats();
@@ -482,7 +479,7 @@ namespace Dotnatter.NodeImpl
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = Core.OverSyncLimit(known, conf.SyncLimit);
+                overSyncLimit = Core.OverSyncLimit(known, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -558,7 +555,7 @@ namespace Dotnatter.NodeImpl
                 Known = known
             };
 
-            var (resp, err) = await trans.Sync(target, args);
+            var (resp, err) = await Trans.Sync(target, args);
             return (resp, err);
         }
 
@@ -570,11 +567,11 @@ namespace Dotnatter.NodeImpl
                 Events = events
             };
 
-            var (resp, err) = await trans.EagerSync(target, args);
+            var (resp, err) = await Trans.EagerSync(target, args);
             return (resp, err);
         }
 
-        public async Task<Exception> Sync(WireEvent[] events)
+        public Task<Exception> Sync(WireEvent[] events)
         {
             //Insert Events in Hashgraph and create new Head if necessary
             var start = new Stopwatch();
@@ -585,7 +582,7 @@ namespace Dotnatter.NodeImpl
             logger.Debug("Processed Sync() {duration}", elapsed);
             if (err != null)
             {
-                return err;
+                return Task.FromResult(err);
             }
 
             //Run consensus methods
@@ -594,10 +591,10 @@ namespace Dotnatter.NodeImpl
 
             elapsed = start.Nanoseconds();
             logger.Debug("Processed RunConsensus() {duration}", elapsed);
-            return err;
+            return Task.FromResult(err);
         }
 
-        private async Task<Exception> Commit(Event[] events, CancellationToken ct)
+        private  Task<Exception> Commit(Event[] events, CancellationToken ct)
         {
             foreach (var ev in events)
             {
@@ -606,12 +603,12 @@ namespace Dotnatter.NodeImpl
                     var err = proxy.CommitTx(tx);
                     if (err != null)
                     {
-                        return err;
+                        return Task.FromResult<Exception>(err);
                     }
                 }
             }
 
-            return null;
+            return Task.FromResult<Exception>(null);
         }
 
         private async Task AddTransaction(byte[] tx, CancellationToken ct)
@@ -622,7 +619,7 @@ namespace Dotnatter.NodeImpl
             }
         }
 
-        public  void Shutdown()
+        public void Shutdown()
 
         {
             if (nodeState.GetState() != NodeStateEnum.Shutdown)
@@ -637,7 +634,7 @@ namespace Dotnatter.NodeImpl
 
                 //transport and store should only be closed once all concurrent operations
                 //are finished otherwise they will panic trying to use close objects
-                trans.Close();
+                Trans.Close();
                 Core.hg.Store.Close();
             }
         }

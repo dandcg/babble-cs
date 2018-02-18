@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
@@ -73,8 +74,7 @@ namespace Dotnatter.Test.NodeImpl
             //Start two nodes
 
             var router = new InMemRouter();
-
-
+            
             var peer0Trans =await router.Register(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
             node0.Init(false);
@@ -82,9 +82,6 @@ namespace Dotnatter.Test.NodeImpl
             var node0Task = node0.RunAsync(false);
 
             var peer1Trans = await router.Register(peers[1].NetAddr);
-
-            //await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
-            //await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
 
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
             node1.Init(false);
@@ -155,19 +152,18 @@ namespace Dotnatter.Test.NodeImpl
             var (keys, peers, pmap) = InitPeers(2);
 
             var config = Config.TestConfig();
-
+            
             //Start two nodes
 
-            var peer0Trans = new InMemTransport(peers[0].NetAddr);
+            var router = new InMemRouter();
+
+            var peer0Trans = await router.Register(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
             node0.Init(false);
 
             var node0Task = node0.RunAsync(false);
 
-            var peer1Trans = new InMemTransport(peers[1].NetAddr);
-
-            await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
-            await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
+            var peer1Trans = await router.Register(peers[1].NetAddr);
 
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
             node1.Init(false);
@@ -222,22 +218,21 @@ namespace Dotnatter.Test.NodeImpl
 
             //Start two nodes
 
-            var peer0Trans = new InMemTransport(peers[0].NetAddr);
+            var router = new InMemRouter();
+
+            var peer0Trans = await router.Register(peers[0].NetAddr);
             var peer0Proxy = new InMemAppProxy(logger);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, peer0Proxy, logger);
             node0.Init(false);
 
             var node0Task = node0.RunAsync(false);
 
-            var peer1Trans = new InMemTransport(peers[1].NetAddr);
+            var peer1Trans = await router.Register(peers[1].NetAddr);
             var peer1Proxy = new InMemAppProxy(logger);
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, peer1Proxy, logger);
             node1.Init(false);
 
             var node1Task = node1.RunAsync(false);
-
-            await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
-            await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
 
             //Submit a Tx to node0
 
@@ -275,46 +270,101 @@ namespace Dotnatter.Test.NodeImpl
         }
 
 
-        //private (CngKey[] keys, Node[] nodes) InitNodes(int n, int cacheSize, int syncLimit, string storeType)
-        //{
+        private async Task<(CngKey[] keys, Node[] nodes)> InitNodes(int n, int cacheSize, int syncLimit, string storeType)
+        {
 
-        //    var (keys, peers, pmap) = InitPeers(n);
+            var (keys, peers, pmap) = InitPeers(n);
 
-        //    var nodes = new List<Node> { };
+            var nodes = new List<Node> { };
 
-        //    var proxies = new List<InMemAppProxy> { };
-            
-        //    for (var i = 0; i < peers.Length; i++)
-        //    {
-        //        var conf = new Config(TimeSpan.FromMilliseconds(5), TimeSpan.FromSeconds(1), cacheSize, syncLimit, storeType, $"test_data/db_{i}");
+            var proxies = new List<InMemAppProxy> { };
 
-        //        var (trans, err) := net.NewTCPTransport(peers[i].NetAddr,nil, 2, time.Second, logger)
-        //        if err != nil {
-        //            t.Fatalf("failed to create transport for peer %d: %s", i, err)
-        //        }
-        //        var store hg.Store
-        //        switch storeType {
-        //            case "badger":
-        //            store, err = hg.NewBadgerStore(pmap, conf.CacheSize, conf.StorePath)
-        //            if err != nil {
-        //                t.Fatalf("failed to create BadgerStore for peer %d: %s", i, err)
-        //            }
-        //            case "inmem":
-        //            store = hg.NewInmemStore(pmap, conf.CacheSize)
-        //        }
-        //        prox := aproxy.NewInmemAppProxy(logger)
-        //        node := NewNode(conf, pmap[peers[i].PubKeyHex], keys[i], peers,
-        //            store,
-        //            trans,
-        //            prox)
-        //        if err := node.Init(false); err != nil {
-        //            t.Fatalf("failed to initialize node%d: %s", i, err)
-        //        }
-        //        nodes = append(nodes, node)
-        //        proxies = append(proxies, prox)
-        //    }
-        //    return keys, nodes
-        //}
+            var router = new InMemRouter();
+
+            for (var i = 0; i < peers.Length; i++)
+            {
+                var conf = new Config(TimeSpan.FromMilliseconds(5), TimeSpan.FromSeconds(1), cacheSize, syncLimit, storeType, $"test_data/db_{i}");
+
+                var trans = await router.Register(peers[i].NetAddr);
+
+                IStore store=null;
+                switch (storeType) {
+                    case "badger":
+                    store = new LocalDbStore(pmap, conf.CacheSize, conf.StorePath,logger);
+                        break;
+                    case "inmem":
+                        store = new InmemStore(pmap, conf.CacheSize, logger);
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+
+                var proxy = new InMemAppProxy(logger);
+                var node = new Node(conf, pmap[peers[i].PubKeyHex], keys[i], peers,
+                    store,
+                    trans,
+                    proxy, logger);
+
+                var err = node.Init(false);
+
+                Assert.Null(err);
+
+                nodes.Add(node);
+                proxies.Add(proxy);
+            }
+
+            return (keys.ToArray(), nodes.ToArray());
+        }
+
+
+       public async Task<Node[]> RecycleNodes(Node[] oldNodes )
+       {
+           var newNodes = new List<Node> { };
+            foreach (var oldNode in oldNodes)
+            {
+                var newNode =await RecycleNode(oldNode);
+                newNodes.Add(newNode);
+            }
+
+           return newNodes.ToArray();
+       }
+
+       public async Task<Node> RecycleNode(Node oldNode)
+       {
+           var conf = oldNode.Conf;
+           var id = oldNode.Id;
+           var key = oldNode.Core.Key;
+           var peers = oldNode.PeerSelector.Peers();
+
+           IStore store = null;
+           if (oldNode.Store is InmemStore)
+           {
+               store = new InmemStore(oldNode.Store.Participants().participents.Clone(),conf.CacheSize,logger );
+           }
+
+           if (oldNode.Store is LocalDbStore)
+           {
+
+             //store = new LoadBadgerStore(conf.CacheSize, conf.StorePath);
+           }
+
+           Assert.NotNull(store);
+
+           await oldNode.Trans.CloseAsync();
+
+           var trans = await ((InMemRouterTransport) oldNode.Trans).Router.Register(oldNode.LocalAddr);
+              
+           var prox = new InMemAppProxy(logger);
+
+           var newNode = new Node(conf, id, key, peers, store, trans, prox, logger);
+
+           var err = newNode.Init(true);       
+           Assert.Null(err);
+
+           return newNode;
+       }
+
+
 
 
     }

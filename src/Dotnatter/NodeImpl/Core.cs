@@ -15,7 +15,7 @@ namespace Dotnatter.NodeImpl
     public class Core
     {
         private readonly int id;
-        private readonly CngKey key;
+        public CngKey Key { get; }
         private byte[] pubKey;
         private string hexId;
         public readonly Hashgraph hg;
@@ -33,7 +33,7 @@ namespace Dotnatter.NodeImpl
         public Core(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event[]> commitCh, ILogger logger)
         {
             this.id = id;
-            this.key = key;
+            this.Key = key;
             //this.participants = participants;
             //this.store = store;
             //this.commitCh = commitCh;
@@ -55,7 +55,7 @@ namespace Dotnatter.NodeImpl
 
         public byte[] PubKey()
         {
-            return pubKey ?? (pubKey = CryptoUtils.FromEcdsaPub(key));
+            return pubKey ?? (pubKey = CryptoUtils.FromEcdsaPub(Key));
         }
 
         public string HexId()
@@ -132,7 +132,7 @@ namespace Dotnatter.NodeImpl
 
         public Exception SignAndInsertSelfEvent(Event ev)
         {
-            Exception err = ev.Sign(key);
+            Exception err = ev.Sign(Key);
 
             if (err != null)
             {

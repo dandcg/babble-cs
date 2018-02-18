@@ -91,5 +91,11 @@ namespace Dotnatter.NetImpl.TransportImpl
             Router.Disconnect(LocalAddr);
             return null;
         }
+
+        public async Task<NetError> CloseAsync()
+        {
+            await Router.DisconnectAsync(LocalAddr);
+            return null;
+        }
     }
 }

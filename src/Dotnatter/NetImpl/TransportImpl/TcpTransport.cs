@@ -39,5 +39,10 @@ namespace Dotnatter.NetImpl.TransportImpl
         {
             throw new NotImplementedException();
         }
+
+        public Task<NetError> CloseAsync()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

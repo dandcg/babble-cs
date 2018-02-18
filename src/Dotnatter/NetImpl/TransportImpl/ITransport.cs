@@ -20,5 +20,7 @@ namespace Dotnatter.NetImpl.TransportImpl
         // Close permanently closes a transport, stopping
         // any associated goroutines and freeing other resources.
         NetError Close();
+
+        Task<NetError> CloseAsync();
     }
 }
