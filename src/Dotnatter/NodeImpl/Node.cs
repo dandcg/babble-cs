@@ -27,7 +27,7 @@ namespace Dotnatter.NodeImpl
         private readonly Peer[] participants;
         public ITransport Trans { get; }
         private readonly AsyncProducerConsumerQueue<Rpc> netCh;
-        private readonly IAppProxy proxy;
+        public IAppProxy Proxy { get; }
         public Core Core { get; }
         private readonly AsyncLock coreLock;
         public string LocalAddr { get; }
@@ -60,7 +60,7 @@ namespace Dotnatter.NodeImpl
 
             this.Trans = trans;
             netCh = trans.Consumer;
-            this.proxy = proxy;
+            this.Proxy = proxy;
             this.participants = participants;
             submitCh = proxy.SubmitCh();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
@@ -601,7 +601,7 @@ namespace Dotnatter.NodeImpl
             {
                 foreach (var tx in ev.Transactions())
                 {
-                    var err = proxy.CommitTx(tx);
+                    var err = Proxy.CommitTx(tx);
                     if (err != null)
                     {
                         return Task.FromResult<Exception>(err);
@@ -639,6 +639,9 @@ namespace Dotnatter.NodeImpl
                 Core.hg.Store.Close();
             }
         }
+
+
+
 
         public Dictionary<string, string> GetStats()
         {
@@ -709,5 +712,7 @@ namespace Dotnatter.NodeImpl
 
             throw new NotImplementedException();
         }
+
+
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -318,7 +319,7 @@ namespace Dotnatter.Test.NodeImpl
         }
 
 
-       public async Task<Node[]> RecycleNodes(Node[] oldNodes )
+       private async Task<Node[]> RecycleNodes(Node[] oldNodes )
        {
            var newNodes = new List<Node> { };
             foreach (var oldNode in oldNodes)
@@ -330,7 +331,7 @@ namespace Dotnatter.Test.NodeImpl
            return newNodes.ToArray();
        }
 
-       public async Task<Node> RecycleNode(Node oldNode)
+       private async Task<Node> RecycleNode(Node oldNode)
        {
            var conf = oldNode.Conf;
            var id = oldNode.Id;
@@ -365,8 +366,43 @@ namespace Dotnatter.Test.NodeImpl
            return newNode;
        }
 
+        private void RunNodes(Node[] nodes, bool gossip)
+        {
+            foreach (var  n in nodes)
+            {
+                var task = n.RunAsync(gossip);
+            }
+        }
 
+        private void ShutdownNodes(Node[] nodes) {
+            foreach (var  n in nodes)
+            {
+                n.Shutdown();
+            }
+        }
 
+        private void DeleteStores(Node[] nodes) {
+            foreach (var  n in nodes)
+            {
+      
+                var di = new DirectoryInfo(n.Conf.StorePath);
 
+                foreach (var file in di.GetFiles())
+                {
+                    file.Delete(); 
+                }
+            }
+        }
+
+        private Task<(byte[][] txs, Exception err)> GetCommittedTransactions(Node n)
+        {
+
+            var inmemAppProxy = n.Proxy as InMemAppProxy;
+            Assert.NotNull(inmemAppProxy);
+            var res = inmemAppProxy.GetCommittedTransactions();
+            return Task.FromResult<(byte[][], Exception)>((res, null));
+        }
+
+  
     }
 }
