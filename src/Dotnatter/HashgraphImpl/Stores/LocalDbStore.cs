@@ -17,7 +17,7 @@ namespace Dotnatter.HashgraphImpl
             throw new System.NotImplementedException();
         }
 
-        public (Dictionary<string, int> participents, StoreError err) Participants()
+        public (Dictionary<string, int> participants, StoreError err) Participants()
         {
             throw new System.NotImplementedException();
         }

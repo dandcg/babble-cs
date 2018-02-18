@@ -7,7 +7,7 @@ namespace Dotnatter.HashgraphImpl
     public interface IStore
     {
         int CacheSize();
-        (Dictionary<string, int> participents, StoreError err) Participants();
+        (Dictionary<string, int> participants, StoreError err) Participants();
         (Event evt, StoreError err) GetEvent(string str);
         StoreError SetEvent(Event ev);
         (string[] evts, StoreError err) ParticipantEvents(string str, int i);

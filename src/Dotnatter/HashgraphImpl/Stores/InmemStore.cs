@@ -44,7 +44,7 @@ namespace Dotnatter.HashgraphImpl
             return cacheSize;
         }
 
-        public (Dictionary<string, int> participents, StoreError err) Participants()
+        public (Dictionary<string, int> participants, StoreError err) Participants()
         {
             return (participants,null);
         }
