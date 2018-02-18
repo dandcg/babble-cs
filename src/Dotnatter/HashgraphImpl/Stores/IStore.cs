@@ -2,7 +2,7 @@
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Stores
 {
     public interface IStore
     {

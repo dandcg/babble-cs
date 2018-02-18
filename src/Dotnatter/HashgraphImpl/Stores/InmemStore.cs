@@ -4,7 +4,7 @@ using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.Util;
 using Serilog;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Stores
 {
     public class InmemStore : IStore
     {

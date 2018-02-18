@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.NetImpl;
 using Dotnatter.NetImpl.PeerImpl;
 using Dotnatter.NetImpl.TransportImpl;
@@ -258,10 +259,10 @@ namespace Dotnatter.Test.NodeImpl
             Assert.Null(err);
 
             ////check the Tx was removed from the transactionPool and added to the new Head
-            Assert.Equal(0, node0.Core.TransactionPool.Count);
+            Assert.Empty(node0.Core.TransactionPool);
 
             var (node0Head, _) = node0.Core.GetHead();
-            Assert.Equal(1,node0Head.Transactions().Length);
+            Assert.Single(node0Head.Transactions());
             
             Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
             
@@ -339,7 +340,7 @@ namespace Dotnatter.Test.NodeImpl
            IStore store = null;
            if (oldNode.Store is InmemStore)
            {
-               store = new InmemStore(oldNode.Store.Participants().participents.Clone(),conf.CacheSize,logger );
+               store = new InmemStore(oldNode.Store.Participants().participants.Clone(),conf.CacheSize,logger );
            }
 
            if (oldNode.Store is LocalDbStore)

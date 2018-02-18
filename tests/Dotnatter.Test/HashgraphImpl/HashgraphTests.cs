@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
@@ -1581,7 +1582,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 //Hashgraph and see if we can boostrap it to the same state.
                 var (recycledStore, err) = LoadBadgerStore(CacheSize, badgerDir);
 
-                var nh = new Hashgraph(recycledStore.Participants().participents, recycledStore, null, logger);
+                var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
 
                 err = nh.Bootstrap();
 

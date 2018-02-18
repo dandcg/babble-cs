@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.NetImpl;
 using Dotnatter.NetImpl.PeerImpl;
 using Dotnatter.NetImpl.TransportImpl;

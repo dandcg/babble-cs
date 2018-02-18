@@ -3,7 +3,7 @@ using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Serilog;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.HashgraphImpl.Stores
 {
     public class LocalDbStore : IStore
     {

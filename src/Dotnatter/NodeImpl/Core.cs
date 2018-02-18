@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.Util;
 using Nito.AsyncEx;
 using Serilog;

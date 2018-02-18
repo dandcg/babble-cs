@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.NodeImpl;
 using Dotnatter.Util;
 using Nito.AsyncEx;

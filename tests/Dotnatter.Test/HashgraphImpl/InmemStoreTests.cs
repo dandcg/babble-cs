@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
