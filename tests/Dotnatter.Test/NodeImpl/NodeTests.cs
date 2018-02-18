@@ -72,16 +72,19 @@ namespace Dotnatter.Test.NodeImpl
 
             //Start two nodes
 
-            var peer0Trans = new InMemTransport(peers[0].NetAddr);
+            var router = new InMemRouter();
+
+
+            var peer0Trans =await router.Register(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
             node0.Init(false);
 
             var node0Task = node0.RunAsync(false);
 
-            var peer1Trans = new InMemTransport(peers[1].NetAddr);
+            var peer1Trans = await router.Register(peers[1].NetAddr);
 
-            await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
-            await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
+            //await peer1Trans.ConnectAsync(peers[0].NetAddr, peer0Trans);
+            //await peer0Trans.ConnectAsync(peers[1].NetAddr, peer1Trans);
 
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
             node1.Init(false);
@@ -270,5 +273,49 @@ namespace Dotnatter.Test.NodeImpl
             node0.Shutdown();
             node1.Shutdown();
         }
+
+
+        //private (CngKey[] keys, Node[] nodes) InitNodes(int n, int cacheSize, int syncLimit, string storeType)
+        //{
+
+        //    var (keys, peers, pmap) = InitPeers(n);
+
+        //    var nodes = new List<Node> { };
+
+        //    var proxies = new List<InMemAppProxy> { };
+            
+        //    for (var i = 0; i < peers.Length; i++)
+        //    {
+        //        var conf = new Config(TimeSpan.FromMilliseconds(5), TimeSpan.FromSeconds(1), cacheSize, syncLimit, storeType, $"test_data/db_{i}");
+
+        //        var (trans, err) := net.NewTCPTransport(peers[i].NetAddr,nil, 2, time.Second, logger)
+        //        if err != nil {
+        //            t.Fatalf("failed to create transport for peer %d: %s", i, err)
+        //        }
+        //        var store hg.Store
+        //        switch storeType {
+        //            case "badger":
+        //            store, err = hg.NewBadgerStore(pmap, conf.CacheSize, conf.StorePath)
+        //            if err != nil {
+        //                t.Fatalf("failed to create BadgerStore for peer %d: %s", i, err)
+        //            }
+        //            case "inmem":
+        //            store = hg.NewInmemStore(pmap, conf.CacheSize)
+        //        }
+        //        prox := aproxy.NewInmemAppProxy(logger)
+        //        node := NewNode(conf, pmap[peers[i].PubKeyHex], keys[i], peers,
+        //            store,
+        //            trans,
+        //            prox)
+        //        if err := node.Init(false); err != nil {
+        //            t.Fatalf("failed to initialize node%d: %s", i, err)
+        //        }
+        //        nodes = append(nodes, node)
+        //        proxies = append(proxies, prox)
+        //    }
+        //    return keys, nodes
+        //}
+
+
     }
 }

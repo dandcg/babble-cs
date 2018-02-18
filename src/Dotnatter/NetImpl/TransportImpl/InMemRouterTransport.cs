@@ -1,33 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
 namespace Dotnatter.NetImpl.TransportImpl
 {
-    public class InMemTransport : ILoopbackTransport
+    public class InMemRouterTransport : ITransport
     {
-        private readonly AsyncLock sync;
-        public Dictionary<string, ITransport> Peers { get; private set; }
         public TimeSpan Timeout { get; set; }
 
-        public InMemTransport(string addr)
+        public InMemRouterTransport(InMemRouter router, string addr)
         {
             if (addr == "")
             {
                 addr = GenerateUuid();
             }
 
-            sync = new AsyncLock();
             Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
             LocalAddr = addr;
-            Peers = new Dictionary<string, ITransport>();
+            Router = router;
             Timeout = TimeSpan.FromMilliseconds(500);
         }
 
         public AsyncProducerConsumerQueue<Rpc> Consumer { get; }
 
         public string LocalAddr { get; }
+        public InMemRouter Router { get; }
 
         public async Task<(SyncResponse resp, NetError err)> Sync(string target, SyncRequest args)
         {
@@ -64,18 +61,7 @@ namespace Dotnatter.NetImpl.TransportImpl
 
         private async Task<(RpcResponse rpcResp, NetError err)> MakeRpc(string target, object args, TimeSpan tmout)
         {
-            bool ok;
-            ITransport peer;
-
-            using (await sync.LockAsync())
-            {
-                ok = Peers.TryGetValue(target, out peer);
-            }
-
-            if (!ok || peer == null)
-            {
-                return (null, new NetError($"Failed to connect to peer: {target}"));
-            }
+            var (peer, err) = await Router.GetPeer(target);
 
             var rpc = new Rpc {Command = args, RespChan = new AsyncProducerConsumerQueue<RpcResponse>()};
 
@@ -94,41 +80,15 @@ namespace Dotnatter.NetImpl.TransportImpl
             return (rpcResp, rpcResp.Error);
         }
 
-        // Connect is used to connect this transport to another transport for
-        // a given peer name. This allows for local routing.
-        public async Task ConnectAsync(string peer, ITransport trans)
-        {
-            using (await sync.LockAsync())
-            {
-                Peers[peer] = trans;
-            }
-        }
-
         // Disconnect is used to remove the ability to route to a given peer.
-        public async Task DisconnectAsync(string peer)
+        public async Task DisconnectAsync()
         {
-            using (await sync.LockAsync())
-            {
-                Peers.Remove(peer);
-            }
-        }
-
-        // DisconnectAll is used to remove all routes to peers.
-        public async Task DisconnectAllAsync()
-        {
-            using (await sync.LockAsync())
-            {
-                Peers = new Dictionary<string, ITransport>();
-            }
+            await Router.DisconnectAsync(LocalAddr);
         }
 
         public NetError Close()
         {
-            using (sync.Lock())
-            {
-                Peers = new Dictionary<string, ITransport>();
-            }
-
+            Router.Disconnect(LocalAddr);
             return null;
         }
     }
