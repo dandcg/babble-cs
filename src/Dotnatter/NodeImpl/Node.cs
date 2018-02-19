@@ -37,11 +37,14 @@ namespace Dotnatter.NodeImpl
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private readonly AsyncProducerConsumerQueue<Event[]> commitCh;
-        private CancellationTokenSource cts;
+        private CancellationTokenSource cts =new CancellationTokenSource() ;
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
         {
+         
+
+
             LocalAddr = trans.LocalAddr;
 
             var (pmap, _) = store.Participants();
@@ -70,6 +73,8 @@ namespace Dotnatter.NodeImpl
             //Initialize as Babbling
             nodeState.SetStarting(true);
             nodeState.SetState(NodeStateEnum.Babbling);
+
+
         }
 
         public Exception Init(bool bootstrap)

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.NetImpl;
@@ -34,7 +34,7 @@ namespace Dotnatter.Test.NodeImpl
 
         private const int PortStart = 9990;
 
-        private (CngKey[] keys, Peer[] peers, Dictionary<string, int> pmap) InitPeers(int n)
+        private static (CngKey[] keys, Peer[] peers, Dictionary<string, int> pmap) InitPeers(int n)
         {
             var port = PortStart;
             var keys = new List<CngKey>();
@@ -76,8 +76,8 @@ namespace Dotnatter.Test.NodeImpl
             //Start two nodes
 
             var router = new InMemRouter();
-            
-            var peer0Trans =await router.Register(peers[0].NetAddr);
+
+            var peer0Trans = await router.Register(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
             node0.Init(false);
 
@@ -154,7 +154,7 @@ namespace Dotnatter.Test.NodeImpl
             var (keys, peers, pmap) = InitPeers(2);
 
             var config = Config.TestConfig();
-            
+
             //Start two nodes
 
             var router = new InMemRouter();
@@ -264,22 +264,20 @@ namespace Dotnatter.Test.NodeImpl
 
             var (node0Head, _) = node0.Core.GetHead();
             Assert.Single(node0Head.Transactions());
-            
+
             Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
-            
+
             node0.Shutdown();
             node1.Shutdown();
         }
 
-
-        private async Task<(CngKey[] keys, Node[] nodes)> InitNodes(int n, int cacheSize, int syncLimit, string storeType)
+        private static async Task<(CngKey[] keys, Node[] nodes)> InitNodes(int n, int cacheSize, int syncLimit, string storeType, ILogger logger)
         {
-
             var (keys, peers, pmap) = InitPeers(n);
 
-            var nodes = new List<Node> { };
+            var nodes = new List<Node>();
 
-            var proxies = new List<InMemAppProxy> { };
+            var proxies = new List<InMemAppProxy>();
 
             var router = new InMemRouter();
 
@@ -289,10 +287,11 @@ namespace Dotnatter.Test.NodeImpl
 
                 var trans = await router.Register(peers[i].NetAddr);
 
-                IStore store=null;
-                switch (storeType) {
+                IStore store = null;
+                switch (storeType)
+                {
                     case "badger":
-                    store = new LocalDbStore(pmap, conf.CacheSize, conf.StorePath,logger);
+                        store = new LocalDbStore(pmap, conf.CacheSize, conf.StorePath, logger);
                         break;
                     case "inmem":
                         store = new InmemStore(pmap, conf.CacheSize, logger);
@@ -318,91 +317,289 @@ namespace Dotnatter.Test.NodeImpl
             return (keys.ToArray(), nodes.ToArray());
         }
 
-
-       private async Task<Node[]> RecycleNodes(Node[] oldNodes )
-       {
-           var newNodes = new List<Node> { };
+        private static  async Task<Node[]> RecycleNodes(Node[] oldNodes, ILogger logger)
+        {
+            var newNodes = new List<Node>();
             foreach (var oldNode in oldNodes)
             {
-                var newNode =await RecycleNode(oldNode);
+                var newNode = await RecycleNode(oldNode, logger);
                 newNodes.Add(newNode);
             }
 
-           return newNodes.ToArray();
-       }
+            return newNodes.ToArray();
+        }
 
-       private async Task<Node> RecycleNode(Node oldNode)
-       {
-           var conf = oldNode.Conf;
-           var id = oldNode.Id;
-           var key = oldNode.Core.Key;
-           var peers = oldNode.PeerSelector.Peers();
-
-           IStore store = null;
-           if (oldNode.Store is InmemStore)
-           {
-               store = new InmemStore(oldNode.Store.Participants().participants.Clone(),conf.CacheSize,logger );
-           }
-
-           if (oldNode.Store is LocalDbStore)
-           {
-
-             //store = new LoadBadgerStore(conf.CacheSize, conf.StorePath);
-           }
-
-           Assert.NotNull(store);
-
-           await oldNode.Trans.CloseAsync();
-
-           var trans = await ((InMemRouterTransport) oldNode.Trans).Router.Register(oldNode.LocalAddr);
-              
-           var prox = new InMemAppProxy(logger);
-
-           var newNode = new Node(conf, id, key, peers, store, trans, prox, logger);
-
-           var err = newNode.Init(true);       
-           Assert.Null(err);
-
-           return newNode;
-       }
-
-        private void RunNodes(Node[] nodes, bool gossip)
+        private static async Task<Node> RecycleNode(Node oldNode, ILogger logger)
         {
-            foreach (var  n in nodes)
+            var conf = oldNode.Conf;
+            var id = oldNode.Id;
+            var key = oldNode.Core.Key;
+            var peers = oldNode.PeerSelector.Peers();
+
+            IStore store = null;
+            if (oldNode.Store is InmemStore)
+            {
+                store = new InmemStore(oldNode.Store.Participants().participants.Clone(), conf.CacheSize, logger);
+            }
+
+            if (oldNode.Store is LocalDbStore)
+            {
+                //store = new LoadBadgerStore(conf.CacheSize, conf.StorePath);
+            }
+
+            Assert.NotNull(store);
+
+            await oldNode.Trans.CloseAsync();
+
+            var trans = await ((InMemRouterTransport) oldNode.Trans).Router.Register(oldNode.LocalAddr);
+
+            var prox = new InMemAppProxy(logger);
+
+            var newNode = new Node(conf, id, key, peers, store, trans, prox, logger);
+
+            var err = newNode.Init(true);
+            Assert.Null(err);
+
+            return newNode;
+        }
+
+        private static void RunNodes(Node[] nodes, bool gossip)
+        {
+            foreach (var n in nodes)
             {
                 var task = n.RunAsync(gossip);
             }
         }
 
-        private void ShutdownNodes(Node[] nodes) {
-            foreach (var  n in nodes)
+        private static void ShutdownNodes(Node[] nodes)
+        {
+            foreach (var n in nodes)
             {
                 n.Shutdown();
             }
         }
 
-        private void DeleteStores(Node[] nodes) {
-            foreach (var  n in nodes)
+        private static void DeleteStores(Node[] nodes)
+        {
+            foreach (var n in nodes)
             {
-      
                 var di = new DirectoryInfo(n.Conf.StorePath);
 
                 foreach (var file in di.GetFiles())
                 {
-                    file.Delete(); 
+                    file.Delete();
                 }
             }
         }
 
-        private Task<(byte[][] txs, Exception err)> GetCommittedTransactions(Node n)
+        private static Task<(byte[][] txs, Exception err)> GetCommittedTransactions(Node n)
         {
-
             var inmemAppProxy = n.Proxy as InMemAppProxy;
             Assert.NotNull(inmemAppProxy);
             var res = inmemAppProxy.GetCommittedTransactions();
             return Task.FromResult<(byte[][], Exception)>((res, null));
         }
 
-  
+        [Fact]
+        public async Task TestGossip()
+        {
+            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem",logger);
+
+            var err = await Gossip(nodes, 50, true, TimeSpan.FromSeconds(3));
+            Assert.Null(err);
+
+            await CheckGossip(nodes, logger);
+        }
+
+        [Fact]
+        public async Task TestMissingNodeGossip()
+        {
+
+            var (keys,nodes) = await InitNodes(4, 1000, 1000, "inmem", logger);
+            try
+            {
+                var err = await Gossip(nodes.Skip(1).ToArray(), 10, true, TimeSpan.FromSeconds(3));
+                Assert.Null(err);
+                await CheckGossip(nodes.Skip(1).ToArray(),logger);
+            }
+            finally
+            {
+                ShutdownNodes(nodes);
+            }
+
+
+
+        
+        }
+
+
+
+
+
+        private static async Task<Exception> Gossip(Node[] nodes, int target, bool shutdown, TimeSpan timeout)
+        {
+            RunNodes(nodes, true);
+
+            var err = await BombardAndWait(nodes, target, timeout);
+            Assert.Null(err);
+
+            if (shutdown)
+            {
+                ShutdownNodes(nodes);
+            }
+
+            return null;
+        }
+
+        private static async Task<Exception> BombardAndWait(Node[] nodes, int target, TimeSpan timeout)
+        {
+            var cts = new CancellationTokenSource();
+            var mrtTask = MakeRandomTransactions(nodes, cts.Token);
+
+            //wait until all nodes have at least 'target' rounds
+            var stopper = Task.Delay(timeout, cts.Token);
+
+            async Task Bombard()
+            {
+                while (!cts.IsCancellationRequested)
+                {
+                    await Task.Delay(10, cts.Token);
+
+                    var done = true;
+                    while (true)
+                    {
+                        foreach (var n in nodes)
+                        {
+                            var ce = n.Core.GetLastConsensusRoundIndex();
+                            if (ce == null || ce < target) ;
+                            {
+                                done = false;
+                                break;
+                            }
+                        }
+
+                        if (done)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            await Task.WhenAny(stopper, Bombard(), mrtTask);
+            cts.Cancel();
+            return null;
+        }
+
+        private static async Task CheckGossip(Node[] nodes, ILogger logger)
+        {
+            var consEvents = new Dictionary<int, string[]>();
+            var consTransactions = new Dictionary<int, byte[][]>();
+            foreach (var n in nodes)
+            {
+                consEvents[n.Id] = n.Core.GetConsensusEvents();
+
+                var (nodeTxs, err) = await GetCommittedTransactions(n);
+
+                consTransactions[n.Id] = nodeTxs;
+            }
+
+            var minE = consEvents[0].Length;
+
+            var minT = consTransactions[0].Length;
+
+            for (var k = 1; k < nodes.Length; k++)
+            {
+                if (consEvents[k].Length < minE)
+                {
+                    minE = consEvents[k].Length;
+                }
+
+                if (consTransactions[k].Length < minT)
+                {
+                    minT = consTransactions[k].Length;
+                }
+            }
+
+            var problem = false;
+
+            logger.Debug($"min consensus events: {minE}");
+
+            int i = 0;
+            foreach (var e in consEvents[0].Take(minE))
+            {
+                foreach (var j in nodes.Skip(1))
+                {
+                    var f = consEvents[j.Id][i];
+                    if (f != e)
+                    {
+                        var er = nodes[0].Core.hg.Round(e);
+
+                        var err = nodes[0].Core.hg.RoundReceived(e);
+
+                        var fr = nodes[j.Id].Core.hg.Round(f);
+
+                        var frr = nodes[j.Id].Core.hg.RoundReceived(f);
+
+                        logger.Debug($"nodes[{j.Id}].Consensus[{i}] ({e.Take(6)}, Round {er}, Received {err}) and nodes[0].Consensus[{i}] ({f.Take(6)}, Round {fr}, Received {frr}) are not equal");
+
+                        problem = true;
+                    }
+                }
+
+                i++;
+            }
+
+            Assert.False(problem);
+
+            logger.Debug($"min consensus transactions: {minT}");
+
+            i = 0;
+            foreach (var tx in consTransactions[0].Take(minT))
+            {
+                foreach (var k in nodes.Skip(1))
+                {
+                    var ot = consTransactions[k.Id][i].BytesToString();
+
+                    Assert.True(ot != tx.BytesToString(), $"nodes[{k}].ConsensusTransactions[{i}] should be '{tx.BytesToString()}' not '{ot}'");
+                }
+            }
+        }
+
+        public static async Task MakeRandomTransactions(Node[] nodes, CancellationToken ct)
+        {
+            var seq = new Dictionary<int, int>();
+            while (!ct.IsCancellationRequested)
+            {
+                var rnd = new Random();
+                var n = rnd.Next(0, nodes.Length);
+
+                var node = nodes[n];
+                await SubmitTransaction(node, $"node{n} transaction {seq[n]}".StringToBytes());
+                seq[n] = seq[n] + 1;
+
+                await Task.Delay(3, ct);
+            }
+        }
+
+        public static async Task SubmitTransaction(Node n, byte[] tx)
+        {
+            var prox = n.Proxy as InMemAppProxy;
+            Assert.NotNull(prox);
+
+            await prox.SubmitTx(tx);
+        }
+
+    //    func BenchmarkGossip(b* testing.B)
+    //    {
+    //        logger:= common.NewBenchmarkLogger(b)
+        
+    //for n := 0; n < b.N; n++ {
+    //            _, nodes:= initNodes(3, 1000, 1000, "inmem", logger, b)
+
+    //    gossip(nodes, 5, true, 3 * time.Second)
+
+    //}
+    //    }
     }
 }
