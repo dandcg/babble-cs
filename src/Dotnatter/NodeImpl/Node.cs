@@ -397,7 +397,7 @@ namespace Dotnatter.NodeImpl
             return (true, null);
         }
 
-        private async Task<Exception> Gossip(string peerAddr)
+        public async Task<Exception> Gossip(string peerAddr)
         {
             //pull
             var (syncLimit, otherKnown, err) = await pull(peerAddr);

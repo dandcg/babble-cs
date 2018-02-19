@@ -426,14 +426,107 @@ namespace Dotnatter.Test.NodeImpl
             {
                 ShutdownNodes(nodes);
             }
-
-
-
-        
+            
         }
 
 
+        [Fact]
+        public async Task  TestSyncLimit()
+        {
 
+            var ( _, nodes) = await InitNodes(4, 1000, 300, "inmem", logger);
+
+            var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
+            Assert.Null(err);
+
+
+            try
+            {
+                //create fake node[0] known to artificially reach SyncLimit
+                var node0Known = nodes[0].Core.Known();
+                int k = 0;
+                foreach (var kn in node0Known.ToList())
+                {
+                    node0Known[k] = 0;
+                    k++;
+                }
+
+                var args = new SyncRequest
+                {
+                    From = nodes[0].LocalAddr,
+                    Known = node0Known,
+                };
+
+                var expectedResp = new SyncResponse
+                {
+                    From = nodes[1].LocalAddr,
+                    SyncLimit = true,
+                };
+
+                SyncResponse resp;
+                (resp,err) =await nodes[0].Trans.Sync(nodes[1].LocalAddr, args);
+                Assert.Null(err);
+
+                // Verify the response
+
+                Assert.Equal(expectedResp.From, resp.From);
+                Assert.True(expectedResp.SyncLimit);
+                
+            }
+            finally
+            {
+                ShutdownNodes(nodes);
+            }
+            
+        }
+
+        [Fact]
+        public async Task  TestShutdown()
+        {
+            var (_, nodes) = await InitNodes(2, 1000, 1000, "inmem", logger);
+
+            RunNodes(nodes, false);
+
+            nodes[0].Shutdown();
+
+            var err = nodes[1].Gossip(nodes[0].LocalAddr);
+            Assert.NotNull(err);
+
+            nodes[1].Shutdown();
+        }
+
+        [Fact(Skip = "Badger DB alternative not yet implmented!")]
+        public async Task TestBootstrapAllNodes() 
+        {
+
+            //string path = Directory.GetCurrentDirectory();
+            //DirectoryInfo attachments_AR = new DirectoryInfo(mappedPath1));
+            //EmptyFolder(attachments_AR);
+            //Directory.Delete(mappedPath1);
+            //os.RemoveAll("test_data")
+            //os.Mkdir("test_data", os.ModeDir|0777)
+
+            //create a first network with BadgerStore and wait till it reaches 10 consensus
+            //rounds before shutting it down
+            var (_, nodes) =await InitNodes(4, 10000, 1000, "badger", logger);
+            var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
+            Assert.Null(err);
+
+            await CheckGossip(nodes, logger);
+            ShutdownNodes(nodes);
+
+            //Now try to recreate a network from the databases created in the first step
+            //and advance it to 20 consensus rounds
+            var newNodes = await RecycleNodes(nodes, logger);
+            err = await Gossip(newNodes, 20, false, TimeSpan.FromSeconds(3));
+            Assert.Null(err);
+
+            await CheckGossip(newNodes, logger);
+            ShutdownNodes(newNodes);
+
+            //Check that both networks did not have completely different consensus events
+            await CheckGossip(new[] {nodes[0], newNodes[0]}, logger);
+        }
 
 
         private static async Task<Exception> Gossip(Node[] nodes, int target, bool shutdown, TimeSpan timeout)
@@ -487,7 +580,7 @@ namespace Dotnatter.Test.NodeImpl
             }
 
             await Task.WhenAny(stopper, Bombard(), mrtTask);
-            cts.Cancel();
+            //cts.Cancel();
             return null;
         }
 
@@ -497,6 +590,8 @@ namespace Dotnatter.Test.NodeImpl
             var consTransactions = new Dictionary<int, byte[][]>();
             foreach (var n in nodes)
             {
+                logger.Debug(n.Id.ToString());
+
                 consEvents[n.Id] = n.Core.GetConsensusEvents();
 
                 var (nodeTxs, err) = await GetCommittedTransactions(n);
@@ -504,9 +599,10 @@ namespace Dotnatter.Test.NodeImpl
                 consTransactions[n.Id] = nodeTxs;
             }
 
-            var minE = consEvents[0].Length;
 
-            var minT = consTransactions[0].Length;
+            var minE = consEvents.ContainsKey(0)?consEvents[0].Length:0;
+
+            var minT = consTransactions.ContainsKey(0)?consTransactions[0].Length:0;
 
             for (var k = 1; k < nodes.Length; k++)
             {
@@ -526,25 +622,28 @@ namespace Dotnatter.Test.NodeImpl
             logger.Debug($"min consensus events: {minE}");
 
             int i = 0;
-            foreach (var e in consEvents[0].Take(minE))
+            foreach (var e in consEvents.ContainsKey(0)?consEvents[0]:new string[]{}.Take(minE))
             {
-                foreach (var j in nodes.Skip(1))
+                int j = 0;
+                foreach (var jn in nodes.Skip(1))
                 {
-                    var f = consEvents[j.Id][i];
+                    var f = consEvents[j][i];
                     if (f != e)
                     {
                         var er = nodes[0].Core.hg.Round(e);
 
                         var err = nodes[0].Core.hg.RoundReceived(e);
 
-                        var fr = nodes[j.Id].Core.hg.Round(f);
+                        var fr = nodes[j].Core.hg.Round(f);
 
-                        var frr = nodes[j.Id].Core.hg.RoundReceived(f);
+                        var frr = nodes[j].Core.hg.RoundReceived(f);
 
-                        logger.Debug($"nodes[{j.Id}].Consensus[{i}] ({e.Take(6)}, Round {er}, Received {err}) and nodes[0].Consensus[{i}] ({f.Take(6)}, Round {fr}, Received {frr}) are not equal");
+                        logger.Debug($"nodes[{j}].Consensus[{i}] ({e.Take(6)}, Round {er}, Received {err}) and nodes[0].Consensus[{i}] ({f.Take(6)}, Round {fr}, Received {frr}) are not equal");
 
                         problem = true;
                     }
+
+                    j++;
                 }
 
                 i++;
@@ -555,7 +654,7 @@ namespace Dotnatter.Test.NodeImpl
             logger.Debug($"min consensus transactions: {minT}");
 
             i = 0;
-            foreach (var tx in consTransactions[0].Take(minT))
+            foreach (var tx in consTransactions.ContainsKey(0)?consTransactions[0]:new byte[][]{}.Take(minT))
             {
                 foreach (var k in nodes.Skip(1))
                 {
