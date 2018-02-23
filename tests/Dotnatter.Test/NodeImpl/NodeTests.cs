@@ -79,27 +79,27 @@ namespace Dotnatter.Test.NodeImpl
 
             var peer0Trans = await router.Register(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
-            node0.Init(false);
+            await node0.Init(false);
 
             var node0Task = node0.RunAsync(false);
 
             var peer1Trans = await router.Register(peers[1].NetAddr);
 
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
-            node1.Init(false);
+            await node1.Init(false);
 
             var node1Task = node1.RunAsync(false);
 
             //Manually prepare SyncRequest and expected SyncResponse
 
-            var node0Known = node0.Core.Known();
+            var node0Known = await node0.Core.Known();
 
-            var node1Known = node1.Core.Known();
+            var node1Known = await node1.Core.Known();
 
             Exception err;
 
             Event[] unknown;
-            (unknown, err) = node1.Core.Diff(node0Known);
+            (unknown, err) = await node1.Core.Diff(node0Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
@@ -161,24 +161,24 @@ namespace Dotnatter.Test.NodeImpl
 
             var peer0Trans = await router.Register(peers[0].NetAddr);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
-            node0.Init(false);
+            await node0.Init(false);
 
             var node0Task = node0.RunAsync(false);
 
             var peer1Trans = await router.Register(peers[1].NetAddr);
 
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
-            node1.Init(false);
+            await node1.Init(false);
 
             var node1Task = node1.RunAsync(false);
 
             //Manually prepare EagerSyncRequest and expected EagerSyncResponse
 
-            var node1Known = node1.Core.Known();
+            var node1Known = await node1.Core.Known();
 
             Event[] unknown;
             Exception err;
-            (unknown, err) = node0.Core.Diff(node1Known);
+            (unknown, err) = await node0.Core.Diff(node1Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
@@ -225,14 +225,14 @@ namespace Dotnatter.Test.NodeImpl
             var peer0Trans = await router.Register(peers[0].NetAddr);
             var peer0Proxy = new InMemAppProxy(logger);
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, peer0Proxy, logger);
-            node0.Init(false);
+            await node0.Init(false);
 
             var node0Task = node0.RunAsync(false);
 
             var peer1Trans = await router.Register(peers[1].NetAddr);
             var peer1Proxy = new InMemAppProxy(logger);
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, peer1Proxy, logger);
-            node1.Init(false);
+            await node1.Init(false);
 
             var node1Task = node1.RunAsync(false);
 
@@ -243,7 +243,7 @@ namespace Dotnatter.Test.NodeImpl
 
             //simulate a SyncRequest from node0 to node1
 
-            var node0Known = node0.Core.Known();
+            var node0Known = await node0.Core.Known();
             var args = new SyncRequest
             {
                 From = node0.LocalAddr,
@@ -262,7 +262,7 @@ namespace Dotnatter.Test.NodeImpl
             ////check the Tx was removed from the transactionPool and added to the new Head
             Assert.Empty(node0.Core.TransactionPool);
 
-            var (node0Head, _) = node0.Core.GetHead();
+            var (node0Head, _) = await node0.Core.GetHead();
             Assert.Single(node0Head.Transactions());
 
             Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
@@ -291,7 +291,7 @@ namespace Dotnatter.Test.NodeImpl
                 switch (storeType)
                 {
                     case "badger":
-                        store = new LocalDbStore(pmap, conf.CacheSize, conf.StorePath, logger);
+                        (store,_) = await LocalDbStore.New(pmap, conf.CacheSize, conf.StorePath, logger);
                         break;
                     case "inmem":
                         store = new InmemStore(pmap, conf.CacheSize, logger);
@@ -306,7 +306,7 @@ namespace Dotnatter.Test.NodeImpl
                     trans,
                     proxy, logger);
 
-                var err = node.Init(false);
+                var err = await  node.Init(false);
 
                 Assert.Null(err);
 
@@ -443,7 +443,7 @@ namespace Dotnatter.Test.NodeImpl
             try
             {
                 //create fake node[0] known to artificially reach SyncLimit
-                var node0Known = nodes[0].Core.Known();
+                var node0Known = await nodes[0].Core.Known();
                 int k = 0;
                 foreach (var kn in node0Known.ToList())
                 {
@@ -564,7 +564,7 @@ namespace Dotnatter.Test.NodeImpl
                         foreach (var n in nodes)
                         {
                             var ce = n.Core.GetLastConsensusRoundIndex();
-                            if (ce == null || ce < target) ;
+                            if (ce == null || ce < target) 
                             {
                                 done = false;
                                 break;
@@ -665,7 +665,7 @@ namespace Dotnatter.Test.NodeImpl
             }
         }
 
-        public static async Task MakeRandomTransactions(Node[] nodes, CancellationToken ct)
+        private static async Task MakeRandomTransactions(Node[] nodes, CancellationToken ct)
         {
             var seq = new Dictionary<int, int>();
             while (!ct.IsCancellationRequested)
@@ -681,7 +681,7 @@ namespace Dotnatter.Test.NodeImpl
             }
         }
 
-        public static async Task SubmitTransaction(Node n, byte[] tx)
+       private static async Task SubmitTransaction(Node n, byte[] tx)
         {
             var prox = n.Proxy as InMemAppProxy;
             Assert.NotNull(prox);

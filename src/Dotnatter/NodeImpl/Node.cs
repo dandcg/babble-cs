@@ -77,7 +77,7 @@ namespace Dotnatter.NodeImpl
 
         }
 
-        public Exception Init(bool bootstrap)
+        public async Task<Exception> Init(bool bootstrap)
         {
             var peerAddresses = new List<string>();
             foreach (var p in PeerSelector.Peers())
@@ -89,10 +89,10 @@ namespace Dotnatter.NodeImpl
 
             if (bootstrap)
             {
-                return Core.Bootstrap();
+                return await Core.Bootstrap();
             }
 
-            return Core.Init();
+            return await Core.Init();
         }
 
         public async Task RunAsync(bool gossip, CancellationToken ct = default)
@@ -281,7 +281,7 @@ namespace Dotnatter.NodeImpl
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = Core.OverSyncLimit(cmd.Known, Conf.SyncLimit);
+                overSyncLimit = await Core.OverSyncLimit(cmd.Known, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -297,7 +297,7 @@ namespace Dotnatter.NodeImpl
                 Exception err;
                 using (await coreLock.LockAsync())
                 {
-                    (diff, err) = Core.Diff(cmd.Known);
+                    (diff, err) = await Core.Diff(cmd.Known);
                 }
 
                 logger.Debug("Diff() duration={duration}", start.Nanoseconds());
@@ -325,7 +325,7 @@ namespace Dotnatter.NodeImpl
             Dictionary<int, int> known;
             using (await coreLock.LockAsync())
             {
-                known = Core.Known().Clone();
+                known =(await  Core.Known()).Clone();
             }
 
             resp.Known = known;
@@ -386,7 +386,7 @@ namespace Dotnatter.NodeImpl
 
                 //If the transaction pool is not empty, create a new self-event and empty the
                 //transaction pool in its payload
-                var err = Core.AddSelfEvent();
+                var err =await  Core.AddSelfEvent();
                 if (err != null)
                 {
                     logger.Error("Adding SelfEvent", err);
@@ -440,7 +440,7 @@ namespace Dotnatter.NodeImpl
             Dictionary<int, int> known;
             using (await coreLock.LockAsync())
             {
-                known = Core.Known();
+                known = await Core.Known();
             }
 
             //Send SyncRequest
@@ -485,7 +485,7 @@ namespace Dotnatter.NodeImpl
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = Core.OverSyncLimit(known, Conf.SyncLimit);
+                overSyncLimit = await Core.OverSyncLimit(known, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -501,7 +501,7 @@ namespace Dotnatter.NodeImpl
             Exception err;
             using (await coreLock.LockAsync())
             {
-                (diff, err) = Core.Diff(known);
+                (diff, err) = await Core.Diff(known);
             }
 
             var elapsed = start.Nanoseconds();
@@ -577,27 +577,27 @@ namespace Dotnatter.NodeImpl
             return (resp, err);
         }
 
-        public Task<Exception> Sync(WireEvent[] events)
+        public async Task<Exception> Sync(WireEvent[] events)
         {
             //Insert Events in Hashgraph and create new Head if necessary
             var start = new Stopwatch();
-            var err = Core.Sync(events);
+            var err = await Core.Sync(events);
 
             var elapsed = start.Nanoseconds();
 
             logger.Debug("Processed Sync() {duration}", elapsed);
             if (err != null)
             {
-                return Task.FromResult(err);
+                return err;
             }
 
             //Run consensus methods
             start = new Stopwatch();
-            err = Core.RunConsensus();
+            err = await Core.RunConsensus();
 
             elapsed = start.Nanoseconds();
             logger.Debug("Processed RunConsensus() {duration}", elapsed);
-            return Task.FromResult(err);
+            return err;
         }
 
         private  Task<Exception> Commit(Event[] events, CancellationToken ct)

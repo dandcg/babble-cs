@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
@@ -72,7 +73,7 @@ namespace Dotnatter.NodeImpl
             return hexId;
         }
 
-        public Exception Init()
+        public Task<Exception> Init()
         {
             var initialEvent = new Event(new byte[][] { }, new[] {"", ""},
                 PubKey(),
@@ -81,7 +82,7 @@ namespace Dotnatter.NodeImpl
             return SignAndInsertSelfEvent(initialEvent);
         }
 
-        public Exception Bootstrap()
+        public async Task<Exception> Bootstrap()
         {
             var err = hg.Bootstrap();
 
@@ -105,7 +106,7 @@ namespace Dotnatter.NodeImpl
             if (isRoot)
             {
                 Root root;
-                (root, err) = hg.Store.GetRoot(HexId());
+                (root, err) =await hg.Store.GetRoot(HexId());
                 if (err != null)
                 {
                     head = root.X;
@@ -115,7 +116,7 @@ namespace Dotnatter.NodeImpl
             else
             {
                 Event lastEvent;
-                (lastEvent, err) = GetEvent(last);
+                (lastEvent, err) = await GetEvent(last);
                 if (err != null)
                 {
                     return err;
@@ -131,7 +132,7 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        public Exception SignAndInsertSelfEvent(Event ev)
+        public async Task<Exception> SignAndInsertSelfEvent(Event ev)
         {
             Exception err = ev.Sign(Key);
 
@@ -140,14 +141,14 @@ namespace Dotnatter.NodeImpl
                 return err;
             }
 
-            err = InsertEvent(ev, true);
+            err = await InsertEvent(ev, true);
 
             return err;
         }
 
-        public Exception InsertEvent(Event ev, bool setWireInfo)
+        public async Task<Exception> InsertEvent(Event ev, bool setWireInfo)
         {
-            var err = hg.InsertEvent(ev, setWireInfo);
+            var err = await  hg.InsertEvent(ev, setWireInfo);
 
             if (err != null)
             {
@@ -163,15 +164,15 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        public Dictionary<int, int> Known()
+        public Task<Dictionary<int, int>> Known()
         {
             return hg.Known();
         }
 
-        public bool OverSyncLimit(Dictionary<int, int> known, int syncLimit)
+        public async Task<bool> OverSyncLimit(Dictionary<int, int> known, int syncLimit)
         {
             var totUnknown = 0;
-            var myKnown = Known();
+            var myKnown = await Known();
 
             //int i = 0;
             foreach (var kn in myKnown)
@@ -193,13 +194,13 @@ namespace Dotnatter.NodeImpl
             return false;
         }
 
-        public (Frame frame, Exception err) GetFrame()
+        public Task<(Frame frame, Exception err)> GetFrame()
         {
             return hg.GetFrame();
         }
 
         //returns events that c knowns about that are not in 'known'
-        public (Event[] events, Exception err ) Diff(Dictionary<int, int> known)
+        public async Task<(Event[] events, Exception err)> Diff(Dictionary<int, int> known)
         {
             var unknown = new List<Event>();
 
@@ -212,7 +213,7 @@ namespace Dotnatter.NodeImpl
                 var ct = kn.Value;
 
                 var pk = reverseParticipants[kn.Key];
-                var (participantEvents, err) = hg.Store.ParticipantEvents(pk, ct);
+                var (participantEvents, err) = await hg.Store.ParticipantEvents(pk, ct);
 
                 if (err != null)
                 {
@@ -222,7 +223,7 @@ namespace Dotnatter.NodeImpl
                 foreach (var e in participantEvents)
                 {
                     Event ev;
-                    (ev, err) = hg.Store.GetEvent(e);
+                    (ev, err) = await hg.Store.GetEvent(e);
                     if (err != null)
                     {
                         return (new Event[] { }, err);
@@ -237,7 +238,7 @@ namespace Dotnatter.NodeImpl
             return (unknown.ToArray(), null);
         }
 
-        public Exception Sync(WireEvent[] unknown)
+        public async Task<Exception> Sync(WireEvent[] unknown)
         {
             logger.Debug("Sync unknown={@unknown}; txPool={txPool}", unknown.Select(s=>s.Body.Index), TransactionPool);
 
@@ -253,7 +254,7 @@ namespace Dotnatter.NodeImpl
                 //logger.Debug("wev={wev}",we.Body.CreatorId);
 
                 Event ev;
-                (ev, err) = hg.ReadWireInfo(we);
+                (ev, err) = await hg.ReadWireInfo(we);
 
                 if (err != null)
                 {
@@ -262,7 +263,7 @@ namespace Dotnatter.NodeImpl
 
                 //logger.Debug("ev={ev}",ev.Creator());
 
-                err = InsertEvent(ev, false);
+                err = await InsertEvent(ev, false);
 
                 if (err != null)
                 {
@@ -287,7 +288,7 @@ namespace Dotnatter.NodeImpl
                     PubKey(),
                     Seq + 1);
 
-                err = SignAndInsertSelfEvent(newHead);
+                err = await SignAndInsertSelfEvent(newHead);
 
                 if (err != null)
                 {
@@ -301,7 +302,7 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        public Exception AddSelfEvent()
+        public async Task<Exception> AddSelfEvent()
         {
             if (TransactionPool.Count == 0)
             {
@@ -315,7 +316,7 @@ namespace Dotnatter.NodeImpl
                 new[] {Head, ""},
                 PubKey(), Seq + 1);
 
-            var err = SignAndInsertSelfEvent(newHead);
+            var err =await  SignAndInsertSelfEvent(newHead);
 
             if (err != null)
             {
@@ -329,13 +330,13 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        public (Event[] events, Exception err) FromWire(WireEvent[] wireEvents)
+        public async Task<(Event[] events, Exception err)> FromWire(WireEvent[] wireEvents)
         {
             var events = new List<Event>(wireEvents.Length);
 
             foreach (var w in wireEvents)
             {
-                var (ev, err) = hg.ReadWireInfo(w);
+                var (ev, err) = await hg.ReadWireInfo(w);
                 if (err != null)
                 {
                     return (null, err);
@@ -358,12 +359,12 @@ namespace Dotnatter.NodeImpl
             return (wireEvents.ToArray(), null);
         }
 
-        public Exception RunConsensus()
+        public async Task<Exception> RunConsensus()
         {
             // DivideRounds
 
             var watch = Stopwatch.StartNew();
-            var err = hg.DivideRounds();
+            var err = await hg.DivideRounds();
             watch.Stop();
 
             logger.Debug("DivideRounds() Duration={DivideRoundsDuration}", watch.Nanoseconds());
@@ -377,7 +378,7 @@ namespace Dotnatter.NodeImpl
             // DecideFrame
 
             watch = Stopwatch.StartNew();
-            err = hg.DecideFame();
+            err =await  hg.DecideFame();
             watch.Stop();
 
             logger.Debug("DecideFame() Duration={DecideFameDuration}", watch.Nanoseconds());
@@ -391,7 +392,7 @@ namespace Dotnatter.NodeImpl
             // FindOrder
 
             watch = Stopwatch.StartNew();
-            err = hg.FindOrder();
+            err = await hg.FindOrder();
             watch.Stop();
 
             logger.Debug("FindOrder() Duration={FindOrderDuration}", watch.Nanoseconds());
@@ -410,19 +411,19 @@ namespace Dotnatter.NodeImpl
             TransactionPool.AddRange(txs);
         }
 
-        public (Event ev, Exception err) GetHead()
+        public async Task<(Event ev, Exception err)> GetHead()
         {
-            return hg.Store.GetEvent(Head);
+            return await hg.Store.GetEvent(Head);
         }
 
-        public (Event ev, Exception err) GetEvent(string hash)
+        public async Task<(Event ev, Exception err)> GetEvent(string hash)
         {
-            return hg.Store.GetEvent(hash);
+            return  await hg.Store.GetEvent(hash);
         }
 
-        public (byte[][] txs, Exception err) GetEventTransactions(string hash)
+        public async Task<(byte[][] txs, Exception err)> GetEventTransactions(string hash)
         {
-            var (ex, err) = GetEvent(hash);
+            var (ex, err) = await GetEvent(hash);
             if (err != null)
             {
                 return (new byte[][] { }, err);
@@ -443,12 +444,12 @@ namespace Dotnatter.NodeImpl
             return hg.PendingLoadedEvents;
         }
 
-        public (byte[][] txs, Exception err) GetConsensusTransactions()
+        public async Task<(byte[][] txs, Exception err)> GetConsensusTransactions()
         {
             var txs = new List<byte[]>();
             foreach (var e in GetConsensusEvents())
             {
-                var (eTxs, err) = GetEventTransactions(e);
+                var (eTxs, err) = await GetEventTransactions(e);
                 if (err != null)
                 {
                     return (txs.ToArray(), new CoreError($"Consensus event not found: {e}"));

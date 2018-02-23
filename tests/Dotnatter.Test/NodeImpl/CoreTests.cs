@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
@@ -26,19 +27,19 @@ namespace Dotnatter.Test.NodeImpl
         }
 
         [Fact]
-        public void TestInit()
+        public async Task TestInit()
         {
             var key = CryptoUtils.GenerateEcdsaKey();
 
             var participants = new Dictionary<string, int> {{CryptoUtils.FromEcdsaPub(key).ToHex(), 0}};
             var core = new Core(0, key, participants, new InmemStore(participants, 10, logger), null, logger);
 
-            var err = core.Init();
+            var err = await core.Init();
 
             Assert.Null(err);
         }
 
-        private (Core[] cores, CngKey[] privateKey, Dictionary<string, string> index) InitCores(int n)
+        private async Task<(Core[] cores, CngKey[] privateKey, Dictionary<string, string> index)> InitCores(int n)
         {
             var cacheSize = 1000;
 
@@ -57,7 +58,7 @@ namespace Dotnatter.Test.NodeImpl
             for (var i = 0; i < n; i++)
             {
                 var core = new Core(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
-                core.Init();
+                await core.Init();
                 cores.Add(core);
 
                 index[$"e{i}"] = core.Head;
@@ -67,9 +68,9 @@ namespace Dotnatter.Test.NodeImpl
         }
 
         [Fact]
-        public void TestInitCores()
+        public async Task TestInitCores()
         {
-            var (cores, privateKey, index) = InitCores(3);
+            var (cores, privateKey, index) = await InitCores(3);
             Assert.NotEmpty(cores);
             Assert.NotEmpty(privateKey);
             Assert.NotEmpty(index);
@@ -87,7 +88,7 @@ namespace Dotnatter.Test.NodeImpl
         e0  e1  e2
         0   1   2
         */
-        private void InitHashgraph(Core[] cores, CngKey[] keys, Dictionary<string, string> index, int participant)
+        private async Task InitHashgraph(Core[] cores, CngKey[] keys, Dictionary<string, string> index, int participant)
 
         {
             Exception err;
@@ -97,9 +98,9 @@ namespace Dotnatter.Test.NodeImpl
                 {
                     var evh = index[$"e{i}"];
 
-                    var ( ev, _) = cores[i].GetEvent(evh);
+                    var ( ev, _) = await cores[i].GetEvent(evh);
 
-                    err = cores[participant].InsertEvent(ev, true);
+                    err = await cores[participant].InsertEvent(ev, true);
 
                     if (err != null)
                     {
@@ -112,7 +113,7 @@ namespace Dotnatter.Test.NodeImpl
                 new[] {index["e0"], index["e1"]}, //e0 and e1
                 cores[0].PubKey(), 1);
 
-            err = InsertEvent(cores, keys, index, event01, "e01", participant, 0);
+            err =await  InsertEvent(cores, keys, index, event01, "e01", participant, 0);
             if (err != null)
             {
                 output.WriteLine("error inserting e01: {0}", err);
@@ -122,7 +123,7 @@ namespace Dotnatter.Test.NodeImpl
                 new[] {index["e2"], index["e01"]}, //e2 and e01
                 cores[2].PubKey(), 1);
 
-            err = InsertEvent(cores, keys, index, event20, "e20", participant, 2);
+            err =await  InsertEvent(cores, keys, index, event20, "e20", participant, 2);
             if (err != null)
             {
                 output.WriteLine("error inserting e20: {0}", err);
@@ -132,7 +133,7 @@ namespace Dotnatter.Test.NodeImpl
                 new[] {index["e1"], index["e20"]}, //e1 and e20
                 cores[1].PubKey(), 1);
 
-            err = InsertEvent(cores, keys, index, event12, "e12", participant, 1);
+            err =await  InsertEvent(cores, keys, index, event12, "e12", participant, 1);
 
             if (err != null)
             {
@@ -140,12 +141,12 @@ namespace Dotnatter.Test.NodeImpl
             }
         }
 
-        public Exception InsertEvent(Core[] cores, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
+        public async Task<Exception> InsertEvent(Core[] cores, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
         {
             Exception err;
             if (particant == creator)
             {
-                err = cores[particant].SignAndInsertSelfEvent(ev);
+                err = await cores[particant].SignAndInsertSelfEvent(ev);
 
                 if (err != null)
                 {
@@ -159,7 +160,7 @@ namespace Dotnatter.Test.NodeImpl
             {
                 ev.Sign(keys[creator]);
 
-                err = cores[particant].InsertEvent(ev, true);
+                err = await cores[particant].InsertEvent(ev, true);
 
                 if (err != null)
                 {
@@ -173,11 +174,11 @@ namespace Dotnatter.Test.NodeImpl
         }
 
         [Fact]
-        public void TestDiff()
+        public async Task TestDiff()
         {
-            var (cores, keys, index) = InitCores(3);
+            var (cores, keys, index) =await  InitCores(3);
 
-            InitHashgraph(cores, keys, index, 0);
+            await InitHashgraph(cores, keys, index, 0);
 
             /*
                P0 knows
@@ -194,8 +195,8 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2
             */
 
-            var knownBy1 = cores[1].Known();
-            var (unknownBy1, err) = cores[0].Diff(knownBy1);
+            var knownBy1 =await  cores[1].Known();
+            var (unknownBy1, err) =await  cores[0].Diff(knownBy1);
 
             Assert.Null(err);
             var l = unknownBy1.Length;
@@ -214,10 +215,10 @@ namespace Dotnatter.Test.NodeImpl
         }
 
         [Fact]
-        public void TestSync()
+        public async Task TestSync()
 
         {
-            var (cores, _, index) = InitCores(3);
+            var (cores, _, index) = await InitCores(3);
 
             /*
                core 0           core 1          core 2
@@ -228,7 +229,7 @@ namespace Dotnatter.Test.NodeImpl
 
             //core 1 is going to tell core 0 everything it knows
 
-            var err = SynchronizeCores(cores, 1, 0, new byte[][] { });
+            var err = await SynchronizeCores(cores, 1, 0, new byte[][] { });
 
             Assert.Null(err);
 
@@ -241,7 +242,7 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2       0   1   2
             */
 
-            var knownBy0 = cores[0].Known();
+            var knownBy0 =await  cores[0].Known();
 
             var k = knownBy0[cores[0].Id()];
             Assert.False(k != 1, "core 0 should have last-index 1 for core 0, not {k}");
@@ -253,7 +254,7 @@ namespace Dotnatter.Test.NodeImpl
 
             Assert.False(k != -1, "core 0 should have last-index -1 for core 2, not {k}");
 
-            var (core0Head, _ ) = cores[0].GetHead();
+            var (core0Head, _ ) =await  cores[0].GetHead();
 
             Assert.False(core0Head.SelfParent != index["e0"], "core 0 head self-parent should be e0");
 
@@ -262,7 +263,7 @@ namespace Dotnatter.Test.NodeImpl
             index["e01"] = core0Head.Hex();
 
             //core 0 is going to tell core 2 everything it knows
-            err = SynchronizeCores(cores, 0, 2, new byte[][] { });
+            err = await SynchronizeCores(cores, 0, 2, new byte[][] { });
 
             Assert.Null(err);
 
@@ -280,7 +281,7 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2       0   1   2
             */
 
-            var knownBy2 = cores[2].Known();
+            var knownBy2 = await cores[2].Known();
 
             k = knownBy2[cores[0].Id()];
             Assert.False(k != 1, "core 2 should have last-index 1 for core 0, not {k}");
@@ -291,7 +292,7 @@ namespace Dotnatter.Test.NodeImpl
             k = knownBy2[cores[2].Id()];
             Assert.False(k != 1, "core 2 should have last-index 1 for core 2, not {k}");
 
-            var (core2Head, _) = cores[2].GetHead();
+            var (core2Head, _) =await  cores[2].GetHead();
 
             Assert.Equal(index["e2"], core2Head.SelfParent); // core 2 head self-parent should be e2
             Assert.Equal(index["e01"], core2Head.OtherParent); // core 2 head other-parent should be e01
@@ -299,7 +300,7 @@ namespace Dotnatter.Test.NodeImpl
             index["e20"] = core2Head.Hex();
 
             //core 2 is going to tell core 1 everything it knows
-            err = SynchronizeCores(cores, 2, 1, new byte[][] { });
+            err =await  SynchronizeCores(cores, 2, 1, new byte[][] { });
 
             Assert.Null(err);
 
@@ -319,7 +320,7 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2       0   1   2
             */
 
-            var knownBy1 = cores[1].Known();
+            var knownBy1 = await cores[1].Known();
             k = knownBy1[cores[0].Id()];
 
             Assert.False(k != 1, "core 1 should have last-index 1 for core 0, not {k}");
@@ -332,7 +333,7 @@ namespace Dotnatter.Test.NodeImpl
 
             Assert.False(k != 1, "core 1 should have last-index 1 for core 2, not {k}");
 
-            var (core1Head, _) = cores[1].GetHead();
+            var (core1Head, _) = await cores[1].GetHead();
             Assert.False(core1Head.SelfParent != index["e1"], "core 1 head self-parent should be e1");
 
             Assert.False(core1Head.OtherParent != index["e20"], "core 1 head other-parent should be e20");
@@ -394,9 +395,9 @@ e0  e1  e2
             }
         }
 
-        private Core[] InitConsensusHashgraph()
+        private async Task<Core[]> InitConsensusHashgraph()
         {
-            var (cores, _, _) = InitCores(3);
+            var (cores, _, _) =await  InitCores(3);
             var playbook = new[]
             {
                 new Play(0, 1, new[] {"e10".StringToBytes()}),
@@ -423,7 +424,7 @@ e0  e1  e2
 
             foreach (var play in playbook)
             {
-                var err = SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
+                var err = await SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
 
                 Assert.Null(err);
             }
@@ -432,9 +433,9 @@ e0  e1  e2
         }
 
         [Fact]
-        public void TestConsensus()
+        public async Task TestConsensus()
         {
-            var cores = InitConsensusHashgraph();
+            var cores = await InitConsensusHashgraph();
 
             var l = cores[0].GetConsensusEvents().Length;
 
@@ -460,9 +461,9 @@ e0  e1  e2
         }
 
         [Fact]
-        public void TestOverSyncLimit()
+        public async Task TestOverSyncLimit()
         {
-            var cores = InitConsensusHashgraph();
+            var cores =await  InitConsensusHashgraph();
 
             var known = new Dictionary<int, int>();
 
@@ -474,7 +475,7 @@ e0  e1  e2
                 known[i] = 1;
             }
 
-            Assert.True(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return true");
+            Assert.True(await cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return true");
 
             //negative
             for (var i = 0; i < 3; i++)
@@ -482,7 +483,7 @@ e0  e1  e2
                 known[i] = 6;
             }
 
-            Assert.False(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
+            Assert.False(await cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
 
             //edge
             known = new Dictionary<int, int>
@@ -492,7 +493,7 @@ e0  e1  e2
                 {2, 3}
             };
 
-            Assert.False(cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
+            Assert.False(await cores[0].OverSyncLimit(known, syncLimit), $"OverSyncLimit({known}, {syncLimit}) should return false");
         }
 
         /*
@@ -535,7 +536,7 @@ e0  e1  e2
    e0   e1  e2  e3
     0	1	2	3
 */
-        private void InitFFHashgraph(Core[] cores)
+        private async Task InitFFHashgraph(Core[] cores)
         {
             var playbook = new[]
             {
@@ -557,17 +558,17 @@ e0  e1  e2
 
             foreach (var play in playbook)
             {
-                var err = SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
+                var err =await  SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
 
                 Assert.Null(err);
             }
         }
 
         [Fact]
-        public void TestConsensusFF()
+        public async Task TestConsensusFF()
         {
-            var (cores, _, _ ) = InitCores(4);
-            InitFFHashgraph(cores);
+            var (cores, _, _ ) =await  InitCores(4);
+            await InitFFHashgraph(cores);
 
             var r = cores[0].GetLastConsensusRoundIndex();
 
@@ -605,10 +606,10 @@ e0  e1  e2
             }
         }
 
-        private Exception SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
+        private async Task<Exception> SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
         {
-            var knownByTo = cores[to].Known();
-            var ( unknownByTo, err) = cores[from].Diff(knownByTo);
+            var knownByTo = await cores[to].Known();
+            var ( unknownByTo, err) = await cores[from].Diff(knownByTo);
             if (err != null)
             {
                 return err;
@@ -626,19 +627,19 @@ e0  e1  e2
             //output.WriteLine($"From: {from}; To: {to}");
             //output.WriteLine(unknownWire.DumpToString());
 
-            return cores[to].Sync(unknownWire);
+            return await  cores[to].Sync(unknownWire);
         }
 
-        private Exception SyncAndRunConsensus(Core[] cores, int from, int to, byte[][] payload)
+        private async Task<Exception> SyncAndRunConsensus(Core[] cores, int from, int to, byte[][] payload)
         {
-            var err = SynchronizeCores(cores, from, to, payload);
+            var err = await SynchronizeCores(cores, from, to, payload);
 
             if (err != null)
             {
                 return err;
             }
 
-            cores[to].RunConsensus();
+            await cores[to].RunConsensus();
             return null;
         }
 

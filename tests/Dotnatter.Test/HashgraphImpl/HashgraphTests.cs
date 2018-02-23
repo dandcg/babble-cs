@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
@@ -223,127 +224,127 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestAncestor()
+        public async Task TestAncestor()
         {
             var ( h, index) = InitHashgraph();
 
             //1 generation
 
-            Assert.True(h.Ancestor(index["e01"], index["e0"]), "e0 should be ancestor of e01");
+            Assert.True(await h.Ancestor(index["e01"], index["e0"]), "e0 should be ancestor of e01");
 
-            Assert.True(h.Ancestor(index["e01"], index["e1"]), "e1 should be ancestor of e01");
+            Assert.True(await h.Ancestor(index["e01"], index["e1"]), "e1 should be ancestor of e01");
 
-            Assert.True(h.Ancestor(index["s00"], index["e01"]), "e01 should be ancestor of s00");
+            Assert.True(await h.Ancestor(index["s00"], index["e01"]), "e01 should be ancestor of s00");
 
-            Assert.True(h.Ancestor(index["s00"], index["e01"]), "e01 should be ancestor of s00");
+            Assert.True(await h.Ancestor(index["s00"], index["e01"]), "e01 should be ancestor of s00");
 
-            Assert.True(h.Ancestor(index["s20"], index["e2"]), "e2 should be ancestor of s20");
+            Assert.True(await h.Ancestor(index["s20"], index["e2"]), "e2 should be ancestor of s20");
 
-            Assert.True(h.Ancestor(index["e20"], index["s00"]), "s00 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e20"], index["s00"]), "s00 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e20"], index["s20"]), "s20 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e20"], index["s20"]), "s20 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e12"], index["e20"]), "e20 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["e20"]), "e20 should be ancestor of e12");
 
-            Assert.True(h.Ancestor(index["e12"], index["s10"]), "s10 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["s10"]), "s10 should be ancestor of e12");
 
             //2 generations
 
-            Assert.True(h.Ancestor(index["s00"], index["e0"]), "e0 should be ancestor of s00");
+            Assert.True(await h.Ancestor(index["s00"], index["e0"]), "e0 should be ancestor of s00");
 
-            Assert.True(h.Ancestor(index["s00"], index["e1"]), "e1 should be ancestor of s00");
+            Assert.True(await h.Ancestor(index["s00"], index["e1"]), "e1 should be ancestor of s00");
 
-            Assert.True(h.Ancestor(index["e20"], index["e01"]), "e01 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e20"], index["e01"]), "e01 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e20"], index["e2"]), "e2 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e20"], index["e2"]), "e2 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e12");
 
-            Assert.True(h.Ancestor(index["e12"], index["s20"]), "s20 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["s20"]), "s20 should be ancestor of e12");
 
             // 3 generations
 
-            Assert.True(h.Ancestor(index["e12"], index["e0"]), "e0 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e12"], index["e0"]), "e0 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e12"], index["e2"]), "e2 should be ancestor of e20");
+            Assert.True(await h.Ancestor(index["e12"], index["e2"]), "e2 should be ancestor of e20");
 
-            Assert.True(h.Ancestor(index["e12"], index["e01"]), "e01 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["e01"]), "e01 should be ancestor of e12");
 
-            Assert.True(h.Ancestor(index["e12"], index["e0"]), "e0 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["e0"]), "e0 should be ancestor of e12");
 
-            Assert.True(h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["e1"]), "e1 should be ancestor of e12");
 
-            Assert.True(h.Ancestor(index["e12"], index["e2"]), "e2 should be ancestor of e12");
+            Assert.True(await h.Ancestor(index["e12"], index["e2"]), "e2 should be ancestor of e12");
 
             //false positive
 
-            Assert.False(h.Ancestor(index["e01"], index["e2"]), "e2 should not be ancestor of e01");
+            Assert.False(await h.Ancestor(index["e01"], index["e2"]), "e2 should not be ancestor of e01");
 
-            Assert.False(h.Ancestor(index["s00"], index["e2"]), "e2 should not be ancestor of s00");
+            Assert.False(await h.Ancestor(index["s00"], index["e2"]), "e2 should not be ancestor of s00");
 
-            Assert.False(h.Ancestor(index["e0"], ""), "\"\" should not be ancestor of e0");
+            Assert.False(await h.Ancestor(index["e0"], ""), "\"\" should not be ancestor of e0");
 
-            Assert.False(h.Ancestor(index["s00"], ""), "\"\" should not be ancestor of s00");
+            Assert.False(await h.Ancestor(index["s00"], ""), "\"\" should not be ancestor of s00");
 
-            Assert.False(h.Ancestor(index["e12"], ""), "\"\" should not be ancestor of e12");
+            Assert.False(await h.Ancestor(index["e12"], ""), "\"\" should not be ancestor of e12");
         }
 
         [Fact]
-        public void TestSelfAncestor()
+        public async Task TestSelfAncestor()
         {
             var (h, index) = InitHashgraph();
 
             // 1 generation
 
-            Assert.True(h.SelfAncestor(index["e01"], index["e0"]), "e0 should be self ancestor of e01");
+            Assert.True(await h.SelfAncestor(index["e01"], index["e0"]), "e0 should be self ancestor of e01");
 
-            Assert.True(h.SelfAncestor(index["s00"], index["e01"]), "e01 should be self ancestor of s00");
+            Assert.True(await h.SelfAncestor(index["s00"], index["e01"]), "e01 should be self ancestor of s00");
 
             // 1 generation false negatives
 
-            Assert.False(h.SelfAncestor(index["e01"], index["e1"]), "e1 should not be self ancestor of e01");
+            Assert.False(await h.SelfAncestor(index["e01"], index["e1"]), "e1 should not be self ancestor of e01");
 
-            Assert.False(h.SelfAncestor(index["e12"], index["e20"]), "e20 should not be self ancestor of e12");
+            Assert.False(await h.SelfAncestor(index["e12"], index["e20"]), "e20 should not be self ancestor of e12");
 
-            Assert.False(h.SelfAncestor(index["s20"], ""), "\"\" should not be self ancestor of s20");
+            Assert.False(await h.SelfAncestor(index["s20"], ""), "\"\" should not be self ancestor of s20");
 
             // 2 generation
 
-            Assert.True(h.SelfAncestor(index["e20"], index["e2"]), "e2 should be self ancestor of e20");
+            Assert.True(await h.SelfAncestor(index["e20"], index["e2"]), "e2 should be self ancestor of e20");
 
-            Assert.True(h.SelfAncestor(index["e12"], index["e1"]), "e1 should be self ancestor of e12");
+            Assert.True(await h.SelfAncestor(index["e12"], index["e1"]), "e1 should be self ancestor of e12");
 
             // 2 generation false negative
 
-            Assert.False(h.SelfAncestor(index["e20"], index["e0"]), "e0 should not be self ancestor of e20");
+            Assert.False(await h.SelfAncestor(index["e20"], index["e0"]), "e0 should not be self ancestor of e20");
 
-            Assert.False(h.SelfAncestor(index["e12"], index["e2"]), "e2 should not be self ancestor of e12");
+            Assert.False(await h.SelfAncestor(index["e12"], index["e2"]), "e2 should not be self ancestor of e12");
 
-            Assert.False(h.SelfAncestor(index["e20"], index["e01"]), "e01 should not be self ancestor of e20");
+            Assert.False(await h.SelfAncestor(index["e20"], index["e01"]), "e01 should not be self ancestor of e20");
         }
 
         [Fact]
-        public void TestSee()
+        public async Task TestSee()
         {
             var (h, index) = InitHashgraph();
 
-            Assert.True(h.See(index["e01"], index["e0"]), "e01 should see e0");
+            Assert.True(await h.See(index["e01"], index["e0"]), "e01 should see e0");
 
-            Assert.True(h.See(index["e01"], index["e1"]), "e01 should see e1");
+            Assert.True(await h.See(index["e01"], index["e1"]), "e01 should see e1");
 
-            Assert.True(h.See(index["e20"], index["e0"]), "e20 should see e0");
+            Assert.True(await h.See(index["e20"], index["e0"]), "e20 should see e0");
 
-            Assert.True(h.See(index["e20"], index["e01"]), "e20 should see e01");
+            Assert.True(await h.See(index["e20"], index["e01"]), "e20 should see e01");
 
-            Assert.True(h.See(index["e12"], index["e01"]), "e12 should see e01");
+            Assert.True(await h.See(index["e12"], index["e01"]), "e12 should see e01");
 
-            Assert.True(h.See(index["e12"], index["e0"]), "e12 should see e0");
+            Assert.True(await h.See(index["e12"], index["e0"]), "e12 should see e0");
 
-            Assert.True(h.See(index["e12"], index["e1"]), "e12 should see e1");
+            Assert.True(await h.See(index["e12"], index["e1"]), "e12 should see e1");
 
-            Assert.True(h.See(index["e12"], index["s20"]), "e12 should see s20");
+            Assert.True(await h.See(index["e12"], index["s20"]), "e12 should see s20");
         }
 
         [Fact]
@@ -393,7 +394,7 @@ namespace Dotnatter.Test.HashgraphImpl
         and yet they are both ancestors of event e20
         */
         [Fact]
-        public void TestFork()
+        public async Task TestFork()
         {
             var index = new Dictionary<string, string>();
 
@@ -422,7 +423,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 index.Add($"e{i}", ev.Hex());
 
-                hashgraph.InsertEvent(ev, true);
+                await hashgraph.InsertEvent(ev, true);
 
                 nodes.Add(node);
             }
@@ -479,7 +480,7 @@ namespace Dotnatter.Test.HashgraphImpl
         0   1    2
         */
 
-        private (Hashgraph hashgraph, Dictionary<string, string> index) InitRoundHashgraph()
+        private async Task<(Hashgraph hashgraph, Dictionary<string, string> index)> InitRoundHashgraph()
         {
             var index = new Dictionary<string, string>();
 
@@ -538,22 +539,22 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var ev in orderedEvents)
             {
-                hashgraph.InsertEvent(ev, true);
+                await hashgraph.InsertEvent(ev, true);
             }
 
             return (hashgraph, index);
         }
 
         [Fact]
-        public void TestInsertEvent()
+        public async Task TestInsertEvent()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             var expectedFirstDescendants = new List<EventCoordinates>(N);
             var expectedLastAncestors = new List<EventCoordinates>(N);
 
             //e0
-            var (e0, err) = h.Store.GetEvent(index["e0"]);
+            var (e0, err) = await h.Store.GetEvent(index["e0"]);
 
             Assert.Null(err);
 
@@ -601,12 +602,12 @@ namespace Dotnatter.Test.HashgraphImpl
 
             //e21
             Event e21;
-            (e21, err) = h.Store.GetEvent(index["e21"]);
+            (e21, err) =await h.Store.GetEvent(index["e21"]);
 
             Assert.Null(err);
 
             Event e10;
-            (e10, err) = h.Store.GetEvent(index["e10"]);
+            (e10, err) = await h.Store.GetEvent(index["e10"]);
 
             Assert.Null(err);
 
@@ -663,7 +664,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             //f1
             Event f1;
-            (f1, err) = h.Store.GetEvent(index["f1"]);
+            (f1, err) = await h.Store.GetEvent(index["f1"]);
 
             Assert.Null(err);
 
@@ -720,9 +721,9 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestReadWireInfo()
+        public async Task TestReadWireInfo()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             int k = 0;
             foreach (var evh in index)
@@ -731,14 +732,14 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 Exception err;
                 Event ev;
-                (ev, err) = h.Store.GetEvent(evh.Value);
+                (ev, err) =await  h.Store.GetEvent(evh.Value);
 
                 Assert.Null(err);
 
                 var evWire = ev.ToWire();
 
                 Event evFromWire;
-                (evFromWire, err) = h.ReadWireInfo(evWire);
+                (evFromWire, err) =await  h.ReadWireInfo(evWire);
                 Assert.Null(err);
 
                 //"Error converting %s.Body from light wire"
@@ -756,46 +757,46 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestStronglySee()
+        public async Task TestStronglySee()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
-            Assert.True(h.StronglySee(index["e21"], index["e0"]), "e21 should strongly see e0");
+            Assert.True(await h.StronglySee(index["e21"], index["e0"]), "e21 should strongly see e0");
 
-            Assert.True(h.StronglySee(index["e02"], index["e10"]), "e02 should strongly see e10");
+            Assert.True(await h.StronglySee(index["e02"], index["e10"]), "e02 should strongly see e10");
 
-            Assert.True(h.StronglySee(index["e02"], index["e0"]), "e02 should strongly see e0");
+            Assert.True(await h.StronglySee(index["e02"], index["e0"]), "e02 should strongly see e0");
 
-            Assert.True(h.StronglySee(index["e02"], index["e1"]), "e02 should strongly see e1");
+            Assert.True(await h.StronglySee(index["e02"], index["e1"]), "e02 should strongly see e1");
 
-            Assert.True(h.StronglySee(index["f1"], index["e21"]), "f1 should strongly see e21");
+            Assert.True(await h.StronglySee(index["f1"], index["e21"]), "f1 should strongly see e21");
 
-            Assert.True(h.StronglySee(index["f1"], index["e10"]), "f1 should strongly see e10");
+            Assert.True(await h.StronglySee(index["f1"], index["e10"]), "f1 should strongly see e10");
 
-            Assert.True(h.StronglySee(index["f1"], index["e0"]), "f1 should strongly see e0");
+            Assert.True(await h.StronglySee(index["f1"], index["e0"]), "f1 should strongly see e0");
 
-            Assert.True(h.StronglySee(index["f1"], index["e1"]), "f1 should strongly see e1");
+            Assert.True(await h.StronglySee(index["f1"], index["e1"]), "f1 should strongly see e1");
 
-            Assert.True(h.StronglySee(index["f1"], index["e2"]), "f1 should strongly see e2");
+            Assert.True(await h.StronglySee(index["f1"], index["e2"]), "f1 should strongly see e2");
 
-            Assert.True(h.StronglySee(index["s11"], index["e2"]), "s11 should strongly see e2");
+            Assert.True(await h.StronglySee(index["s11"], index["e2"]), "s11 should strongly see e2");
 
             //false negatives
-            Assert.False(h.StronglySee(index["e10"], index["e0"]), "e12 should not strongly see e2");
+            Assert.False(await h.StronglySee(index["e10"], index["e0"]), "e12 should not strongly see e2");
 
-            Assert.False(h.StronglySee(index["e21"], index["e1"]), "e21 should not strongly see e1");
+            Assert.False(await h.StronglySee(index["e21"], index["e1"]), "e21 should not strongly see e1");
 
-            Assert.False(h.StronglySee(index["e21"], index["e2"]), "e21 should not strongly see e2");
+            Assert.False(await h.StronglySee(index["e21"], index["e2"]), "e21 should not strongly see e2");
 
-            Assert.False(h.StronglySee(index["e02"], index["e2"]), "e02 should not strongly see e2");
+            Assert.False(await h.StronglySee(index["e02"], index["e2"]), "e02 should not strongly see e2");
 
-            Assert.False(h.StronglySee(index["s11"], index["e02"]), "s11 should not strongly see e02");
+            Assert.False(await h.StronglySee(index["s11"], index["e02"]), "s11 should not strongly see e02");
         }
 
         [Fact]
-        public void TestParentRound()
+        public async Task TestParentRound()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             var round0Witnesses = new Dictionary<string, RoundEvent>
             {
@@ -804,30 +805,30 @@ namespace Dotnatter.Test.HashgraphImpl
                 [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
             };
 
-            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
             var round1Witnesses = new Dictionary<string, RoundEvent>();
 
             round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
-            h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
+            await h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-            Assert.Equal(-1, h.ParentRound(index["e0"]).Round);
-            Assert.True(h.ParentRound(index["e0"]).IsRoot);
+            Assert.Equal(-1,(await h.ParentRound(index["e0"])).Round);
+            Assert.True((await h.ParentRound(index["e0"])).IsRoot);
 
-            Assert.Equal(-1, h.ParentRound(index["e1"]).Round);
-            Assert.True(h.ParentRound(index["e1"]).IsRoot);
+            Assert.Equal(-1, (await h.ParentRound(index["e1"])).Round);
+            Assert.True((await h.ParentRound(index["e1"])).IsRoot);
 
-            Assert.Equal(0, h.ParentRound(index["f1"]).Round);
-            Assert.False(h.ParentRound(index["f1"]).IsRoot);
+            Assert.Equal(0, (await h.ParentRound(index["f1"])).Round);
+            Assert.False((await h.ParentRound(index["f1"])).IsRoot);
 
-            Assert.Equal(1, h.ParentRound(index["s11"]).Round);
-            Assert.False(h.ParentRound(index["s11"]).IsRoot);
+            Assert.Equal(1, (await h.ParentRound(index["s11"])).Round);
+            Assert.False((await h.ParentRound(index["s11"])).IsRoot);
         }
 
         [Fact]
-        public void TestWitness()
+        public async Task TestWitness()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             var round0Witnesses = new Dictionary<string, RoundEvent>
             {
@@ -836,77 +837,77 @@ namespace Dotnatter.Test.HashgraphImpl
                 [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
             };
 
-            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
             var round1Witnesses = new Dictionary<string, RoundEvent>
             {
                 [index["f1"]] = new RoundEvent {Witness = true, Famous = null}
             };
 
-            h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
+            await  h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-            Assert.True(h.Witness(index["e0"]), "e0 should be witness");
+            Assert.True(await h.Witness(index["e0"]), "e0 should be witness");
 
-            Assert.True(h.Witness(index["e1"]), "e1 should be witness");
+            Assert.True(await h.Witness(index["e1"]), "e1 should be witness");
 
-            Assert.True(h.Witness(index["e2"]), "e2 should be witness");
+            Assert.True(await h.Witness(index["e2"]), "e2 should be witness");
 
-            Assert.True(h.Witness(index["f1"]), "f1 should be witness");
+            Assert.True(await h.Witness(index["f1"]), "f1 should be witness");
 
-            Assert.False(h.Witness(index["e10"]), "e10 should not be witness");
+            Assert.False(await h.Witness(index["e10"]), "e10 should not be witness");
 
-            Assert.False(h.Witness(index["e21"]), "e21 should not be witness");
+            Assert.False(await h.Witness(index["e21"]), "e21 should not be witness");
 
-            Assert.False(h.Witness(index["e02"]), "e02 should not be witness");
+            Assert.False(await h.Witness(index["e02"]), "e02 should not be witness");
         }
 
         [Fact]
-        public void TestRoundInc()
+        public async Task TestRoundInc()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             var round0Witnesses = new Dictionary<string, RoundEvent>();
 
             round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
-            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+            await  h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-            Assert.True(h.RoundInc(index["f1"]), "RoundInc f1 should be true");
+            Assert.True(await h.RoundInc(index["f1"]), "RoundInc f1 should be true");
 
-            Assert.False(h.RoundInc(index["e02"]), "RoundInc e02 should be false because it doesnt strongly see e2");
+            Assert.False(await h.RoundInc(index["e02"]), "RoundInc e02 should be false because it doesnt strongly see e2");
         }
 
         [Fact]
-        public void TestRound()
+        public async Task TestRound()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             var round0Witnesses = new Dictionary<string, RoundEvent>();
 
             round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
-            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+            await  h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-            Assert.Equal(1, h.Round(index["f1"]));
+            Assert.Equal(1,await  h.Round(index["f1"]));
 
-            Assert.Equal(0, h.Round(index["e02"]));
+            Assert.Equal(0, await h.Round(index["e02"]));
         }
 
         [Fact]
-        public void TestRoundDiff()
+        public async Task TestRoundDiff()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
             var round0Witnesses = new Dictionary<string, RoundEvent>();
 
             round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
-            h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+            await  h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-            var (d, err) = h.RoundDiff(index["f1"], index["e02"]);
+            var (d, err) = await h.RoundDiff(index["f1"], index["e02"]);
 
             if (d != 1)
             {
@@ -918,7 +919,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 throw new AssertActualExpectedException(1, d, "RoundDiff(f1, e02) should be 1");
             }
 
-            ( d, err) = h.RoundDiff(index["e02"], index["f1"]);
+            ( d, err) = await h.RoundDiff(index["e02"], index["f1"]);
 
             if (d != -1)
             {
@@ -930,7 +931,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 throw new AssertActualExpectedException(-1, d, "RoundDiff(e02, f1) should be -1");
             }
 
-            (d, err) = h.RoundDiff(index["e02"], index["e21"]);
+            (d, err) =await  h.RoundDiff(index["e02"], index["e21"]);
 
             if (d != 0)
             {
@@ -944,11 +945,11 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestDivideRounds()
+        public async Task TestDivideRoundsAsync()
         {
-            var (h, index) = InitRoundHashgraph();
+            var (h, index) =await  InitRoundHashgraph();
 
-            var err = h.DivideRounds();
+            var err =await  h.DivideRounds();
 
             Assert.Null(err);
 
@@ -957,7 +958,7 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.Equal(1, l);
 
             RoundInfo round0;
-            ( round0, err) = h.Store.GetRound(0);
+            ( round0, err) =await  h.Store.GetRound(0);
 
             Assert.Null(err);
 
@@ -971,7 +972,7 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.Contains(index["e2"], round0.Witnesses());
 
             RoundInfo round1;
-            (round1, err) = h.Store.GetRound(1);
+            (round1, err) =await  h.Store.GetRound(1);
 
             Assert.Null(err);
 
@@ -1029,7 +1030,7 @@ namespace Dotnatter.Test.HashgraphImpl
         		0   1    2
         */
 
-        public (Hashgraph hashgraph, Dictionary<string, string> index) InitConsensusHashgraph(bool db)
+        public async Task<(Hashgraph hashgraph, Dictionary<string, string> index)> InitConsensusHashgraph(bool db)
 
         {
             var index = new Dictionary<string, string>();
@@ -1118,7 +1119,7 @@ namespace Dotnatter.Test.HashgraphImpl
             i = 0;
             foreach (var ev in orderedEvents)
             {
-                var err = hashgraph.InsertEvent(ev, true);
+                var err =await  hashgraph.InsertEvent(ev, true);
 
                 if (err != null)
                 {
@@ -1132,21 +1133,21 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestDecideFame()
+        public async Task TestDecideFame()
         {
-            var (h, index) = InitConsensusHashgraph(false);
+            var (h, index) = await InitConsensusHashgraph(false);
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            Assert.Equal(2, h.Round(index["g0"]));
+            Assert.Equal(2,await h.Round(index["g0"]));
 
-            Assert.Equal(2, h.Round(index["g1"]));
+            Assert.Equal(2,await  h.Round(index["g1"]));
 
-            Assert.Equal(2, h.Round(index["g2"]));
+            Assert.Equal(2,await  h.Round(index["g2"]));
 
-            var (round0, err) = h.Store.GetRound(0);
+            var (round0, err) =await  h.Store.GetRound(0);
 
             Assert.Null(err);
 
@@ -1164,40 +1165,40 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestOldestSelfAncestorToSee()
+        public async Task TestOldestSelfAncestorToSee()
         {
-            var (h, index) = InitConsensusHashgraph(false);
+            var (h, index) =await  InitConsensusHashgraph(false);
 
-            var a = h.OldestSelfAncestorToSee(index["f0"], index["e1"]);
+            var a = await h.OldestSelfAncestorToSee(index["f0"], index["e1"]);
 
             Assert.True(a == index["e02"], $"oldest self ancestor of f0 to see e1 should be e02 not {GetName(index, a)}");
 
-            a = h.OldestSelfAncestorToSee(index["f1"], index["e0"]);
+            a = await h.OldestSelfAncestorToSee(index["f1"], index["e0"]);
             Assert.True(a == index["e10"], $"oldest self ancestor of f1 to see e0 should be e10 not {GetName(index, a)}");
 
-            a = h.OldestSelfAncestorToSee(index["f1b"], index["e0"]);
+            a = await h.OldestSelfAncestorToSee(index["f1b"], index["e0"]);
             Assert.True(a == index["e10"], $"oldest self ancestor of f1b to see e0 should be e10 not {GetName(index, a)}");
 
-            a = h.OldestSelfAncestorToSee(index["g2"], index["f1"]);
+            a = await h.OldestSelfAncestorToSee(index["g2"], index["f1"]);
             Assert.True(a == index["f2"], $"oldest self ancestor of g2 to see f1 should be f2 not {GetName(index, a)}");
 
-            a = h.OldestSelfAncestorToSee(index["e21"], index["e1"]);
+            a = await h.OldestSelfAncestorToSee(index["e21"], index["e1"]);
             Assert.True(a == index["e21"], $"oldest self ancestor of e20 to see e1 should be e21 not {GetName(index, a)}");
 
-            a = h.OldestSelfAncestorToSee(index["e2"], index["e1"]);
+            a = await h.OldestSelfAncestorToSee(index["e2"], index["e1"]);
             Assert.True(a == "", $"oldest self ancestor of e2 to see e1 should be '' not {GetName(index, a)}");
         }
 
         [Fact]
-        public void TestDecideRoundReceived()
+        public async Task TestDecideRoundReceived()
         {
-            var (h, index) = InitConsensusHashgraph(false);
+            var (h, index) =await  InitConsensusHashgraph(false);
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            h.DecideRoundReceived();
+            await  h.DecideRoundReceived();
 
             foreach (var item in index)
 
@@ -1207,7 +1208,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 Console.WriteLine($"{name} - {hash}");
 
-                var (e, _) = h.Store.GetEvent(hash);
+                var (e, _) = await h.Store.GetEvent(hash);
 
                 //Todo: Check rune
                 //if rune(name[0]) == rune('e') {
@@ -1223,15 +1224,15 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestFindOrder()
+        public async Task TestFindOrder()
         {
-            var ( h, index) = InitConsensusHashgraph(false);
+            var ( h, index) = await InitConsensusHashgraph(false);
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            h.FindOrder();
+            await h.FindOrder();
 
             var i = 0;
             foreach (var e in h.ConsensusEvents())
@@ -1280,9 +1281,9 @@ namespace Dotnatter.Test.HashgraphImpl
         //}
 
         [Fact]
-        public void TestKnown()
+        public async Task TestKnown()
         {
-            var (h, _ ) = InitConsensusHashgraph(false);
+            var (h, _ ) =await  InitConsensusHashgraph(false);
 
             var expectedKnown = new Dictionary<int, int>
             {
@@ -1291,7 +1292,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {2, 7}
             };
 
-            var known = h.Known();
+            var known = await h.Known();
 
             foreach (var id in h.Participants)
             {
@@ -1302,9 +1303,9 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestReset()
+        public async Task TestReset()
         {
-            var (h, index) = InitConsensusHashgraph(false);
+            var (h, index) =await  InitConsensusHashgraph(false);
 
             var evs = new[] {"g1", "g0", "g2", "g10", "g21", "o02", "g02", "h1", "h0", "h2"};
 
@@ -1314,7 +1315,7 @@ namespace Dotnatter.Test.HashgraphImpl
             foreach (var evn in evs)
             {
                 Event ev;
-                (ev, err) = h.Store.GetEvent(index[evn]);
+                (ev, err) = await h.Store.GetEvent(index[evn]);
 
                 Assert.Null(err);
 
@@ -1363,11 +1364,11 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var k in evs)
             {
-                err = h.InsertEvent(backup[k], false);
+                err =await  h.InsertEvent(backup[k], false);
 
                 Assert.True(err == null, $"Error inserting {k} in reset Hashgraph: {err?.Message}");
 
-                (_, err) = h.Store.GetEvent(index[k]);
+                (_, err) =await  h.Store.GetEvent(index[k]);
 
                 Assert.True(err == null, $"Error fetching {k} after inserting it in reset Hashgraph: {err?.Message}");
             }
@@ -1379,7 +1380,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {2, 7}
             };
 
-            var known = h.Known();
+            var known = await h.Known();
 
             foreach (var it in h.Participants)
             {
@@ -1390,15 +1391,15 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestGetFrame()
+        public async Task TestGetFrame()
         {
-            var (h, index) = InitConsensusHashgraph(false);
+            var (h, index) =await  InitConsensusHashgraph(false);
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            h.FindOrder();
+            await h.FindOrder();
 
             var expectedRoots = new Dictionary<string, Root>();
             expectedRoots[h.ReverseParticipants[0]] = new Root
@@ -1428,7 +1429,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             Exception err;
             Frame frame;
-            (frame, err) = h.GetFrame();
+            (frame, err) = await h.GetFrame();
 
             Assert.Null(err);
 
@@ -1474,14 +1475,14 @@ namespace Dotnatter.Test.HashgraphImpl
                 var r = rs.Value;
 
                 string[] ee;
-                (ee, err) = h.Store.ParticipantEvents(p, skip[p]);
+                (ee, err) = await h.Store.ParticipantEvents(p, skip[p]);
 
                 Assert.Null(err);
 
                 foreach (var e in ee)
                 {
                     Event ev;
-                    (ev, err) = h.Store.GetEvent(e);
+                    (ev, err) = await h.Store.GetEvent(e);
 
                     Assert.Null(err);
 
@@ -1495,17 +1496,17 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestResetFromFrame()
+        public async Task TestResetFromFrame()
         {
-            var (h, _) = InitConsensusHashgraph(false);
+            var (h, _) = await InitConsensusHashgraph(false);
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            h.FindOrder();
+            await h.FindOrder();
 
-            var (frame, err) = h.GetFrame();
+            var (frame, err) =await  h.GetFrame();
 
             Assert.Null(err);
 
@@ -1515,7 +1516,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var ev in frame.Events)
             {
-                err = h.InsertEvent(ev, false);
+                err =await  h.InsertEvent(ev, false);
                 if (err != null)
                 {
                     Console.WriteLine($"Error inserting {ev.Hex()} in reset Hashgraph: {err}");
@@ -1531,7 +1532,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {2, 7}
             };
 
-            var known = h.Known();
+            var known =await  h.Known();
 
             foreach (var p in h.Participants)
             {
@@ -1541,11 +1542,11 @@ namespace Dotnatter.Test.HashgraphImpl
                 Assert.True(l == expectedKnown[id], $"Known[{id}] should be {expectedKnown[id]}, not {l}");
             }
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            h.FindOrder();
+            await h.FindOrder();
 
             var r = h.LastConsensusRound;
             if (r == null || r != 1)
@@ -1562,17 +1563,17 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact(Skip = "Badger DB alternative not yet implmented!")]
-        public void TestBootstrap()
+        public async Task TestBootstrap()
         {
             //Initialize a first Hashgraph with a DB backend
             //Add events and run consensus methods on it
-            var (h, _) = InitConsensusHashgraph(true);
+            var (h, _) = await InitConsensusHashgraph(true);
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
-            h.DecideFame();
+            await h.DecideFame();
 
-            h.FindOrder();
+            await h.FindOrder();
 
             h.Store.Close();
 
@@ -1682,7 +1683,7 @@ namespace Dotnatter.Test.HashgraphImpl
         	0	 1	  2	   3
         */
 
-        public (Hashgraph h, Dictionary<string, string> index) InitFunkyHashgraph()
+        public async Task<(Hashgraph h, Dictionary<string, string> index)> InitFunkyHashgraph()
 
         {
             var index = new Dictionary<string, string>();
@@ -1758,7 +1759,7 @@ namespace Dotnatter.Test.HashgraphImpl
             i = 0;
             foreach (var ev in orderedEvents)
             {
-                var err = hashgraph.InsertEvent(ev, true);
+                var err =await  hashgraph.InsertEvent(ev, true);
 
                 if (err != null)
                 {
@@ -1770,18 +1771,18 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestFunkyHashgraphFame()
+        public async Task TestFunkyHashgraphFame()
         {
-            var ( h, index) = InitFunkyHashgraph();
+            var ( h, index) = await InitFunkyHashgraph();
 
-            h.DivideRounds();
+            await h.DivideRounds();
 
             var l = h.Store.LastRound();
             Assert.Equal(5, l);
 
             for (var r = 0; r < 6; r++)
             {
-                var ( round, err) = h.Store.GetRound(r);
+                var ( round, err) = await h.Store.GetRound(r);
 
                 Assert.Null(err);
 
@@ -1794,7 +1795,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 Console.WriteLine("Round {0} witnesses: {1}", r, string.Join(", ",witnessNames));
             }
 
-            h.DecideFame();
+            await h.DecideFame();
 
             //rounds 0,1, 2 and 3 should be decided
             var expectedUndecidedRounds = new List<int> {4, 5};

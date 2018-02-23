@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.Util;
@@ -39,6 +40,11 @@ namespace Dotnatter.HashgraphImpl.Stores
             lastRound = -1;
         }
 
+        public Dictionary<string, Root> Roots
+        {
+            get { return roots; }
+        }
+
         public int CacheSize()
         {
             return cacheSize;
@@ -49,7 +55,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             return (participants,null);
         }
 
-        public (Event evt, StoreError err) GetEvent(string key)
+        public Task<(Event evt, StoreError err)> GetEvent(string key)
         {
             bool ok=false;
             Event res=null;
@@ -61,17 +67,17 @@ namespace Dotnatter.HashgraphImpl.Stores
             
             if (!ok)
             {
-                return (new Event(), new StoreError(StoreErrorType.KeyNotFound, key));
+                return Task.FromResult<(Event,StoreError)>((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
                 
             }
             
-            return (res,null);
+            return Task.FromResult<(Event,StoreError)>((res,null));
         }
 
-        public StoreError SetEvent(Event ev)
+        public async Task<StoreError> SetEvent(Event ev)
         {
             var key = ev.Hex();
-            var (_, err) = GetEvent(key);
+            var (_, err) = await GetEvent(key);
 
             if (err != null && err.StoreErrorType != StoreErrorType.KeyNotFound)
             {
@@ -98,14 +104,14 @@ namespace Dotnatter.HashgraphImpl.Stores
           return  participantEventsCache.Add(participant, hash, index);
         }
 
-        public (string[] evts, StoreError err) ParticipantEvents(string participant, int skip)
+        public Task<(string[] evts, StoreError err)> ParticipantEvents(string participant, int skip)
         {
-            return participantEventsCache.Get(participant, skip);
+            return Task.FromResult<(string[], StoreError)>(participantEventsCache.Get(participant, skip));
         }
 
-        public (string ev, StoreError err) ParticipantEvent(string particant, int index)
+        public Task<(string ev, StoreError err)> ParticipantEvent(string particant, int index)
         {
-            return participantEventsCache.GetItem(particant, index);
+            return Task.FromResult(participantEventsCache.GetItem(particant, index));
         }
 
         public (string last, bool isRoot, StoreError err) LastFrom(string participant)
@@ -123,7 +129,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             //if there is none, grab the root
             if (last =="")
             {
-                var ok = roots.TryGetValue(participant, out var root);
+                var ok = Roots.TryGetValue(participant, out var root);
 
                 if (ok)
                 {
@@ -139,9 +145,9 @@ namespace Dotnatter.HashgraphImpl.Stores
             return (last, isRoot,err);
         }
 
-        public Dictionary<int, int> Known()
+        public Task<Dictionary<int, int>> Known()
         {
-            return participantEventsCache.Known();
+            return Task.FromResult(participantEventsCache.Known());
         }
 
         public string[] ConsensusEvents()
@@ -168,18 +174,18 @@ namespace Dotnatter.HashgraphImpl.Stores
             return null;
         }
 
-        public (RoundInfo roundInfo, StoreError err) GetRound(int r)
+        public Task<(RoundInfo roundInfo, StoreError err)> GetRound(int r)
         {
             var (res, ok) = roundCache.Get(r);
 
             if (!ok)
             {
-                return (new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound, r.ToString())); ;
+                return Task.FromResult<(RoundInfo,StoreError)>((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound, r.ToString()))); ;
             }
-            return (res,null);
+            return Task.FromResult<(RoundInfo,StoreError)>((res,null));
         }
 
-        public  StoreError  SetRound(int r, RoundInfo round)
+        public  Task<StoreError>  SetRound(int r, RoundInfo round)
         {
             roundCache.Add(r, round);
 
@@ -188,7 +194,7 @@ namespace Dotnatter.HashgraphImpl.Stores
                 lastRound = r;
             }
 
-            return null;
+            return Task.FromResult<StoreError>(null);
 
         }
 
@@ -197,9 +203,9 @@ namespace Dotnatter.HashgraphImpl.Stores
             return lastRound;
         }
 
-        public string[] RoundWitnesses(int r)
+        public async Task<string[]> RoundWitnesses(int r)
         {
-            var (round,err) = GetRound(r);
+            var (round,err) = await GetRound(r);
 
             if (err != null)
             {
@@ -208,9 +214,9 @@ namespace Dotnatter.HashgraphImpl.Stores
             return round.Witnesses();
         }
 
-        public int RoundEvents(int i)
+        public async Task<int> RoundEvents(int i)
         {
-            var (round,err) = GetRound(i);
+            var (round,err) = await GetRound(i);
             if (err != null)
             {
                 return 0;
@@ -218,16 +224,16 @@ namespace Dotnatter.HashgraphImpl.Stores
             return round.Events.Count;
         }
 
-        public (Root root, StoreError err) GetRoot(string participant)
+        public Task<(Root root, StoreError err)> GetRoot(string participant)
         {
-            var ok = (roots.TryGetValue(participant, out var res));
+            var ok = (Roots.TryGetValue(participant, out var res));
 
             if (!ok)
             {
-                return (new Root(), new StoreError(StoreErrorType.KeyNotFound, participant));
+                return Task.FromResult<(Root,StoreError)>((new Root(), new StoreError(StoreErrorType.KeyNotFound, participant)));
             }
 
-            return (res,null);
+            return Task.FromResult<(Root,StoreError)>((res,null));
         }
 
         public StoreError Reset(Dictionary<string, Root> newRoots)

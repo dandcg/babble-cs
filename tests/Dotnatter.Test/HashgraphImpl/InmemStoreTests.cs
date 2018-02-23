@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
@@ -49,7 +50,7 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestInmemEvents()
+        public async Task TestInmemEvents()
         {
             var cacheSize = 100;
 
@@ -72,7 +73,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                     ev.Hex(); //just to set private variables
                     items.Add(ev);
-                    store.SetEvent(ev);
+                    await store.SetEvent(ev);
                 }
 
                 events[p.Hex] = items;
@@ -82,7 +83,7 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 foreach (var ev in evi.Value)
                 {
-                    var (rev, err) = store.GetEvent(ev.Hex());
+                    var (rev, err) = await store.GetEvent(ev.Hex());
 
                     Assert.Null(err);
                     rev.Body.ShouldCompareTo(ev.Body);
@@ -92,7 +93,7 @@ namespace Dotnatter.Test.HashgraphImpl
             var skipIndex = -1; //do not skip any indexes
             foreach (var p in participants)
             {
-                var (pEvents, err) = store.ParticipantEvents(p.Hex, skipIndex);
+                var (pEvents, err) = await store.ParticipantEvents(p.Hex, skipIndex);
 
                 Assert.Null(err);
 
@@ -115,7 +116,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 expectedKnown.Add(p.Id, testSize - 1);
             }
 
-            var known = store.Known();
+            var known =await  store.Known();
 
             known.ShouldCompareTo(expectedKnown);
 
@@ -131,7 +132,7 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestInmemRounds()
+        public async Task TestInmemRounds()
         {
             var ( store, participants) = InitInmemStore(10);
 
@@ -149,18 +150,18 @@ namespace Dotnatter.Test.HashgraphImpl
                 round.AddEvent(ev.Hex(), true);
             }
 
-            store.SetRound(0, round);
+            await store.SetRound(0, round);
 
             var c = store.LastRound();
             Assert.Equal(0, c);
 
-            var (storedRound, err) = store.GetRound(0);
+            var (storedRound, err) =await  store.GetRound(0);
             Assert.Null(err);
 
             round.ShouldCompareTo(storedRound);
 
-            var witnesses = store.RoundWitnesses(0);
-            var expectedWitnesses = round.Witnesses();
+            var witnesses = await store.RoundWitnesses(0);
+            var expectedWitnesses =round.Witnesses();
 
             Assert.Equal(expectedWitnesses.Length, witnesses.Length);
 

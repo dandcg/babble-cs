@@ -22,119 +22,44 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Hashgraph.EventTests.TestWireEvent</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDivideRounds</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.Common.RollingIndexTests</FixtureName>
+      </FixtureTestSelector>
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.Common.LruTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.Common.RollingIndexTests</FixtureName>
+        <FixtureName>Dotnatter.Test.Crypto.CryptoTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.InmemStoreTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.HashgraphTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
         <FixtureName>Dotnatter.Test.HashgraphImpl.CachesTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.InmemStoreTests</FixtureName>
+        <FixtureName>Dotnatter.Test.Net.InMemTransportTests</FixtureName>
       </FixtureTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFunkyHashgraphFame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestParentRound</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReadWireInfo</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRound</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundInc</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSigningIssue</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestStronglySee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestWitness</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDivideRounds</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideFame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestOldestSelfAncestorToSee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideRoundReceived</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFindOrder</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestKnown</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReset</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestResetFromFrame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundDiff</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestBigIntegerSignitureEncoding</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInitCores</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensusFF</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestDiff</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestIsLoaded</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallBody</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestSignEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestWireEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensus</TestName>
@@ -142,51 +67,12 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestOverSyncLimit</TestName>
       </NamedTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.NodeImpl.CoreTests</FixtureName>
-      </FixtureTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencySigning</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryOutput</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryWithRaw</TestName>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestDiff</TestName>
       </NamedTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.Crypto.CryptoTests</FixtureName>
+        <FixtureName>Dotnatter.Test.NodeImpl.NodeTests</FixtureName>
       </FixtureTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.Net.InMemTransportTests</FixtureName>
-      </FixtureTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
-      </NamedTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.HashgraphTests</FixtureName>
-      </FixtureTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
-      </NamedTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.HashgraphImpl.EventTests</FixtureName>
-      </FixtureTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestGossip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
-      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

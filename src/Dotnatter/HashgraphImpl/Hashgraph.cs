@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.HashgraphImpl.Stores;
@@ -56,7 +57,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //true if y is an ancestor of x
-        public bool Ancestor(string x, string y)
+        public async Task<bool> Ancestor(string x, string y)
         {
             var (c, ok) = AncestorCache.Get(Key.New(x, y));
 
@@ -65,26 +66,26 @@ namespace Dotnatter.HashgraphImpl
                 return c;
             }
 
-            var a = AncestorInternal(x, y);
+            var a = await AncestorInternal(x, y);
             AncestorCache.Add(Key.New(x, y), a);
             return a;
         }
 
-        private bool AncestorInternal(string x, string y)
+        private async Task<bool> AncestorInternal(string x, string y)
         {
             if (x == y)
             {
                 return true;
             }
 
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
                 return false;
             }
 
-            var (ey, erry) = Store.GetEvent(y);
+            var (ey, erry) = await Store.GetEvent(y);
 
             if (erry != null)
             {
@@ -98,7 +99,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //true if y is a self-ancestor of x
-        public bool SelfAncestor(string x, string y)
+        public async Task<bool> SelfAncestor(string x, string y)
         {
             var (c, ok) = SelfAncestorCache.Get(Key.New(x, y));
 
@@ -107,19 +108,19 @@ namespace Dotnatter.HashgraphImpl
                 return c;
             }
 
-            var a = SelfAncestorInternal(x, y);
+            var a =await  SelfAncestorInternal(x, y);
             SelfAncestorCache.Add(Key.New(x, y), a);
             return a;
         }
 
-        private bool SelfAncestorInternal(string x, string y)
+        private async Task<bool> SelfAncestorInternal(string x, string y)
         {
             if (x == y)
             {
                 return true;
             }
 
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
@@ -128,7 +129,7 @@ namespace Dotnatter.HashgraphImpl
 
             var exCreator = Participants[ex.Creator()];
 
-            var (ey, erry) = Store.GetEvent(y);
+            var (ey, erry) =await  Store.GetEvent(y);
             if (erry != null)
             {
                 return false;
@@ -140,7 +141,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //true if x sees y
-        public bool See(string x, string y)
+        public Task<bool> See(string x, string y)
         {
             return Ancestor(x, y);
             //it is not necessary to detect forks because we assume that with our
@@ -149,7 +150,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //oldest self-ancestor of x to see y
-        public string OldestSelfAncestorToSee(string x, string y)
+        public async Task<string> OldestSelfAncestorToSee(string x, string y)
         {
             var (c, ok) = OldestSelfAncestorCache.Get(Key.New(x, y));
 
@@ -158,21 +159,21 @@ namespace Dotnatter.HashgraphImpl
                 return c;
             }
 
-            var res = OldestSelfAncestorToSeeInternal(x, y);
+            var res =await OldestSelfAncestorToSeeInternal(x, y);
             OldestSelfAncestorCache.Add(Key.New(x, y), res);
             return res;
         }
 
-        private string OldestSelfAncestorToSeeInternal(string x, string y)
+        private async Task<string> OldestSelfAncestorToSeeInternal(string x, string y)
         {
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
                 return "";
             }
 
-            var (ey, erry) = Store.GetEvent(y);
+            var (ey, erry) = await Store.GetEvent(y);
 
             if (erry != null)
             {
@@ -190,7 +191,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //true if x strongly sees y
-        public bool StronglySee(string x, string y)
+        public async Task<bool> StronglySee(string x, string y)
         {
             var (c, ok) = StronglySeeCache.Get(Key.New(x, y));
             if (ok)
@@ -198,21 +199,21 @@ namespace Dotnatter.HashgraphImpl
                 return c;
             }
 
-            var ss = StronglySeeInternal(x, y);
+            var ss = await StronglySeeInternal(x, y);
             StronglySeeCache.Add(Key.New(x, y), ss);
             return ss;
         }
 
-        public bool StronglySeeInternal(string x, string y)
+        public async Task<bool> StronglySeeInternal(string x, string y)
         {
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
                 return false;
             }
 
-            var (ey, erry) = Store.GetEvent(y);
+            var (ey, erry) = await Store.GetEvent(y);
 
             if (erry != null)
             {
@@ -234,7 +235,7 @@ namespace Dotnatter.HashgraphImpl
 
         //PRI.round: max of parent rounds
         //PRI.isRoot: true if round is taken from a Root
-        public ParentRoundInfo ParentRound(string x)
+        public async Task<ParentRoundInfo> ParentRound(string x)
         {
             var (c, ok) = ParentRoundCache.Get(x);
             if (ok)
@@ -242,17 +243,17 @@ namespace Dotnatter.HashgraphImpl
                 return c;
             }
 
-            var pr = ParentRoundInternal(x);
+            var pr = await ParentRoundInternal(x);
             ParentRoundCache.Add(x, pr);
 
             return pr;
         }
 
-        public ParentRoundInfo ParentRoundInternal(string x)
+        public async Task<ParentRoundInfo> ParentRoundInternal(string x)
         {
             var res = new ParentRoundInfo();
 
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) =await Store.GetEvent(x);
 
             if (errx != null)
             {
@@ -260,7 +261,7 @@ namespace Dotnatter.HashgraphImpl
             }
 
             //We are going to need the Root later
-            var (root, errr) = Store.GetRoot(ex.Creator());
+            var (root, errr) =await Store.GetRoot(ex.Creator());
 
             if (errr != null)
             {
@@ -278,7 +279,7 @@ namespace Dotnatter.HashgraphImpl
             }
             else
             {
-                spRound = Round(ex.SelfParent);
+                spRound = await Round(ex.SelfParent);
 
                 spRoot = false;
             }
@@ -287,11 +288,11 @@ namespace Dotnatter.HashgraphImpl
 
             var opRoot = false;
 
-            var (_, erro) = Store.GetEvent(ex.OtherParent);
+            var (_, erro) = await Store.GetEvent(ex.OtherParent);
             if (erro != null)
             {
                 //if we known the other-parent, fetch its Round directly
-                opRound = Round(ex.OtherParent);
+                opRound = await Round(ex.OtherParent);
             }
             else if (ex.OtherParent == root.Y)
             {
@@ -326,16 +327,16 @@ namespace Dotnatter.HashgraphImpl
         }
 
         ////true if x is a witness (first ev of a round for the owner)
-        public bool Witness(string x)
+        public async Task<bool> Witness(string x)
         {
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
                 return false;
             }
 
-            var (root, err) = Store.GetRoot(ex.Creator());
+            var (root, err) = await Store.GetRoot(ex.Creator());
 
             if (err != null)
             {
@@ -348,13 +349,13 @@ namespace Dotnatter.HashgraphImpl
                 return true;
             }
 
-            return Round(x) > Round(ex.SelfParent);
+            return await  Round(x) > await  Round(ex.SelfParent);
         }
 
         //true if round of x should be incremented
-        public bool RoundInc(string x)
+        public async Task<bool> RoundInc(string x)
         {
-            var parentRound = ParentRound(x);
+            var parentRound = await ParentRound(x);
 
             //If parent-round was obtained from a Root, then x is the Event that sits
             //right on top of the Root. RoundInc is true.
@@ -367,9 +368,9 @@ namespace Dotnatter.HashgraphImpl
             //if x strongly-sees a strong majority of withnesses from parent-round.
             var c = 0;
 
-            foreach (var w in Store.RoundWitnesses(parentRound.Round))
+            foreach (var w in await Store.RoundWitnesses(parentRound.Round))
             {
-                if (StronglySee(x, w))
+                if (await StronglySee(x, w))
                 {
                     c++;
                 }
@@ -378,9 +379,9 @@ namespace Dotnatter.HashgraphImpl
             return c >= SuperMajority;
         }
 
-        public int RoundReceived(string x)
+        public async Task<int> RoundReceived(string x)
         {
-            var (ex, errx) = Store.GetEvent(x);
+            var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
@@ -390,7 +391,7 @@ namespace Dotnatter.HashgraphImpl
             return ex.GetRoundReceived() ?? -1;
         }
 
-        public int Round(string x)
+        public async Task<int> Round(string x)
         {
             var (c, ok) = RoundCache.Get(x);
             if (ok)
@@ -398,17 +399,17 @@ namespace Dotnatter.HashgraphImpl
                 return c;
             }
 
-            var r = RoundInternal(x);
+            var r = await RoundInternal(x);
             RoundCache.Add(x, r);
 
             return r;
         }
 
-        private int RoundInternal(string x)
+        private async Task<int> RoundInternal(string x)
         {
-            var round = ParentRound(x).Round;
+            var round = (await ParentRound(x)).Round;
 
-            var inc = RoundInc(x);
+            var inc = await RoundInc(x);
 
             if (inc)
             {
@@ -419,16 +420,16 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //round(x) - round(y)
-        public (int d, Exception err) RoundDiff(string x, string y)
+        public async Task<(int d, Exception err)> RoundDiff(string x, string y)
         {
-            var xRound = Round(x);
+            var xRound =await  Round(x);
 
             if (xRound < 0)
             {
                 return (Int32.MinValue, new HashgraphError($"ev {x} has negative round"));
             }
 
-            var yRound = Round(y);
+            var yRound = await  Round(y);
 
             if (yRound < 0)
             {
@@ -438,7 +439,7 @@ namespace Dotnatter.HashgraphImpl
             return (xRound - yRound,null);
         }
 
-        public Exception InsertEvent(Event ev, bool setWireInfo)
+        public async Task< Exception> InsertEvent(Event ev, bool setWireInfo)
         {
 
 
@@ -462,7 +463,7 @@ namespace Dotnatter.HashgraphImpl
                 return new Exception($"CheckSelfParent: {err.Message}",err);
             }
 
-            err = CheckOtherParent(ev);
+            err = await CheckOtherParent(ev);
             if (err != null)
             {
                 return new Exception($"CheckOtherParent: {err.Message}", err);
@@ -474,7 +475,7 @@ namespace Dotnatter.HashgraphImpl
 
             if (setWireInfo)
             {
-                err = SetWireInfo(ev);
+                err =await  SetWireInfo(ev);
                 if (err != null)
                 {
                     return new Exception($"SetWireInfo: {err.Message}", err);
@@ -482,21 +483,21 @@ namespace Dotnatter.HashgraphImpl
 
             }
 
-            err= InitEventCoordinates(ev);
+            err= await  InitEventCoordinates(ev);
             if (err != null)
             {
                 return new Exception($"InitEventCoordinates: {err.Message}", err);
             }
 
 
-            err=Store.SetEvent(ev);
+            err=await Store.SetEvent(ev);
             if (err != null)
             {
                 return new Exception($"SetEvent: {err.Message}", err);
             }
 
 
-            err=UpdateAncestorFirstDescendant(ev);
+            err=await UpdateAncestorFirstDescendant(ev);
             if (err != null)
             {
                 return new Exception($"UpdateAncestorFirstDescendant: {err.Message}", err);
@@ -536,19 +537,19 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //Check if we know the OtherParent
-        public Exception CheckOtherParent(Event ev)
+        public async Task<Exception> CheckOtherParent(Event ev)
         {
             var otherParent = ev.OtherParent;
 
             if (!string.IsNullOrEmpty(otherParent))
             {
                 //Check if we have it
-                var (_, err) = Store.GetEvent(otherParent);
+                var (_, err) =await  Store.GetEvent(otherParent);
 
                 if (err != null)
                 {
                     //it might still be in the Root
-                    var (root, errr) = Store.GetRoot(ev.Creator());
+                    var (root, errr) =await  Store.GetRoot(ev.Creator());
 
                     if (errr != null)
                     {
@@ -575,7 +576,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         ////initialize arrays of last ancestors and first descendants
-        public HashgraphError InitEventCoordinates(Event ev)
+        public async Task<HashgraphError> InitEventCoordinates(Event ev)
         {
             var members = Participants.Count;
 
@@ -591,8 +592,8 @@ namespace Dotnatter.HashgraphImpl
 
             ev.SetLastAncestors(new EventCoordinates[members]);
 
-            var (selfParent, selfParentError) = Store.GetEvent(ev.SelfParent);
-            var (otherParent, otherParentError) = Store.GetEvent(ev.OtherParent);
+            var (selfParent, selfParentError) =await  Store.GetEvent(ev.SelfParent);
+            var (otherParent, otherParentError) = await Store.GetEvent(ev.OtherParent);
 
             if (selfParentError != null && otherParentError != null)
             {
@@ -653,7 +654,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //update first decendant of each last ancestor to point to ev
-        public Exception UpdateAncestorFirstDescendant(Event ev)
+        public async Task<Exception> UpdateAncestorFirstDescendant(Event ev)
         {
             var ok = Participants.TryGetValue(ev.Creator(), out int fakeCreatorId);
 
@@ -671,7 +672,7 @@ namespace Dotnatter.HashgraphImpl
 
                 while (!string.IsNullOrEmpty(ah))
                 {
-                    var (a, err) = Store.GetEvent(ah);
+                    var (a, err) = await Store.GetEvent(ah);
 
                     if (err != null)
                     {
@@ -686,7 +687,7 @@ namespace Dotnatter.HashgraphImpl
                             Hash = hash
                         };
 
-                        err = Store.SetEvent(a);
+                        err = await Store.SetEvent(a);
 
                         if (err != null)
                         {
@@ -705,7 +706,7 @@ namespace Dotnatter.HashgraphImpl
             return null;
         }
 
-        public Exception SetWireInfo(Event ev)
+        public async Task<Exception> SetWireInfo(Event ev)
         {
             var selfParentIndex = -1;
 
@@ -718,7 +719,7 @@ namespace Dotnatter.HashgraphImpl
 
             if (isRoot && lf == ev.SelfParent)
             {
-                var (root, err) = Store.GetRoot(ev.Creator());
+                var (root, err) = await Store.GetRoot(ev.Creator());
 
                 if (err != null)
                 {
@@ -729,7 +730,7 @@ namespace Dotnatter.HashgraphImpl
             }
             else
             {
-                var (selfParent, err) = Store.GetEvent(ev.SelfParent);
+                var (selfParent, err) =await  Store.GetEvent(ev.SelfParent);
 
                 if (err != null)
                 {
@@ -741,7 +742,7 @@ namespace Dotnatter.HashgraphImpl
 
             if (!string.IsNullOrEmpty(ev.OtherParent))
             {
-                var (otherParent, err) = Store.GetEvent(ev.OtherParent);
+                var (otherParent, err) =await  Store.GetEvent(ev.OtherParent);
 
                 if (err != null)
                 {
@@ -760,7 +761,7 @@ namespace Dotnatter.HashgraphImpl
             return null;
         }
 
-        public (Event ev, Exception err) ReadWireInfo(WireEvent wev)
+        public async Task<(Event ev, Exception err)> ReadWireInfo(WireEvent wev)
         {
             var selfParent = "";
             var otherParent = "";
@@ -771,7 +772,7 @@ namespace Dotnatter.HashgraphImpl
 
             if (wev.Body.SelfParentIndex >= 0)
             {
-                (selfParent, err) = Store.ParticipantEvent(creator, wev.Body.SelfParentIndex);
+                (selfParent, err) =await  Store.ParticipantEvent(creator, wev.Body.SelfParentIndex);
                 if (err != null)
                 {
                     return (null, err);
@@ -781,7 +782,7 @@ namespace Dotnatter.HashgraphImpl
             if (wev.Body.OtherParentIndex >= 0)
             {
                 var otherParentCreator = ReverseParticipants[wev.Body.OtherParentCreatorId];
-                (otherParent, err) = Store.ParticipantEvent(otherParentCreator, wev.Body.OtherParentIndex);
+                (otherParent, err) =await  Store.ParticipantEvent(otherParentCreator, wev.Body.OtherParentIndex);
                 if (err != null)
                 {
                     return (null, err);
@@ -813,16 +814,16 @@ namespace Dotnatter.HashgraphImpl
             return (ev, null);
         }
 
-        public Exception DivideRounds()
+        public async Task<Exception> DivideRounds()
         {
             foreach (var hash in UndeterminedEvents)
 
             {
-                var roundNumber = Round(hash);
+                var roundNumber = await Round(hash);
 
-                var witness = Witness(hash);
+                var witness = await  Witness(hash);
 
-                var (roundInfo, err) = Store.GetRound(roundNumber);
+                var (roundInfo, err) = await Store.GetRound(roundNumber);
 
                 //If the RoundInfo is not found in the Store's Cache, then the Hashgraph
                 //is not aware of it yet. We need to add the roundNumber to the queue of
@@ -847,7 +848,7 @@ namespace Dotnatter.HashgraphImpl
 
                 roundInfo.AddEvent(hash, witness);
 
-                err = Store.SetRound(roundNumber, roundInfo);
+                err = await Store.SetRound(roundNumber, roundInfo);
 
                 if (err != null)
                 {
@@ -859,7 +860,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //decide if witnesses are famous
-        public Exception DecideFame()
+        public async Task<Exception> DecideFame()
         {
             var votes = new Dictionary<string, Dictionary<string, bool>>(); //[x][y]=>vote(x,y)
 
@@ -873,7 +874,7 @@ namespace Dotnatter.HashgraphImpl
 
                 foreach (var i in UndecidedRounds)
                 {
-                    var (roundInfo, err) = Store.GetRound(i);
+                    var (roundInfo, err) =await  Store.GetRound(i);
 
                     if (err != null)
                     {
@@ -893,21 +894,21 @@ namespace Dotnatter.HashgraphImpl
                         for (var j = i + 1; j <= Store.LastRound(); j++)
 
                         {
-                            foreach (var y in Store.RoundWitnesses(j))
+                            foreach (var y in await Store.RoundWitnesses(j))
                             {
                                 var diff = j - i;
 
                                 if (diff == 1)
                                 {
-                                    SetVote(votes, y, x, See(y, x));
+                                    SetVote(votes, y, x, await See(y, x));
                                 }
                                 else
                                 {
                                     //count votes
                                     var ssWitnesses = new List<string>();
-                                    foreach (var w in Store.RoundWitnesses(j - 1))
+                                    foreach (var w in await Store.RoundWitnesses(j - 1))
                                     {
-                                        if (StronglySee(y, w))
+                                        if (await StronglySee(y, w))
                                         {
                                             ssWitnesses.Add(w);
                                         }
@@ -982,11 +983,11 @@ namespace Dotnatter.HashgraphImpl
 
                         if (LastConsensusRound == null || i > LastConsensusRound)
                         {
-                            SetLastConsensusRound(i);
+                            await SetLastConsensusRound(i);
                         }
                     }
 
-                    err = Store.SetRound(i, roundInfo);
+                    err = await Store.SetRound(i, roundInfo);
 
                     if (err != null)
                     {
@@ -1027,23 +1028,23 @@ namespace Dotnatter.HashgraphImpl
             UndecidedRounds = newUndecidedRounds;
         }
 
-        public void SetLastConsensusRound(int i)
+        public async Task SetLastConsensusRound(int i)
         {
             LastConsensusRound = i;
-            LastCommitedRoundEvents = Store.RoundEvents(i - 1);
+            LastCommitedRoundEvents = await Store.RoundEvents(i - 1);
         }
 
         //assign round received and timestamp to all evs
-        public Exception DecideRoundReceived()
+        public async Task<Exception> DecideRoundReceived()
         {
             foreach (var x in UndeterminedEvents)
             {
-                var r = Round(x);
+                var r =await  Round(x);
 
                 for (var i = r + 1; i <= Store.LastRound(); i++)
 
                 {
-                    var (tr, err) = Store.GetRound(i);
+                    var (tr, err) = await Store.GetRound(i);
                     if (err != null && err.StoreErrorType != StoreErrorType.KeyNotFound)
                     {
                         return err;
@@ -1061,7 +1062,7 @@ namespace Dotnatter.HashgraphImpl
                     var s = new List<string>();
                     foreach (var w in fws)
                     {
-                        if (See(w, x))
+                        if (await See(w, x))
                         {
                             s.Add(w);
                         }
@@ -1069,7 +1070,7 @@ namespace Dotnatter.HashgraphImpl
 
                     if (s.Count > fws.Length / 2)
                     {
-                        var (ex, erre) = Store.GetEvent(x);
+                        var (ex, erre) =await Store.GetEvent(x);
 
                         if (erre != null)
                         {
@@ -1081,12 +1082,12 @@ namespace Dotnatter.HashgraphImpl
                         var t = new List<string>();
                         foreach (var a in s)
                         {
-                            t.Add(OldestSelfAncestorToSee(a, x));
+                            t.Add(await OldestSelfAncestorToSee(a, x));
                         }
 
-                        ex.SetConsensusTimestamp(MedianTimestamp(t));
+                        ex.SetConsensusTimestamp(await MedianTimestamp(t));
 
-                        Store.SetEvent(ex);
+                        await Store.SetEvent(ex);
 
                         break;
                     }
@@ -1096,15 +1097,15 @@ namespace Dotnatter.HashgraphImpl
             return null;
         }
 
-        public Exception FindOrder()
+        public async Task<Exception> FindOrder()
         {
-            DecideRoundReceived();
+            await DecideRoundReceived();
             var newConsensusEvents = new List<Event>();
 
             var newUndeterminedEvents = new List<string>();
             foreach (var x in UndeterminedEvents)
             {
-                var (ex, err) = Store.GetEvent(x);
+                var (ex, err) = await Store.GetEvent(x);
 
                 if (err != null)
                 {
@@ -1145,12 +1146,12 @@ namespace Dotnatter.HashgraphImpl
 
             return null;
         }
-        public DateTime MedianTimestamp(List<string> evHashes)
+        public async Task<DateTime> MedianTimestamp(List<string> evHashes)
         {
             var evs = new List<Event>();
             foreach (var x in evHashes)
             {
-                var (ex, _) = Store.GetEvent(x);
+                var (ex, _) = await Store.GetEvent(x);
                 evs.Add(ex);
             }
             evs.Sort(new Event.EventByTimeStamp());
@@ -1162,7 +1163,7 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //number of evs per participants
-        public Dictionary<int, int> Known()
+        public Task<Dictionary<int, int>> Known()
         {
             return Store.Known();
         }
@@ -1183,7 +1184,7 @@ namespace Dotnatter.HashgraphImpl
 
             return null;
         }
-        public (Frame frame, Exception err) GetFrame()
+        public async Task<(Frame frame, Exception err)> GetFrame()
         {
             Exception err;
 
@@ -1195,7 +1196,7 @@ namespace Dotnatter.HashgraphImpl
             }
 
             RoundInfo lastConsensusRound;
-            (lastConsensusRound,err) = Store.GetRound(lastConsensusRoundIndex);
+            (lastConsensusRound,err) =await  Store.GetRound(lastConsensusRoundIndex);
             if (err!=null)
             {
                 return (new Frame(),err);
@@ -1206,7 +1207,7 @@ namespace Dotnatter.HashgraphImpl
             foreach (var wh in witnessHashes)
             {
                 Event w;
-                (w, err) = Store.GetEvent(wh);
+                (w, err) =await  Store.GetEvent(wh);
                 if (err!=null)
                 {
                     return (new Frame(),err);
@@ -1217,17 +1218,17 @@ namespace Dotnatter.HashgraphImpl
                     X = w.SelfParent,
                     Y = w.OtherParent,
                     Index = w.Index() - 1,
-                    Round = Round(w.SelfParent), Others = new Dictionary<string, string>()
+                    Round = await Round(w.SelfParent), Others = new Dictionary<string, string>()
                 });
                 string[] participantEvents;
-                (participantEvents,err) = Store.ParticipantEvents(w.Creator(), w.Index());
+                (participantEvents,err) =await  Store.ParticipantEvents(w.Creator(), w.Index());
                 if (err != null)
                 {
                     return (new Frame(),err);
                 }
                 foreach (var e in participantEvents)
                 {
-                    var (ev, errev) = Store.GetEvent(e);
+                    var (ev, errev) =await  Store.GetEvent(e);
                     if (errev!=null)
                     {
                         return (new Frame(),errev);
@@ -1252,7 +1253,7 @@ namespace Dotnatter.HashgraphImpl
                     Root root;
                     if (isRoot)
                     {
-                        (root,err) = Store.GetRoot(p.Key);
+                        (root,err) =await  Store.GetRoot(p.Key);
                         if (root == null)
                         {
                             return (new Frame(),err);
@@ -1261,7 +1262,7 @@ namespace Dotnatter.HashgraphImpl
                     else
                     {
                         Event ev;
-                        (ev, err) = Store.GetEvent(last);
+                        (ev, err) =await  Store.GetEvent(last);
                         if (err!=null)
                         {
                             return (new Frame(),err);
@@ -1272,7 +1273,7 @@ namespace Dotnatter.HashgraphImpl
                             X = ev.SelfParent,
                             Y = ev.OtherParent,
                             Index = ev.Index() - 1,
-                            Round = Round(ev.SelfParent)
+                            Round = await Round(ev.SelfParent)
                         };
                     }
                     roots.Add(p.Key, root);

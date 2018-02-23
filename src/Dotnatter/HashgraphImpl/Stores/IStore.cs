@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 
@@ -8,23 +9,23 @@ namespace Dotnatter.HashgraphImpl.Stores
     {
         int CacheSize();
         (Dictionary<string, int> participants, StoreError err) Participants();
-        (Event evt, StoreError err) GetEvent(string str);
-        StoreError SetEvent(Event ev);
-        (string[] evts, StoreError err) ParticipantEvents(string str, int i);
-        (string ev, StoreError err) ParticipantEvent(string str, int i);
+        Task<(Event evt, StoreError err)> GetEvent(string str);
+        Task<StoreError> SetEvent(Event ev);
+        Task<(string[] evts, StoreError err)> ParticipantEvents(string str, int i);
+        Task<(string ev, StoreError err)> ParticipantEvent(string str, int i);
         (string last, bool isRoot, StoreError err) LastFrom(string str);
-        Dictionary<int, int> Known();
+        Task<Dictionary<int, int>> Known();
         string[] ConsensusEvents();
 
         int ConsensusEventsCount();
         StoreError AddConsensusEvent(string str);
-        (RoundInfo roundInfo, StoreError err) GetRound(int i);
-        StoreError SetRound(int i , RoundInfo ri);
+        Task<(RoundInfo roundInfo, StoreError err)> GetRound(int i);
+       Task<StoreError> SetRound(int i , RoundInfo ri);
         int LastRound();
-        string[] RoundWitnesses(int i);
+        Task<string[]> RoundWitnesses(int i);
 
-        int RoundEvents(int i );
-        (Root root, StoreError err) GetRoot(string str);
+        Task<int> RoundEvents(int i );
+        Task<(Root root, StoreError err)> GetRoot(string str);
         StoreError Reset(Dictionary<string, Root> d);
         StoreError Close();
 
