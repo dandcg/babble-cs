@@ -84,7 +84,7 @@ namespace Dotnatter.NodeImpl
 
         public async Task<Exception> Bootstrap()
         {
-            var err = hg.Bootstrap();
+            var err = await hg.Bootstrap();
 
             if (err != null)
             {

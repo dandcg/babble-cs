@@ -483,7 +483,7 @@ namespace Dotnatter.HashgraphImpl
 
             }
 
-            err= await  InitEventCoordinates(ev);
+            err= await InitEventCoordinates(ev);
             if (err != null)
             {
                 return new Exception($"InitEventCoordinates: {err.Message}", err);
@@ -1315,48 +1315,59 @@ namespace Dotnatter.HashgraphImpl
         //them to the Hashgraph (in topological order) for consensus ordering. After this
         //method call, the Hashgraph should be in a state coeherent with the 'tip' of the
         //Hashgraph
-        public Exception Bootstrap()
+        public async Task< Exception> Bootstrap()
         {
+            Exception err;
+            if (Store is LocalDbStore)
+            
+            {
+                //Retreive the Events from the underlying DB. They come out in topological
+                //order
+                Event[] topologicalEvents;
+                (topologicalEvents, err) = await ((LocalDbStore)Store).DbTopologicalEvents();
 
-            throw new NotImplementedException();
+                            if (err != null)
+                            {
+                                return err;
 
+                            }
 
-            //if badgerStore, ok = Store.(*BadgerStore); ok {
-            //    //Retreive the Events from the underlying DB. They come out in topological
-            //    //order
-            //    topologicalEvents, err = badgerStore.dbTopologicalEvents()
+                //Insert the Events in the Hashgraph
+                foreach (var e in topologicalEvents)
+                {
 
-            //                if err != nil {
-            //        return err
+                    err = await InsertEvent(e, true);
 
-            //                }
+                    if (err != null)
+                    {
+                        return err;
 
-            //    //Insert the Events in the Hashgraph
-            //    for _, e = range topologicalEvents
-            //        {
-            //        if err = InsertEvent(e, true); err != nil
-            //            {
-            //            return err
+                    }
+                }
 
-            //                    }
-            //    }
+                //Compute the consensus order of Events
+                 err = await DivideRounds(); 
+                if (err != null)
+                {
+                    return err;
 
-            //    //Compute the consensus order of Events
-            //    if err = DivideRounds(); err != nil {
-            //        return err
+                }
+              err = await DecideFame();
+                    if (err != null)
+                    {
+                        return err;
 
-            //                }
-            //    if err = DecideFame(); err != nil {
-            //        return err
+                    }
+              err = await FindOrder(); 
+         
+                if (err != null)
+                {
+                    return err;
 
-            //                }
-            //    if err = FindOrder(); err != nil {
-            //        return err
+                }
+            }
 
-            //                }
-            //}
-
-            //return nil
+            return null;
         }
         public bool MiddleBit(string ehex)
         {

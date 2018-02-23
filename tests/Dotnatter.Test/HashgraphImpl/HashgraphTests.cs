@@ -1103,16 +1103,16 @@ namespace Dotnatter.Test.HashgraphImpl
 
             IStore store;
 
-            //if (db) {
-            //var err error
-            //      store, err = NewBadgerStore(participants, cacheSize, badgerDir)
-            //if err != null {
-            //	log.Fatal(err)
-            //}
-            //} else
-            //{
-            store = new InmemStore(participants, CacheSize,logger);
-            //}
+            if (db)
+            {
+
+                (store, _) =await LocalDbStore.New(participants, CacheSize, badgerDir, logger);
+
+            }
+            else
+            {
+                store = new InmemStore(participants, CacheSize,logger);
+            }
 
             var hashgraph = new Hashgraph(participants, store, null, logger);
 
@@ -1562,7 +1562,7 @@ namespace Dotnatter.Test.HashgraphImpl
             }
         }
 
-        [Fact(Skip = "Badger DB alternative not yet implmented!")]
+        [Fact]
         public async Task TestBootstrap()
         {
             //Initialize a first Hashgraph with a DB backend
@@ -1579,13 +1579,15 @@ namespace Dotnatter.Test.HashgraphImpl
 
             try
             {
+                Exception err;
                 //Now we want to create a new Hashgraph based on the database of the previous
                 //Hashgraph and see if we can boostrap it to the same state.
-                var (recycledStore, err) = LoadBadgerStore(CacheSize, badgerDir);
+                IStore recycledStore;
+                (recycledStore, err) = await LocalDbStore.Load(CacheSize, badgerDir,logger);
 
                 var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
 
-                err = nh.Bootstrap();
+                err = await nh.Bootstrap();
 
                 Assert.Null(err);
 
@@ -1595,9 +1597,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 Assert.Equal(hConsensusEvents.Length, nhConsensusEvents.Length);
 
-                var hKnown = h.Known();
+                var hKnown = await h.Known();
 
-                var nhKnown = nh.Known();
+                var nhKnown = await nh.Known();
 
                 hKnown.ShouldCompareTo(nhKnown);
 
@@ -1621,10 +1623,7 @@ namespace Dotnatter.Test.HashgraphImpl
             }
         }
 
-        private (IStore store, Exception err ) LoadBadgerStore(int cacheSize, string badgerDir)
-        {
-            throw new NotImplementedException();
-        }
+    
 
         /*
             |    |    |    |

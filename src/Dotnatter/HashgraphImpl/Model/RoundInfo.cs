@@ -10,10 +10,10 @@ namespace Dotnatter.HashgraphImpl.Model
 
         public RoundInfo()
         {
-            Events = new Dictionary<string, RoundEvent>();
+         
         }
 
-        public Dictionary<string, RoundEvent> Events { get; set; }
+        public Dictionary<string, RoundEvent> Events { get; set; }  = new Dictionary<string, RoundEvent>();
         public bool Queued { get; set; }
 
 

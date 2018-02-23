@@ -344,7 +344,7 @@ namespace Dotnatter.Test.NodeImpl
 
             if (oldNode.Store is LocalDbStore)
             {
-                //store = new LoadBadgerStore(conf.CacheSize, conf.StorePath);
+                (store,_) =  await LocalDbStore.Load(conf.CacheSize, conf.StorePath,logger);
             }
 
             Assert.NotNull(store);
@@ -495,7 +495,7 @@ namespace Dotnatter.Test.NodeImpl
             nodes[1].Shutdown();
         }
 
-        [Fact(Skip = "Badger DB alternative not yet implmented!")]
+        [Fact]
         public async Task TestBootstrapAllNodes() 
         {
 

@@ -1,13 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DBreeze;
 using DBreeze.DataTypes;
+using DBreeze.Utils;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Serilog;
 
 namespace Dotnatter.HashgraphImpl.Stores
 {
+
+
     public class LocalDbStore : IStore
     {
         private Dictionary<string, int> participants;
@@ -16,8 +21,12 @@ namespace Dotnatter.HashgraphImpl.Stores
         private string path;
         private readonly ILogger logger;
 
+   
         private LocalDbStore(Dictionary<string, int> participants, InmemStore inMemStore, DBreezeEngine db, string path, ILogger logger)
         {
+
+
+
             this.participants = participants;
             this.inMemStore = inMemStore;
             this.db = db;
@@ -29,7 +38,16 @@ namespace Dotnatter.HashgraphImpl.Stores
         public static async Task<(IStore store, StoreError err)> New(Dictionary<string, int> participants, int cacheSize, string path, ILogger logger)
         {
             var inmemStore = new InmemStore(participants, cacheSize, logger);
-            var db = new DBreezeEngine(path);
+            var db = new DBreezeEngine(new DBreezeConfiguration()
+            {
+                Storage =  DBreezeConfiguration.eStorage.MEMORY, DBreezeDataFolderName = path
+            });
+
+            //Setting up NetJSON serializer (from NuGet) to be used by DBreeze
+            DBreeze.Utils.CustomSerializator.ByteArraySerializator = o => NetJSON.NetJSON.Serialize(o).To_UTF8Bytes();
+            DBreeze.Utils.CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
+
+
             var store = new LocalDbStore(
                 participants,
                 inmemStore,
@@ -55,7 +73,17 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public static async Task<(IStore store, StoreError err)> Load(int cacheSize, string path, ILogger logger)
         {
-            var db = new DBreezeEngine(path);
+            var db = new DBreezeEngine(new DBreezeConfiguration()
+            {
+                Storage =  DBreezeConfiguration.eStorage.MEMORY, DBreezeDataFolderName = path
+            });
+
+            //Setting up NetJSON serializer (from NuGet) to be used by DBreeze
+            DBreeze.Utils.CustomSerializator.ByteArraySerializator = o => NetJSON.NetJSON.Serialize(o).To_UTF8Bytes();
+            DBreeze.Utils.CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
+
+
+
             var store = new LocalDbStore(
                 null,
                 null,
@@ -268,7 +296,10 @@ namespace Dotnatter.HashgraphImpl.Stores
                 return err;
             }
 
-            return await DbSetRound(r, round);
+            err=await DbSetRound(r, round);
+
+
+            return err;
         }
 
         public int LastRound()
@@ -332,14 +363,18 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public Task<(Event ev, StoreError err)> DbGetEvent(string key)
         {
-            Event ev;
-
+            Row<string, Event> evRes;
             using (var t = db.GetTransaction())
             {
-                ev = t.Select<string, Event>("Event", key).Value;
+                evRes = t.Select<string, Event>("Event", key);
             }
 
-            return Task.FromResult<(Event, StoreError)>((ev, null));
+            if (!evRes.Exists)
+            {
+                return Task.FromResult<(Event,StoreError)>((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
+            }
+
+            return Task.FromResult<(Event, StoreError)>((evRes.Value, null));
         }
 
         public Task<StoreError> DbSetEvents(Event[] events)
@@ -354,7 +389,7 @@ namespace Dotnatter.HashgraphImpl.Stores
                     var isnew = !t.Select<string, Event>(EventStore, eventHex).Exists;
 
                     //insert [event hash] => [event bytes]
-                    t.Insert("Event", eventHex, ev);
+                    t.Insert(EventStore, eventHex, ev);
 
                     if (isnew)
                     {
@@ -376,48 +411,47 @@ namespace Dotnatter.HashgraphImpl.Stores
             return Task.FromResult<StoreError>(null);
         }
 
-        //func (s *BadgerStore) dbTopologicalEvents() ([]Event, error) {
-        //	res := []Event{}
-        //	t := 0
-        //	err := s.db.View(func(txn *badger.Txn) error {
-        //		key := topologicalEventKey(t)
-        //		item, errr := txn.Get(key)
-        //		for errr == nil {
-        //			v, errrr := item.Value()
-        //			if errrr != nil {
-        //				break
-        //			}
+        public Task<(Event[] events, StoreError error)> DbTopologicalEvents()
+        {
+            var res = new List<Event> { };
 
-        //			evKey := string(v)
-        //			eventItem, err := txn.Get([]byte(evKey))
-        //			if err != nil {
-        //				return err
-        //			}
-        //			eventBytes, err := eventItem.Value()
-        //			if err != nil {
-        //				return err
-        //			}
 
-        //			event := new(Event)
-        //			if err := event.Unmarshal(eventBytes); err != nil {
-        //				return err
-        //			}
-        //			res = append(res, *event)
 
-        //			t++
-        //			key = topologicalEventKey(t)
-        //			item, errr = txn.Get(key)
-        //		}
+            using (var tx = db.GetTransaction())
+            {
 
-        //		if !isDBKeyNotFound(errr) {
-        //			return errr
-        //		}
 
-        //		return nil
-        //	})
+                var t = 0;
+                var key = TopologicalEventKey(t);
 
-        //	return res, err
-        //}
+                var item = tx.Select<string, string>(TopoPrefix, key);
+
+                while (true)
+                {
+
+                    if (!item.Exists)
+                    {
+                        break;
+                    }
+
+                    var evKey = item.Value;
+
+                    var eventItem = tx.Select<string, Event>(EventStore, evKey);
+
+                    res.Add(eventItem.Value);
+
+                    t++;
+                    key = TopologicalEventKey(t);
+                    item = tx.Select<string, string>(TopoPrefix, key);
+
+                }
+
+
+            }
+
+            return Task.FromResult<(Event[], StoreError)>((res.ToArray(), null));
+
+        }
 
         public Task<(string[] events, StoreError err)> DbParticipantEvents(string participant, int skip)
 
@@ -500,14 +534,16 @@ namespace Dotnatter.HashgraphImpl.Stores
             {
                 var key = RoundKey(index);
                 result = tx.Select<string, RoundInfo>(RoundPrefix, key);
+           
             }
-
-            if (result.Exists)
+            if (!result.Exists)
             {
-                return Task.FromResult<(RoundInfo, StoreError)>((result.Value, null));
+                
+                return Task.FromResult<(RoundInfo, StoreError)>((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound)));
             }
-
-            return Task.FromResult<(RoundInfo, StoreError)>((null, new StoreError(StoreErrorType.KeyNotFound)));
+  
+          
+            return Task.FromResult<(RoundInfo, StoreError)>((result.Value, null));
         }
 
         public Task<StoreError> DbSetRound(int index, RoundInfo round)
@@ -521,7 +557,7 @@ namespace Dotnatter.HashgraphImpl.Stores
                 tx.Commit();
             }
 
-            return null;
+            return Task.FromResult<StoreError>(null);
         }
 
         public Task<(Dictionary<string, int> participants, StoreError err)> DbGetParticipants()
