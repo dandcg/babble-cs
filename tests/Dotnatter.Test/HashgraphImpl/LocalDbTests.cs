@@ -169,7 +169,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //Call DB methods directly
 
         [Fact]
-        public async Task TestDBEventMethods()
+        public async Task TestDbEventMethods()
         {
             var cacheSize = 0;
             var testSize = 1;
@@ -218,26 +218,22 @@ namespace Dotnatter.Test.HashgraphImpl
                 foreach (var ev in evs)
                 {
        
-
-          
                     logger.Debug($"Testing events[{p}][{ev.Hex()}]");
 
-
-                    var (rev, err) = await store.DbGetEvent(ev.Hex());
+                    Exception err;
+                    Event rev;
+                    (rev, err) = await store.DbGetEvent(ev.Hex());
                     Assert.Null(err);
 
-                    //if !reflect.DeepEqual(ev.Body, rev.Body) {
-                    //	t.Fatalf("events[%s][%d].Body should be %#v, not %#v", p, k, ev.Body, rev.Body)
-                    //}
-                    //if !reflect.DeepEqual(ev.S, rev.S) {
-                    //	t.Fatalf("events[%s][%d].S should be %#v, not %#v", p, k, ev.S, rev.S)
-                    //}
-                    //if !reflect.DeepEqual(ev.R, rev.R) {
-                    //	t.Fatalf("events[%s][%d].R should be %#v, not %#v", p, k, ev.R, rev.R)
-                    //}
-                    //if ver, err := rev.Verify(); err != nil && !ver {
-                    //	t.Fatalf("failed to verify signature. err: %s", err)
-                    //}
+                    ev.Body.ShouldCompareTo(rev.Body);
+
+                    rev.ShouldCompareTo(ev);
+                   
+                    Assert.Equal(ev.Signiture(), rev.Signiture());
+
+                    bool ver;
+                    (ver, err) = rev.Verify();
+                    Assert.True(ver);
 
                     k++;
                 }

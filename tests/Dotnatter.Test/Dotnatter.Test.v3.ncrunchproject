@@ -167,10 +167,10 @@
         <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestLoadStore</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBEventMethods</TestName>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestBootstrapAllNodes</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>
