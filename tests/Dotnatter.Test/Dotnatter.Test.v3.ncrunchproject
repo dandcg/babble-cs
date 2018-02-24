@@ -70,9 +70,9 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestDiff</TestName>
       </NamedTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Dotnatter.Test.NodeImpl.NodeTests</FixtureName>
-      </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
+      </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
       </NamedTestSelector>
@@ -141,6 +141,36 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestGossip</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestShutdown</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestNewStore</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestLoadStore</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBEventMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

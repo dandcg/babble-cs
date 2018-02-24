@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
 using Dotnatter.HashgraphImpl;
@@ -23,13 +22,7 @@ namespace Dotnatter.Test.HashgraphImpl
              logger = output.SetupLogging();
         }
 
-        public class Pub
-        {
-            public int Id { get; set; }
-            public CngKey PrivKey { get; set; }
-            public byte[] PubKey { get; set; }
-            public string Hex { get; set; }
-        }
+ 
 
         public (InmemStore, Pub[]) InitInmemStore(int cacheSize)
         {

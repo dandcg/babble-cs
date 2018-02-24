@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using DBreeze;
-using DBreeze.DataTypes;
 using DBreeze.Utils;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
@@ -11,41 +8,41 @@ using Serilog;
 
 namespace Dotnatter.HashgraphImpl.Stores
 {
-
-
     public class LocalDbStore : IStore
     {
         private Dictionary<string, int> participants;
-        private InmemStore inMemStore;
         private readonly DBreezeEngine db;
-        private string path;
         private readonly ILogger logger;
 
-   
+        static LocalDbStore()
+        {
+            
+            //Setting up NetJSON serializer (from NuGet) to be used by DBreeze
+            CustomSerializator.ByteArraySerializator = o => NetJSON.NetJSON.Serialize(o).To_UTF8Bytes();
+            CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
+        }
+
         private LocalDbStore(Dictionary<string, int> participants, InmemStore inMemStore, DBreezeEngine db, string path, ILogger logger)
         {
-
-
-
             this.participants = participants;
-            this.inMemStore = inMemStore;
+            InMemStore = inMemStore;
             this.db = db;
-            this.path = path;
+            Path = path;
             this.logger = logger;
         }
+
+        public string Path { get; }
+        public InmemStore InMemStore { get; private set; }
 
         //LoadBadgerStore creates a Store from an existing database
         public static async Task<(IStore store, StoreError err)> New(Dictionary<string, int> participants, int cacheSize, string path, ILogger logger)
         {
             var inmemStore = new InmemStore(participants, cacheSize, logger);
-            var db = new DBreezeEngine(new DBreezeConfiguration()
+            var db = new DBreezeEngine(new DBreezeConfiguration
             {
-                Storage =  DBreezeConfiguration.eStorage.MEMORY, DBreezeDataFolderName = path
+                //Storage =  DBreezeConfiguration.eStorage.MEMORY, 
+                DBreezeDataFolderName = path
             });
-
-            //Setting up NetJSON serializer (from NuGet) to be used by DBreeze
-            DBreeze.Utils.CustomSerializator.ByteArraySerializator = o => NetJSON.NetJSON.Serialize(o).To_UTF8Bytes();
-            DBreeze.Utils.CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
 
 
             var store = new LocalDbStore(
@@ -73,15 +70,12 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public static async Task<(IStore store, StoreError err)> Load(int cacheSize, string path, ILogger logger)
         {
-            var db = new DBreezeEngine(new DBreezeConfiguration()
+            var db = new DBreezeEngine(new DBreezeConfiguration
             {
-                Storage =  DBreezeConfiguration.eStorage.MEMORY, DBreezeDataFolderName = path
+                //Storage =  DBreezeConfiguration.eStorage.MEMORY, 
+
+                DBreezeDataFolderName = path
             });
-
-            //Setting up NetJSON serializer (from NuGet) to be used by DBreeze
-            DBreeze.Utils.CustomSerializator.ByteArraySerializator = o => NetJSON.NetJSON.Serialize(o).To_UTF8Bytes();
-            DBreeze.Utils.CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
-
 
 
             var store = new LocalDbStore(
@@ -121,7 +115,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             }
 
             store.participants = participants;
-            store.inMemStore = inmemStore;
+            store.InMemStore = inmemStore;
 
             return (store, null);
         }
@@ -163,7 +157,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public int CacheSize()
         {
-            return inMemStore.CacheSize();
+            return InMemStore.CacheSize();
         }
 
         public (Dictionary<string, int> participants, StoreError err) Participants()
@@ -174,7 +168,7 @@ namespace Dotnatter.HashgraphImpl.Stores
         public async Task<(Event evt, StoreError err)> GetEvent(string key)
         {
             //try to get it from cache
-            var (ev, err) = await inMemStore.GetEvent(key);
+            var (ev, err) = await InMemStore.GetEvent(key);
             //try to get it from db
             if (err != null)
             {
@@ -187,7 +181,7 @@ namespace Dotnatter.HashgraphImpl.Stores
         public async Task<StoreError> SetEvent(Event ev)
         {
             //try to add it to the cache
-            var err = await inMemStore.SetEvent(ev);
+            var err = await InMemStore.SetEvent(ev);
 
             if (err != null)
             {
@@ -200,7 +194,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public async Task<(string[] evts, StoreError err)> ParticipantEvents(string participant, int skip)
         {
-            var (res, err) = await inMemStore.ParticipantEvents(participant, skip);
+            var (res, err) = await InMemStore.ParticipantEvents(participant, skip);
             if (err != null)
             {
                 (res, err) = await DbParticipantEvents(participant, skip);
@@ -211,7 +205,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public async Task<(string ev, StoreError err)> ParticipantEvent(string participant, int index)
         {
-            var (result, err) = await inMemStore.ParticipantEvent(participant, index);
+            var (result, err) = await InMemStore.ParticipantEvent(participant, index);
             if (err != null)
             {
                 (result, err) = await DbParticipantEvent(participant, index);
@@ -222,7 +216,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public (string last, bool isRoot, StoreError err) LastFrom(string participant)
         {
-            return inMemStore.LastFrom(participant);
+            return InMemStore.LastFrom(participant);
         }
 
         public async Task<Dictionary<int, int>> Known()
@@ -241,7 +235,7 @@ namespace Dotnatter.HashgraphImpl.Stores
                         (root, err) = await GetRoot(p.Key);
                         if (err != null)
                         {
-                            last = root.X;
+                            //last = root.X;
                             index = root.Index;
                         }
                     }
@@ -264,22 +258,22 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public string[] ConsensusEvents()
         {
-            return inMemStore.ConsensusEvents();
+            return InMemStore.ConsensusEvents();
         }
 
         public int ConsensusEventsCount()
         {
-            return inMemStore.ConsensusEventsCount();
+            return InMemStore.ConsensusEventsCount();
         }
 
         public StoreError AddConsensusEvent(string key)
         {
-            return inMemStore.AddConsensusEvent(key);
+            return InMemStore.AddConsensusEvent(key);
         }
 
         public async Task<(RoundInfo roundInfo, StoreError err)> GetRound(int r)
         {
-            var (res, err) = await inMemStore.GetRound(r);
+            var (res, err) = await InMemStore.GetRound(r);
             if (err != null)
             {
                 (res, err) = await DbGetRound(r);
@@ -290,21 +284,20 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public async Task<StoreError> SetRound(int r, RoundInfo round)
         {
-            var err = await inMemStore.SetRound(r, round);
+            var err = await InMemStore.SetRound(r, round);
             if (err != null)
             {
                 return err;
             }
 
-            err=await DbSetRound(r, round);
-
+            err = await DbSetRound(r, round);
 
             return err;
         }
 
         public int LastRound()
         {
-            return inMemStore.LastRound();
+            return InMemStore.LastRound();
         }
 
         public async Task<string[]> RoundWitnesses(int r)
@@ -331,7 +324,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public async Task<(Root root, StoreError err)> GetRoot(string participant)
         {
-            var (root, err) = await inMemStore.GetRoot(participant);
+            var (root, err) = await InMemStore.GetRoot(participant);
             if (err != null)
             {
                 (root, err) = await DbGetRoot(participant);
@@ -342,12 +335,12 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public StoreError Reset(Dictionary<string, Root> roots)
         {
-            return inMemStore.Reset(roots);
+            return InMemStore.Reset(roots);
         }
 
         public StoreError Close()
         {
-            var err = inMemStore.Close();
+            var err = InMemStore.Close();
 
             if (err != null)
             {
@@ -359,22 +352,22 @@ namespace Dotnatter.HashgraphImpl.Stores
         }
 
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//DB Methods
+        //DB Methods
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         public Task<(Event ev, StoreError err)> DbGetEvent(string key)
         {
-            Row<string, Event> evRes;
             using (var t = db.GetTransaction())
             {
-                evRes = t.Select<string, Event>("Event", key);
-            }
+                var evRes = t.Select<string, Event>(EventStore, key);
 
-            if (!evRes.Exists)
-            {
-                return Task.FromResult<(Event,StoreError)>((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
-            }
+                if (!evRes.Exists)
+                {
+                    return Task.FromResult((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
+                }
 
-            return Task.FromResult<(Event, StoreError)>((evRes.Value, null));
+                return Task.FromResult<(Event, StoreError)>((evRes.Value, null));
+            }
         }
 
         public Task<StoreError> DbSetEvents(Event[] events)
@@ -384,14 +377,14 @@ namespace Dotnatter.HashgraphImpl.Stores
                 foreach (var ev in events)
                 {
                     var eventHex = ev.Hex();
-
+                    logger.Debug($"Writing event[{eventHex}]");
                     //check if it already exists
-                    var isnew = !t.Select<string, Event>(EventStore, eventHex).Exists;
+                    var isNew = !t.Select<string, Event>(EventStore, eventHex).Exists;
 
                     //insert [event hash] => [event bytes]
                     t.Insert(EventStore, eventHex, ev);
 
-                    if (isnew)
+                    if (isNew)
                     {
                         //insert [topo_index] => [event hash]
                         var topoKey = TopologicalEventKey(ev.GetTopologicalIndex());
@@ -406,20 +399,16 @@ namespace Dotnatter.HashgraphImpl.Stores
                 }
 
                 t.Commit();
-            }
 
-            return Task.FromResult<StoreError>(null);
+                return Task.FromResult<StoreError>(null);
+            }
         }
 
         public Task<(Event[] events, StoreError error)> DbTopologicalEvents()
         {
-            var res = new List<Event> { };
-
-
-
             using (var tx = db.GetTransaction())
             {
-
+                var res = new List<Event>();
 
                 var t = 0;
                 var key = TopologicalEventKey(t);
@@ -428,7 +417,6 @@ namespace Dotnatter.HashgraphImpl.Stores
 
                 while (true)
                 {
-
                     if (!item.Exists)
                     {
                         break;
@@ -443,23 +431,18 @@ namespace Dotnatter.HashgraphImpl.Stores
                     t++;
                     key = TopologicalEventKey(t);
                     item = tx.Select<string, string>(TopoPrefix, key);
-
                 }
 
-
+                return Task.FromResult<(Event[], StoreError)>((res.ToArray(), null));
             }
-
-            return Task.FromResult<(Event[], StoreError)>((res.ToArray(), null));
-
         }
 
         public Task<(string[] events, StoreError err)> DbParticipantEvents(string participant, int skip)
-
         {
-            var events = new List<string>();
-
             using (var tx = db.GetTransaction())
             {
+                var events = new List<string>();
+
                 var i = skip + 1;
 
                 while (true)
@@ -474,23 +457,20 @@ namespace Dotnatter.HashgraphImpl.Stores
 
                     events.Add(result.Value);
                 }
-            }
 
-            return Task.FromResult<(string[], StoreError)>((events.ToArray(), null));
+                return Task.FromResult<(string[], StoreError)>((events.ToArray(), null));
+            }
         }
 
         public Task<(string ev, StoreError err)> DbParticipantEvent(string participant, int index)
 
         {
-            string ev;
             using (var tx = db.GetTransaction())
             {
                 var key = ParticipantEventKey(participant, index);
-
-                ev = tx.Select<string, string>(ParticipantPrefix, key).Value;
+                var ev = tx.Select<string, string>(ParticipantPrefix, key).Value;
+                return Task.FromResult<(string, StoreError)>((ev, null));
             }
-
-            return Task.FromResult<(string, StoreError)>((ev, null));
         }
 
         public Task<StoreError> DbSetRoots(Dictionary<string, Root> roots)
@@ -509,41 +489,37 @@ namespace Dotnatter.HashgraphImpl.Stores
                 }
 
                 tx.Commit();
-            }
 
-            return Task.FromResult<StoreError>(null);
+                return Task.FromResult<StoreError>(null);
+            }
         }
 
         public Task<(Root, StoreError)> DbGetRoot(string participant)
         {
-            var key = ParticipantRootKey(participant);
-
-            Root root;
             using (var tx = db.GetTransaction())
             {
-                root = tx.Select<string, Root>(RootSuffix, key).Value;
-            }
+                var key = ParticipantRootKey(participant);
 
-            return Task.FromResult<(Root, StoreError)>((root, null));
+                var root = tx.Select<string, Root>(RootSuffix, key).Value;
+
+                return Task.FromResult<(Root, StoreError)>((root, null));
+            }
         }
 
         public Task<(RoundInfo round, StoreError err)> DbGetRound(int index)
         {
-            Row<string, RoundInfo> result;
             using (var tx = db.GetTransaction())
             {
                 var key = RoundKey(index);
-                result = tx.Select<string, RoundInfo>(RoundPrefix, key);
-           
+                var result = tx.Select<string, RoundInfo>(RoundPrefix, key);
+
+                if (!result.Exists)
+                {
+                    return Task.FromResult((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound)));
+                }
+
+                return Task.FromResult<(RoundInfo, StoreError)>((result.Value, null));
             }
-            if (!result.Exists)
-            {
-                
-                return Task.FromResult<(RoundInfo, StoreError)>((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound)));
-            }
-  
-          
-            return Task.FromResult<(RoundInfo, StoreError)>((result.Value, null));
         }
 
         public Task<StoreError> DbSetRound(int index, RoundInfo round)
@@ -555,21 +531,18 @@ namespace Dotnatter.HashgraphImpl.Stores
                 //insert [round_index] => [round bytes]
                 tx.Insert(RoundPrefix, key, round);
                 tx.Commit();
-            }
 
-            return Task.FromResult<StoreError>(null);
+                return Task.FromResult<StoreError>(null);
+            }
         }
 
         public Task<(Dictionary<string, int> participants, StoreError err)> DbGetParticipants()
-
         {
-            Dictionary<string, int> p = null;
             using (var tx = db.GetTransaction())
             {
-                p = tx.SelectDictionary<string, int>(ParticipantPrefix);
+                var p = tx.SelectDictionary<string, int>(ParticipantPrefix);
+                return Task.FromResult<(Dictionary<string, int>, StoreError)>((p, null));
             }
-
-            return Task.FromResult<(Dictionary<string, int>, StoreError)>((p, null));
         }
 
         public Task<StoreError> DbSetParticipants(Dictionary<string, int> ps)
@@ -586,9 +559,9 @@ namespace Dotnatter.HashgraphImpl.Stores
                 }
 
                 tx.Commit();
-            }
 
-            return Task.FromResult<StoreError>(null);
+                return Task.FromResult<StoreError>(null);
+            }
         }
     }
 }

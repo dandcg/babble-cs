@@ -442,8 +442,6 @@ namespace Dotnatter.HashgraphImpl
         public async Task< Exception> InsertEvent(Event ev, bool setWireInfo)
         {
 
-
-
             //verify signature
             var (ok, err) = ev.Verify();
 
@@ -1000,10 +998,6 @@ namespace Dotnatter.HashgraphImpl
                 return null;
 
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
             finally
             {
                 UpdateUndecidedRounds(decidedRounds);
@@ -1382,7 +1376,7 @@ namespace Dotnatter.HashgraphImpl
         {
             if (votes.TryGetValue(x, out var v))
             {
-                v.Add(y, vote);
+                v[y]=vote;
                 return;
             }
             votes.Add(x, new Dictionary<string, bool> { { y, vote } });
