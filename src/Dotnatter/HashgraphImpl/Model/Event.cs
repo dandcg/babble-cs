@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using Dotnatter.Crypto;
-using Dotnatter.NodeImpl;
 using Dotnatter.Util;
 
 namespace Dotnatter.HashgraphImpl.Model
@@ -17,7 +15,7 @@ namespace Dotnatter.HashgraphImpl.Model
 
         //creator's digital signature of body
         public byte[] Signiture { get; set; }
-        
+
         public (BigInteger R, BigInteger S) SignatureRs()
         {
             var r = new BigInteger(Signiture.Take(32).ToArray());
@@ -85,13 +83,20 @@ namespace Dotnatter.HashgraphImpl.Model
         private EventCoordinates[] firstDescendants;
         private byte[] hash;
 
-        public string Creator() => creator ?? (creator = Body.Creator.ToHex());
+        public string Creator()
+        {
+            return creator ?? (creator = Body.Creator.ToHex());
+        }
 
+        public byte[] Hash()
+        {
+            return hash ?? (hash = Body.Hash());
+        }
 
-
-        public byte[] Hash() => hash ?? (hash = Body.Hash());
-
-        public string Hex() => Hash().ToHex();
+        public string Hex()
+        {
+            return Hash().ToHex();
+        }
 
         public Event()
         {
@@ -140,9 +145,8 @@ namespace Dotnatter.HashgraphImpl.Model
         public HashgraphError Sign(CngKey privKey)
         {
             var signBytes = Hash();
-            Signiture=CryptoUtils.Sign(privKey, signBytes);
+            Signiture = CryptoUtils.Sign(privKey, signBytes);
             return null;
-
         }
 
         public (bool res, Exception err) Verify()
@@ -192,7 +196,7 @@ namespace Dotnatter.HashgraphImpl.Model
                     Timestamp = Body.Timestamp,
                     Index = Body.Index
                 },
-                Signiture = Signiture                //R = Signiture.R,
+                Signiture = Signiture //R = Signiture.R,
                 // S = Signiture.S
             };
         }
@@ -202,8 +206,8 @@ namespace Dotnatter.HashgraphImpl.Model
         {
             public int Compare(Event x, Event y)
             {
-                Debug.Assert(x != null, nameof(x) + " != null");
-                Debug.Assert(y != null, nameof(y) + " != null");
+                if (x == null) throw new ArgumentNullException(nameof(x));
+                if (y == null) throw new ArgumentNullException(nameof(y));
                 return DateTimeOffset.Compare(x.Body.Timestamp, y.Body.Timestamp);
             }
         }
@@ -212,8 +216,8 @@ namespace Dotnatter.HashgraphImpl.Model
         {
             public int Compare(Event x, Event y)
             {
-                Debug.Assert(x != null, nameof(x) + " != null");
-                Debug.Assert(y != null, nameof(y) + " != null");
+                if (x == null) throw new ArgumentNullException(nameof(x));
+                if (y == null) throw new ArgumentNullException(nameof(y));
                 return x.GetTopologicalIndex().CompareTo(y.GetTopologicalIndex());
             }
         }
@@ -225,20 +229,11 @@ namespace Dotnatter.HashgraphImpl.Model
 
             public int Compare(Event i, Event j)
             {
-                Debug.Assert(i != null, nameof(i) + " != null");
-                Debug.Assert(j != null, nameof(j) + " != null");
+                if (i == null) throw new ArgumentNullException(nameof(i));
+                if (j == null) throw new ArgumentNullException(nameof(j));
 
-                var (irr, jrr) = (-1, -1);
-
-                if (i.GetRoundReceived() != null)
-                {
-                    irr = (int) i.GetRoundReceived();
-                }
-
-                if (j.GetRoundReceived() != null)
-                {
-                    jrr = (int) j.GetRoundReceived();
-                }
+                var irr = i.GetRoundReceived() ?? -1;
+                var jrr = j.GetRoundReceived() ?? -1;
 
                 if (irr != jrr)
                 {
@@ -252,7 +247,7 @@ namespace Dotnatter.HashgraphImpl.Model
 
                 Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
 
-                var w = GetPseudoRandomNumber((int) i.GetRoundReceived());
+                var w = GetPseudoRandomNumber(i.GetRoundReceived() ?? -1);
 
                 var wsi = i.SignatureRs().S ^ w;
 
