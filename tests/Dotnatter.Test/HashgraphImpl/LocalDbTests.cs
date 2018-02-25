@@ -171,6 +171,7 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public async Task TestDbEventMethods()
         {
+            Exception err;
             var cacheSize = 0;
             var testSize = 1;
             var (store, participants) = await initBadgerStore(cacheSize, dbPath, logger);
@@ -196,17 +197,16 @@ namespace Dotnatter.Test.HashgraphImpl
                     topologicalEvents.Add(ev);
 
                     items.Add(ev);
-                    
-                    
                 }
 
-                var itemsA=items.ToArray();
-                events[p.Hex] = itemsA; 
+                var itemsA = items.ToArray();
+                events[p.Hex] = itemsA;
 
-                var err = await store.DbSetEvents(itemsA);
+                err = await store.DbSetEvents(itemsA);
                 Assert.Null(err);
-
             }
+
+            bool ver;
 
             //check events where correctly inserted and can be retrieved
             foreach (var evsd in events)
@@ -217,10 +217,8 @@ namespace Dotnatter.Test.HashgraphImpl
                 var k = 0;
                 foreach (var ev in evs)
                 {
-       
                     logger.Debug($"Testing events[{p}][{ev.Hex()}]");
 
-                    Exception err;
                     Event rev;
                     (rev, err) = await store.DbGetEvent(ev.Hex());
                     Assert.Null(err);
@@ -228,78 +226,63 @@ namespace Dotnatter.Test.HashgraphImpl
                     ev.Body.ShouldCompareTo(rev.Body);
 
                     rev.ShouldCompareTo(ev);
-                   
+
                     Assert.Equal(ev.Signiture, rev.Signiture);
 
-                    bool ver;
-                    (ver, err) = ev.Verify();
-                    Assert.True(ver);
-
-
                     (ver, err) = rev.Verify();
+                    Assert.Null(err);
                     Assert.True(ver);
 
                     k++;
                 }
             }
 
-            ////check topological order of events was correctly created
-            //dbTopologicalEvents, err := store.dbTopologicalEvents()
-            //if err != nil {
-            //	t.Fatal(err)
-            //}
-            //if len(dbTopologicalEvents) != len(topologicalEvents) {
-            //	t.Fatalf("Length of dbTopologicalEvents should be %d, not %d",
-            //		len(topologicalEvents), len(dbTopologicalEvents))
-            //}
-            //for i, dte := range dbTopologicalEvents {
-            //	te := topologicalEvents[i]
+            //check topological order of events was correctly created
+            Event[] dbTopologicalEvents;
+            (dbTopologicalEvents, err) = await store.DbTopologicalEvents();
+            Assert.Null(err);
 
-            //	if dte.Hex() != te.Hex() {
-            //		t.Fatalf("dbTopologicalEvents[%d].Hex should be %s, not %s", i,
-            //			te.Hex(),
-            //			dte.Hex())
-            //	}
-            //	if !reflect.DeepEqual(te.Body, dte.Body) {
-            //		t.Fatalf("dbTopologicalEvents[%d].Body should be %#v, not %#v", i,
-            //			te.Body,
-            //			dte.Body)
-            //	}
-            //	if !reflect.DeepEqual(te.R, dte.R) {
-            //		t.Fatalf("dbTopologicalEvents[%d].R should be %#v, not %#v", i,
-            //			te.R,
-            //			dte.R)
-            //	}
-            //	if !reflect.DeepEqual(te.S, dte.S) {
-            //		t.Fatalf("dbTopologicalEvents[%d].S should be %#v, not %#v", i,
-            //			te.S,
-            //			dte.S)
-            //	}
+            Assert.Equal(topologicalEvents.Count, dbTopologicalEvents.Length);
 
-            //	if ver, err := dte.Verify(); err != nil && !ver {
-            //		t.Fatalf("failed to verify signature. err: %s", err)
-            //	}
-            //}
+            int i = 0;
+            foreach (var dte in dbTopologicalEvents)
 
-            ////check that participant events where correctly added
-            //skipIndex := -1 //do not skip any indexes
-            //for _, p := range participants {
-            //	pEvents, err := store.dbParticipantEvents(p.hex, skipIndex)
-            //	if err != nil {
-            //		t.Fatal(err)
-            //	}
-            //	if l := len(pEvents); l != testSize {
-            //		t.Fatalf("%s should have %d events, not %d", p.hex, testSize, l)
-            //	}
+            {
+                var te = topologicalEvents[i];
 
-            //	expectedEvents := events[p.hex][skipIndex+1:]
-            //	for k, e := range expectedEvents {
-            //		if e.Hex() != pEvents[k] {
-            //			t.Fatalf("ParticipantEvents[%s][%d] should be %s, not %s",
-            //				p.hex, k, e.Hex(), pEvents[k])
-            //		}
-            //	}
-            //}
+                Assert.Equal(te.Hex(), dte.Hex());
+
+                dte.Body.ShouldCompareTo(te.Body);
+
+                Assert.Equal(te.Signiture, dte.Signiture);
+
+                (ver, err) = dte.Verify();
+                Assert.Null(err);
+                Assert.True(ver);
+
+                i++;
+            }
+
+            //check that participant events where correctly added
+            var skipIndex = -1; //do not skip any indexes
+            foreach (var p in participants)
+            {
+                string[] pEvents;
+                (pEvents, err) = await store.DbParticipantEvents(p.Hex, skipIndex);
+                Assert.Null(err);
+
+                Assert.Equal(testSize,pEvents.Length);
+
+                var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
+
+                int k = 0;
+                foreach (var e in expectedEvents)
+                {
+                    Assert.Equal(e.Hex(), pEvents[k]);
+               
+                    k++;
+                }
+            }
         }
     }
 }

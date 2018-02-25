@@ -137,22 +137,22 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public string ParticipantKey(string participant)
         {
-            return string.Format("{0}_{1}", ParticipantPrefix, participant);
+            return $"{ParticipantPrefix}_{participant}";
         }
 
         public string ParticipantEventKey(string participant, int index)
         {
-            return string.Format("%s_%09d", participant, index);
+            return $"{participant}_{index}";
         }
 
         public string ParticipantRootKey(string participant)
         {
-            return string.Format("%s_%s", participant, RootSuffix);
+            return $"{participant}_{RootSuffix}";
         }
 
         public string RoundKey(int index)
         {
-            return string.Format("%s_%09d", RoundPrefix, index);
+            return $"{RoundPrefix}_{index}";
         }
 
         public int CacheSize()
@@ -449,13 +449,15 @@ namespace Dotnatter.HashgraphImpl.Stores
                 {
                     var key = ParticipantEventKey(participant, i);
                     var result = tx.Select<string, string>(ParticipantPrefix, key);
-
+                    logger.Debug(key);
                     if (!result.Exists)
                     {
                         break;
                     }
 
                     events.Add(result.Value);
+
+                    i++;
                 }
 
                 return Task.FromResult<(string[], StoreError)>((events.ToArray(), null));

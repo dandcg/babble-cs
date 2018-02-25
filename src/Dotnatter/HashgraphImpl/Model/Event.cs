@@ -155,8 +155,6 @@ namespace Dotnatter.HashgraphImpl.Model
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
             var signBytes = Hash();
 
-            Console.WriteLine(Body.DumpToString());
-            Console.WriteLine($"{pubBytes.ToHex()} - {signBytes.ToHex()} - {Signiture.ToHex()}");
             return (CryptoUtils.Verify(pubKey, signBytes, Signiture), null);
         }
 
