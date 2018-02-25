@@ -190,7 +190,7 @@ namespace Dotnatter.Test.HashgraphImpl
                         p.PubKey,
                         k);
 
-       ev.Sign(p.PrivKey);
+                    ev.Sign(p.PrivKey);
                     ev.SetTopologicalIndex(topologicalIndex);
                     topologicalIndex++;
                     topologicalEvents.Add(ev);
@@ -232,6 +232,10 @@ namespace Dotnatter.Test.HashgraphImpl
                     Assert.Equal(ev.Signiture, rev.Signiture);
 
                     bool ver;
+                    (ver, err) = ev.Verify();
+                    Assert.True(ver);
+
+
                     (ver, err) = rev.Verify();
                     Assert.True(ver);
 

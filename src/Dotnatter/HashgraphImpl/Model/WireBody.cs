@@ -11,7 +11,7 @@ namespace Dotnatter.HashgraphImpl.Model
         public int OtherParentIndex { get; set; }
         public int CreatorId { get; set; }
 
-        public DateTime Timestamp { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
         public int Index { get; set; }
     }
 }

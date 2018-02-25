@@ -1139,7 +1139,7 @@ namespace Dotnatter.HashgraphImpl
 
             return null;
         }
-        public async Task<DateTime> MedianTimestamp(List<string> evHashes)
+        public async Task<DateTimeOffset> MedianTimestamp(List<string> evHashes)
         {
             var evs = new List<Event>();
             foreach (var x in evHashes)

@@ -45,12 +45,12 @@ namespace Dotnatter.HashgraphImpl.Model
             return roundReceived;
         }
 
-        public void SetConsensusTimestamp(DateTime value)
+        public void SetConsensusTimestamp(DateTimeOffset value)
         {
             consensusTimestamp = value;
         }
 
-        public DateTime GetConsensusTimestamp()
+        public DateTimeOffset GetConsensusTimestamp()
         {
             return consensusTimestamp;
         }
@@ -80,7 +80,7 @@ namespace Dotnatter.HashgraphImpl.Model
         private string creator;
         private int topologicalIndex;
         private int? roundReceived;
-        private DateTime consensusTimestamp;
+        private DateTimeOffset consensusTimestamp;
         private EventCoordinates[] lastAncestors;
         private EventCoordinates[] firstDescendants;
         private byte[] hash;
@@ -151,6 +151,8 @@ namespace Dotnatter.HashgraphImpl.Model
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
             var signBytes = Hash();
 
+            Console.WriteLine(Body.DumpToString());
+            Console.WriteLine($"{pubBytes.ToHex()} - {signBytes.ToHex()} - {Signiture.ToHex()}");
             return (CryptoUtils.Verify(pubKey, signBytes, Signiture), null);
         }
 
@@ -202,7 +204,7 @@ namespace Dotnatter.HashgraphImpl.Model
             {
                 Debug.Assert(x != null, nameof(x) + " != null");
                 Debug.Assert(y != null, nameof(y) + " != null");
-                return DateTime.Compare(x.Body.Timestamp, y.Body.Timestamp);
+                return DateTimeOffset.Compare(x.Body.Timestamp, y.Body.Timestamp);
             }
         }
 
@@ -245,7 +247,7 @@ namespace Dotnatter.HashgraphImpl.Model
 
                 if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
                 {
-                    return DateTime.Compare(i.GetConsensusTimestamp(), j.GetConsensusTimestamp());
+                    return DateTimeOffset.Compare(i.GetConsensusTimestamp(), j.GetConsensusTimestamp());
                 }
 
                 Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
