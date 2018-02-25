@@ -806,9 +806,8 @@ namespace Dotnatter.HashgraphImpl
             var ev = new Event
             {
                 Body = body,
-    
+                Signiture = wev.Signiture,
             };
-            ev.SetSigniture(wev.Signiture);
             return (ev, null);
         }
 

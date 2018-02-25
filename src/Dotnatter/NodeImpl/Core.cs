@@ -78,8 +78,8 @@ namespace Dotnatter.NodeImpl
             var initialEvent = new Event(new byte[][] { }, new[] {"", ""},
                 PubKey(),
                 Seq);
-
-            return SignAndInsertSelfEvent(initialEvent);
+            
+ return SignAndInsertSelfEvent(initialEvent);
         }
 
         public async Task<Exception> Bootstrap()

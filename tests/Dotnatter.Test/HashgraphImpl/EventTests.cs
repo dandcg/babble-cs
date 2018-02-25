@@ -68,7 +68,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var ev = new Event {Body = body};
 
-            var hash = ev.Hash();
+      var hash = ev.Hash();
 
             var sig = CryptoUtils.SignToBigInt(privateKey, hash);
 
@@ -87,7 +87,7 @@ namespace Dotnatter.Test.HashgraphImpl
             body.Creator = publicKeyBytes;
 
             var ev = new Event {Body = body};
-
+           
             ev.Sign(privateKey);
 
             var raw = ev.Marhsal();
@@ -127,8 +127,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     Timestamp = ev.Body.Timestamp,
                     Index = ev.Body.Index
                 },
-                Signiture = ev.Signiture()
-            };
+                Signiture = ev.Signiture            };
 
             var wireEvent = ev.ToWire();
             

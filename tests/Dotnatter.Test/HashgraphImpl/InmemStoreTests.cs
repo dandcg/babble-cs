@@ -63,8 +63,7 @@ namespace Dotnatter.Test.HashgraphImpl
                         new[] {"", ""},
                         p.PubKey,
                         k);
-
-                    ev.Hex(); //just to set private variables
+                   
                     items.Add(ev);
                     await store.SetEvent(ev);
                 }

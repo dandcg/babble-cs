@@ -15,23 +15,13 @@ namespace Dotnatter.HashgraphImpl.Model
     {
         public EventBody Body { get; set; }
 
-        private byte[] signiture;
-
         //creator's digital signature of body
-        public byte[] Signiture()
+        public byte[] Signiture { get; set; }
+        
+        public (BigInteger R, BigInteger S) SignatureRs()
         {
-            return signiture;
-        }
-
-        public void SetSigniture(byte[] value)
-        {
-            signiture = value;
-        }
-
-        public (BigInteger R, BigInteger S) SignatureRS()
-        {
-            var r = new BigInteger(Signiture().Take(32).ToArray());
-            var s = new BigInteger(Signiture().Skip(32).ToArray());
+            var r = new BigInteger(Signiture.Take(32).ToArray());
+            var s = new BigInteger(Signiture.Skip(32).ToArray());
             return (r, s);
         }
 
@@ -88,24 +78,20 @@ namespace Dotnatter.HashgraphImpl.Model
         //sha256 hash of body and signature
 
         private string creator;
-        private byte[] hash;
         private int topologicalIndex;
         private int? roundReceived;
         private DateTime consensusTimestamp;
         private EventCoordinates[] lastAncestors;
         private EventCoordinates[] firstDescendants;
+        private byte[] hash;
 
         public string Creator() => creator ?? (creator = Body.Creator.ToHex());
 
-        public byte[] Hash()
-        {
-            return hash ?? (hash = CryptoUtils.Sha256(Marhsal()));
-        }
 
-        public string Hex()
-        {
-            return Hash().ToHex();
-        }
+
+        public byte[] Hash() => hash ?? (hash = Body.Hash());
+
+        public string Hex() => Hash().ToHex();
 
         public Event()
         {
@@ -153,8 +139,8 @@ namespace Dotnatter.HashgraphImpl.Model
         //ecdsa sig
         public HashgraphError Sign(CngKey privKey)
         {
-            var signBytes = Body.Hash();
-            SetSigniture(CryptoUtils.Sign(privKey, signBytes));
+            var signBytes = Hash();
+            Signiture=CryptoUtils.Sign(privKey, signBytes);
             return null;
 
         }
@@ -163,9 +149,9 @@ namespace Dotnatter.HashgraphImpl.Model
         {
             var pubBytes = Body.Creator;
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
-            var signBytes = Body.Hash();
+            var signBytes = Hash();
 
-            return (CryptoUtils.Verify(pubKey, signBytes, Signiture()), null);
+            return (CryptoUtils.Verify(pubKey, signBytes, Signiture), null);
         }
 
         //json encoding of body and signature
@@ -204,8 +190,7 @@ namespace Dotnatter.HashgraphImpl.Model
                     Timestamp = Body.Timestamp,
                     Index = Body.Index
                 },
-                Signiture = Signiture()
-                //R = Signiture.R,
+                Signiture = Signiture                //R = Signiture.R,
                 // S = Signiture.S
             };
         }
@@ -267,9 +252,9 @@ namespace Dotnatter.HashgraphImpl.Model
 
                 var w = GetPseudoRandomNumber((int) i.GetRoundReceived());
 
-                var wsi = i.SignatureRS().S ^ w;
+                var wsi = i.SignatureRs().S ^ w;
 
-                var wsj = j.SignatureRS().S ^ w;
+                var wsj = j.SignatureRs().S ^ w;
 
                 return wsi.CompareTo(wsj);
             }
