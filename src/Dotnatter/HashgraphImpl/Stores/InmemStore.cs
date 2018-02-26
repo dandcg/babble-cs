@@ -257,5 +257,13 @@ namespace Dotnatter.HashgraphImpl.Stores
             return null;
 
         }
+
+        public StoreTx BeginTx()
+        {
+            return new StoreTx(null,null);
+
+        }
+
+      
     }
 }

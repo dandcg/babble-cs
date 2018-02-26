@@ -122,9 +122,6 @@
         <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallBody</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.InmemStoreTests.TestInmemRounds</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Dotnatter.Test.Common.LruTests.TestLru_Peek</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -138,9 +135,6 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.CachesTests.TestParticipantEventsCacheEdge</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestLoadStore</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Common.LruTests.TestLru</TestName>
@@ -164,9 +158,6 @@
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestGossip</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.InmemStoreTests.TestInmemEvents</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestIsLoaded</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -174,9 +165,6 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestNewStore</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
@@ -215,23 +203,32 @@
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbEventMethods</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBRoundMethods</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBParticipantMethods</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbEventMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbParticipantMethods</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerEvents</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbRoundMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestNewStore</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerRounds</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestLoadStore</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.InmemStoreTests</FixtureName>
+      </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

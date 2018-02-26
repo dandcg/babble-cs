@@ -29,5 +29,8 @@ namespace Dotnatter.HashgraphImpl.Stores
         StoreError Reset(Dictionary<string, Root> d);
         StoreError Close();
 
+        StoreTx BeginTx();
+
+
     }
 }

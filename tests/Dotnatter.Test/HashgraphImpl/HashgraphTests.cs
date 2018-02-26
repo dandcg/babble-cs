@@ -1078,7 +1078,7 @@ namespace Dotnatter.Test.HashgraphImpl
             foreach (var p in plays)
             {
                 var parents = new List<string> {index[p.SelfParent]};
-                
+
                 index.TryGetValue(p.OtherParent, out var otherParent);
 
                 parents.Add(otherParent ?? "");
@@ -1109,6 +1109,8 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var hashgraph = new Hashgraph(participants, store, null, logger);
 
+            using (var tx = store.BeginTx()) 
+            {
             i = 0;
             foreach (var ev in orderedEvents)
             {
@@ -1121,8 +1123,9 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 i++;
             }
+        }
 
-            return (hashgraph, index);
+        return (hashgraph, index);
         }
 
         [Fact]

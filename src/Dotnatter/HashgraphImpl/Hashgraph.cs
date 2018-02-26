@@ -441,6 +441,7 @@ namespace Dotnatter.HashgraphImpl
         public async Task<Exception> InsertEvent(Event ev, bool setWireInfo)
         {
             //verify signature
+
             var (ok, err) = ev.Verify();
 
             if (!ok)
@@ -453,53 +454,57 @@ namespace Dotnatter.HashgraphImpl
                 return new HashgraphError($"Invalid signature");
             }
 
-            err = CheckSelfParent(ev);
-            if (err != null)
-            {
-                return new Exception($"CheckSelfParent: {err.Message}", err);
-            }
+            using (var tx = Store.BeginTx())
 
-            err = await CheckOtherParent(ev);
-            if (err != null)
             {
-                return new Exception($"CheckOtherParent: {err.Message}", err);
-            }
-
-            ev.SetTopologicalIndex(TopologicalIndex);
-            TopologicalIndex++;
-
-            if (setWireInfo)
-            {
-                err = await SetWireInfo(ev);
+                err = CheckSelfParent(ev);
                 if (err != null)
                 {
-                    return new Exception($"SetWireInfo: {err.Message}", err);
+                    return new Exception($"CheckSelfParent: {err.Message}", err);
                 }
-            }
 
-            err = await InitEventCoordinates(ev);
-            if (err != null)
-            {
-                return new Exception($"InitEventCoordinates: {err.Message}", err);
-            }
+                err = await CheckOtherParent(ev);
+                if (err != null)
+                {
+                    return new Exception($"CheckOtherParent: {err.Message}", err);
+                }
 
-            err = await Store.SetEvent(ev);
-            if (err != null)
-            {
-                return new Exception($"SetEvent: {err.Message}", err);
-            }
+                ev.SetTopologicalIndex(TopologicalIndex);
+                TopologicalIndex++;
 
-            err = await UpdateAncestorFirstDescendant(ev);
-            if (err != null)
-            {
-                return new Exception($"UpdateAncestorFirstDescendant: {err.Message}", err);
-            }
+                if (setWireInfo)
+                {
+                    err = await SetWireInfo(ev);
+                    if (err != null)
+                    {
+                        return new Exception($"SetWireInfo: {err.Message}", err);
+                    }
+                }
 
-            UndeterminedEvents.Add(ev.Hex());
+                err = await InitEventCoordinates(ev);
+                if (err != null)
+                {
+                    return new Exception($"InitEventCoordinates: {err.Message}", err);
+                }
 
-            if (ev.IsLoaded())
-            {
-                PendingLoadedEvents++;
+                err = await Store.SetEvent(ev);
+                if (err != null)
+                {
+                    return new Exception($"SetEvent: {err.Message}", err);
+                }
+
+                err = await UpdateAncestorFirstDescendant(ev);
+                if (err != null)
+                {
+                    return new Exception($"UpdateAncestorFirstDescendant: {err.Message}", err);
+                }
+
+                UndeterminedEvents.Add(ev.Hex());
+
+                if (ev.IsLoaded())
+                {
+                    PendingLoadedEvents++;
+                }
             }
 
             return null;
@@ -1315,45 +1320,50 @@ namespace Dotnatter.HashgraphImpl
             if (Store is LocalDbStore)
 
             {
-                //Retreive the Events from the underlying DB. They come out in topological
-                //order
-                Event[] topologicalEvents;
-                (topologicalEvents, err) = await ((LocalDbStore) Store).DbTopologicalEvents();
-
-                if (err != null)
+                using (var tx = Store.BeginTx())
                 {
-                    return err;
-                }
-
-                //Insert the Events in the Hashgraph
-                foreach (var e in topologicalEvents)
-                {
-                    err = await InsertEvent(e, true);
+                    //Retreive the Events from the underlying DB. They come out in topological
+                    //order
+                    Event[] topologicalEvents;
+                    (topologicalEvents, err) = await ((LocalDbStore) Store).DbTopologicalEvents();
 
                     if (err != null)
                     {
                         return err;
                     }
-                }
 
-                //Compute the consensus order of Events
-                err = await DivideRounds();
-                if (err != null)
-                {
-                    return err;
-                }
+                    //Insert the Events in the Hashgraph
+                    foreach (var e in topologicalEvents)
+                    {
+                        err = await InsertEvent(e, true);
 
-                err = await DecideFame();
-                if (err != null)
-                {
-                    return err;
-                }
+                        if (err != null)
+                        {
+                            return err;
+                        }
+                    }
 
-                err = await FindOrder();
+                    //Compute the consensus order of Events
+                    err = await DivideRounds();
+                    if (err != null)
+                    {
+                        return err;
+                    }
 
-                if (err != null)
-                {
-                    return err;
+                    err = await DecideFame();
+                    if (err != null)
+                    {
+                        return err;
+                    }
+
+                    err = await FindOrder();
+
+                    if (err != null)
+                    {
+                        return err;
+                    }
+
+                    tx.Commit();
                 }
             }
 

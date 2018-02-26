@@ -28,7 +28,7 @@ namespace Dotnatter.Test.HashgraphImpl
             dbPath = $"localdb/{Guid.NewGuid():D}";
         }
 
-        private static async Task<(LocalDbStore store, Pub[] pubs)> initBadgerStore(int cacheSize, string dbPath, ILogger logger)
+        private static async Task<(LocalDbStore store, Pub[] pubs)> InitBadgerStore(int cacheSize, string dbPath, ILogger logger)
         {
             var n = 3;
             var participantPubs = new List<Pub>();
@@ -59,7 +59,7 @@ namespace Dotnatter.Test.HashgraphImpl
         //    }
         //}
 
-        private static async Task<LocalDbStore> createTestDB(string dir, ILogger logger)
+        private static async Task<LocalDbStore> CreateTestDb(string dir, ILogger logger)
 
         {
             var participants = new Dictionary<string, int>
@@ -91,23 +91,12 @@ namespace Dotnatter.Test.HashgraphImpl
         public async Task TestNewStore()
         {
             logger.Information(Directory.GetCurrentDirectory());
-            //os.RemoveAll("test_data")
-            //os.Mkdir("test_data", os.ModeDir|0777)
-
-            var dbPath = $"localdb/{Guid.NewGuid():D}";
-            var store = await createTestDB(dbPath, logger);
-            //defer os.RemoveAll(store.path)
+            
+            var store = await CreateTestDb(dbPath, logger);
 
             Assert.NotNull(store);
             Assert.Equal(store.Path, dbPath);
-
-            //if (store.path != dbPath) {
-            //    t.Fatalf("unexpected path %q", store.path)
-            //}
-            //if _, err = os.Stat(dbPath); err != nil {
-            //    t.Fatalf("err: %s", err)
-            //}
-
+            
             //check roots
 
             StoreError err;
@@ -132,10 +121,9 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public async Task TestLoadStore()
         {
-            var dbPath = $"localdb/{Guid.NewGuid():D}";
 
             //Create the test db
-            var tempStore = await createTestDB(dbPath, logger);
+            var tempStore = await CreateTestDb(dbPath, logger);
 
             Assert.NotNull(tempStore);
             tempStore.Close();
@@ -149,7 +137,10 @@ namespace Dotnatter.Test.HashgraphImpl
             Assert.Null(err);
 
             Dictionary<string, int> dbParticipants;
-            (dbParticipants, err) = await badgerStore.DbGetParticipants();
+            using (var tx = badgerStore.BeginTx())
+            {
+                (dbParticipants, err) = await badgerStore.DbGetParticipants();
+            }
 
             Assert.Null(err);
             Assert.Equal(badgerStore.Participants().participants.Count, dbParticipants.Count);
@@ -173,8 +164,8 @@ namespace Dotnatter.Test.HashgraphImpl
         {
             Exception err;
             var cacheSize = 0;
-            var testSize = 1;
-            var (store, participants) = await initBadgerStore(cacheSize, dbPath, logger);
+            var testSize = 100;
+            var (store, participants) = await InitBadgerStore(cacheSize, dbPath, logger);
 
             //inset events in db directly
             var events = new Dictionary<string, Event[]>();
@@ -183,27 +174,34 @@ namespace Dotnatter.Test.HashgraphImpl
             var topologicalEvents = new List<Event>();
             foreach (var p in participants)
             {
-                var items = new List<Event>();
-                for (var k = 0; k < testSize; k++)
+                using (var tx =store.BeginTx())
                 {
-                    var ev = new Event(new[] {$"{p.Hex.Take(5)}_{k}".StringToBytes()},
-                        new[] {"", ""},
-                        p.PubKey,
-                        k);
+                    var items = new List<Event>();
+                    for (var k = 0; k < testSize; k++)
+                    {
+                        var ev = new Event(new[] {$"{p.Hex.Take(5)}_{k}".StringToBytes()},
+                            new[] {"", ""},
+                            p.PubKey,
+                            k);
 
-                    ev.Sign(p.PrivKey);
-                    ev.SetTopologicalIndex(topologicalIndex);
-                    topologicalIndex++;
-                    topologicalEvents.Add(ev);
+                        ev.Sign(p.PrivKey);
+                        ev.SetTopologicalIndex(topologicalIndex);
+                        topologicalIndex++;
+                        topologicalEvents.Add(ev);
 
-                    items.Add(ev);
+                        items.Add(ev);
+
+                        err = await store.DbSetEvents(new[] {ev});
+                        Assert.Null(err);
+
+                    }
+
+
+                    events[p.Hex] = items.ToArray();
+
+                    tx.Commit();
                 }
 
-                var itemsA = items.ToArray();
-                events[p.Hex] = itemsA;
-
-                err = await store.DbSetEvents(itemsA);
-                Assert.Null(err);
             }
 
             bool ver;
@@ -214,7 +212,6 @@ namespace Dotnatter.Test.HashgraphImpl
                 var p = evsd.Key;
                 var evs = evsd.Value;
 
-                var k = 0;
                 foreach (var ev in evs)
                 {
                     logger.Debug($"Testing events[{p}][{ev.Hex()}]");
@@ -233,7 +230,6 @@ namespace Dotnatter.Test.HashgraphImpl
                     Assert.Null(err);
                     Assert.True(ver);
 
-                    k++;
                 }
             }
 
@@ -286,10 +282,10 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         [Fact]
-        public async Task TestDBRoundMethods()
+        public async Task TestDbRoundMethods()
         {
             var cacheSize = 0;
-            var (store, participants) = await initBadgerStore(cacheSize, dbPath, logger);
+            var (store, participants) = await InitBadgerStore(cacheSize, dbPath, logger);
 
             var round = new RoundInfo();
             var events = new Dictionary<string, Event>();
@@ -304,8 +300,13 @@ namespace Dotnatter.Test.HashgraphImpl
                 round.AddEvent(ev.Hex(), true);
             }
 
-            var err = await store.DbSetRound(0, round);
-            Assert.Null(err);
+            StoreError err;
+            using (var tx = store.BeginTx())
+            {
+             err = await store.DbSetRound(0, round);
+                Assert.Null(err);
+                tx.Commit();
+            }
 
             RoundInfo storedRound;
             (storedRound, err) = await store.DbGetRound(0);
@@ -321,22 +322,25 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var w in expectedWitnesses)
             {
-                Assert.True(witnesses.Contains(w));
+                Assert.Contains(w, witnesses);
             }
         }
 
         [Fact]
-        public async Task TestDBParticipantMethods()
+        public async Task TestDbParticipantMethods()
         {
             var cacheSize = 0;
-            var (store, _ ) = await initBadgerStore(cacheSize, dbPath, logger);
+            var (store, _ ) = await InitBadgerStore(cacheSize, dbPath, logger);
 
             var (participants, err) = store.Participants();
-
             Assert.Null(err);
 
-            err = await store.DbSetParticipants(participants);
-            Assert.Null(err);
+            using (var tx = store.BeginTx())
+            {
+                err = await store.DbSetParticipants(participants);
+                Assert.Null(err);
+                tx.Commit();
+            }
 
             Dictionary<string, int> participantsFromDb;
             (participantsFromDb, err) = await store.DbGetParticipants();
@@ -370,28 +374,33 @@ namespace Dotnatter.Test.HashgraphImpl
             //Insert more events than can fit in cache to test retrieving from db.
             var cacheSize = 10;
             var testSize = 10;
-            var (store, participants) = await initBadgerStore(cacheSize, dbPath, logger);
+            var (store, participants) = await InitBadgerStore(cacheSize, dbPath, logger);
 
             //insert event
             var events = new Dictionary<string, Event[]>();
             StoreError err;
             foreach (var p in participants)
             {
-                var items = new List<Event>();
-                for (var k = 0; k < testSize; k++)
+                using (var tx = store.BeginTx())
                 {
-                    var ev = new Event(new[] {$"{p.Hex}_{k}".StringToBytes()}
-                        ,
-                        new[] {"", ""},
-                        p.PubKey,
-                        k);
+                    var items = new List<Event>();
+                    for (var k = 0; k < testSize; k++)
+                    {
+                        var ev = new Event(new[] {$"{p.Hex}_{k}".StringToBytes()}
+                            ,
+                            new[] {"", ""},
+                            p.PubKey,
+                            k);
 
-                    items.Add(ev);
-                    err = await store.SetEvent(ev);
-                    Assert.Null(err);
+                        items.Add(ev);
+                        err = await store.SetEvent(ev);
+                        Assert.Null(err);
+                    }
+
+                    events[p.Hex] = items.ToArray();
+
+                   tx.Commit();
                 }
-
-                events[p.Hex] = items.ToArray();
             }
 
             // check that events were correclty inserted
@@ -410,6 +419,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     ev.Body.ShouldCompareTo(rev.Body);
 
                     ev.Signiture.ShouldCompareTo(rev.Signiture);
+                    k++;
                 }
             }
 
@@ -473,7 +483,7 @@ namespace Dotnatter.Test.HashgraphImpl
         public async Task TestBadgerRounds()
         {
             var cacheSize = 0;
-            var ( store, participants ) = await initBadgerStore(cacheSize, dbPath, logger);
+            var ( store, participants ) = await InitBadgerStore(cacheSize, dbPath, logger);
 
             var round = new RoundInfo();
             var events = new Dictionary<string, Event>();
@@ -489,8 +499,16 @@ namespace Dotnatter.Test.HashgraphImpl
                 round.AddEvent(ev.Hex(), true);
             }
 
-            var err = await store.SetRound(0, round);
-            Assert.Null(err);
+            StoreError err;
+            using (var tx = store.BeginTx())
+            {
+                 err = await store.SetRound(0, round);
+                Assert.Null(err);
+                tx.Commit();
+
+            }
+
+
             var c = store.LastRound();
             Assert.Equal(0, c);
 
@@ -507,7 +525,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var w in expectedWitnesses)
             {
-                Assert.True(witnesses.Contains(w));
+                Assert.Contains(w, witnesses);
             }
         }
     }

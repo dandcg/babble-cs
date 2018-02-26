@@ -363,7 +363,7 @@ namespace Dotnatter.NodeImpl
         public async Task<Exception> RunConsensus()
         {
             // DivideRounds
-
+            
             var watch = Stopwatch.StartNew();
             var err = await hg.DivideRounds();
             watch.Stop();

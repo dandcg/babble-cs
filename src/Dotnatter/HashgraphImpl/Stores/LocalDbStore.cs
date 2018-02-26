@@ -2,10 +2,12 @@
 using System.Linq;
 using System.Threading.Tasks;
 using DBreeze;
+using DBreeze.Transactions;
 using DBreeze.Utils;
 using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Serilog;
+using Serilog.Data;
 
 namespace Dotnatter.HashgraphImpl.Stores
 {
@@ -14,10 +16,12 @@ namespace Dotnatter.HashgraphImpl.Stores
         private Dictionary<string, int> participants;
         private readonly DBreezeEngine db;
         private readonly ILogger logger;
+        private Transaction tx;
+        private int txLevel;
+        private StoreTx stx;
 
         static LocalDbStore()
         {
-            
             //Setting up NetJSON serializer (from NuGet) to be used by DBreeze
             CustomSerializator.ByteArraySerializator = o => NetJSON.NetJSON.Serialize(o).To_UTF8Bytes();
             CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
@@ -45,7 +49,6 @@ namespace Dotnatter.HashgraphImpl.Stores
                 DBreezeDataFolderName = path
             });
 
-
             var store = new LocalDbStore(
                 participants,
                 inmemStore,
@@ -53,6 +56,8 @@ namespace Dotnatter.HashgraphImpl.Stores
                 path,
                 logger
             );
+
+            store.BeginTx();
 
             var err = await store.DbSetParticipants(participants);
             if (err != null)
@@ -66,6 +71,8 @@ namespace Dotnatter.HashgraphImpl.Stores
                 return (null, err);
             }
 
+            store.CommitTx();
+
             return (store, null);
         }
 
@@ -78,7 +85,6 @@ namespace Dotnatter.HashgraphImpl.Stores
                 DBreezeDataFolderName = path
             });
 
-
             var store = new LocalDbStore(
                 null,
                 null,
@@ -87,36 +93,44 @@ namespace Dotnatter.HashgraphImpl.Stores
                 logger
             );
 
-            var (participants, err) = await store.DbGetParticipants();
-            if (err != null)
+            using (var tx = store.BeginTx())
             {
-                return (null, err);
-            }
-
-            var inmemStore = new InmemStore(participants, cacheSize, logger);
-
-            //read roots from db and put them in InmemStore
-            var roots = new Dictionary<string, Root>();
-            foreach (var p in participants)
-            {
-                Root root;
-                (root, err) = await store.DbGetRoot(p.Key);
+                var (participants, err) = await store.DbGetParticipants();
                 if (err != null)
                 {
                     return (null, err);
                 }
 
-                roots[p.Key] = root;
-            }
+                var inmemStore = new InmemStore(participants, cacheSize, logger);
 
-            err = inmemStore.Reset(roots);
-            if (err != null)
-            {
-                return (null, err);
-            }
+                //read roots from db and put them in InmemStore
+                var roots = new Dictionary<string, Root>();
+                foreach (var p in participants)
+                {
+                    Root root;
+                    (root, err) = await store.DbGetRoot(p.Key);
+                    if (err != null)
+                    {
+                        return (null, err);
+                    }
 
-            store.participants = participants;
-            store.InMemStore = inmemStore;
+                    roots[p.Key] = root;
+                }
+
+
+
+                err = inmemStore.Reset(roots);
+                if (err != null)
+                {
+                    return (null, err);
+                }
+
+                store.participants = participants;
+                store.InMemStore = inmemStore;
+
+                tx.Commit();
+
+            }
 
             return (store, null);
         }
@@ -190,6 +204,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             }
 
             //try to add it to the db
+
             return await DbSetEvents(new[] {ev});
         }
 
@@ -356,215 +371,209 @@ namespace Dotnatter.HashgraphImpl.Stores
         //DB Methods
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+        public StoreTx BeginTx()
+        {
+            if (txLevel == 0)
+            {
+            
+                logger.Verbose("Begin Transaction");
+                tx = db.GetTransaction();
+                stx = new StoreTx(() =>
+                    {
+                       
+                        tx.Commit();
+                        logger.Verbose("Comitted Transaction");
+                    },
+                    () =>
+                    {
+                        txLevel--;
+
+                        if (txLevel == 0)
+                        {
+                            tx.Dispose();
+                            tx = null;
+                        }
+                    }
+                );
+            }
+
+            txLevel++;
+            return stx;
+        }
+
+        public void CommitTx()
+        {
+        }
+
         public Task<(Event ev, StoreError err)> DbGetEvent(string key)
         {
-            using (var t = db.GetTransaction())
+            var evRes = tx.Select<string, Event>(EventStore, key);
+
+            if (!evRes.Exists)
             {
-                var evRes = t.Select<string, Event>(EventStore, key);
-
-                if (!evRes.Exists)
-                {
-                    return Task.FromResult((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
-                }
-
-                return Task.FromResult<(Event, StoreError)>((evRes.Value, null));
+                return Task.FromResult((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
             }
+
+            return Task.FromResult<(Event, StoreError)>((evRes.Value, null));
         }
 
         public Task<StoreError> DbSetEvents(Event[] events)
         {
-            using (var t = db.GetTransaction())
+            foreach (var ev in events)
             {
-                foreach (var ev in events)
+                var eventHex = ev.Hex();
+                logger.Debug($"Writing event[{eventHex}]");
+                //check if it already exists
+                var isNew = !tx.Select<string, Event>(EventStore, eventHex).Exists;
+
+                //insert [event hash] => [event bytes]
+                tx.Insert(EventStore, eventHex, ev);
+
+                if (isNew)
                 {
-                    var eventHex = ev.Hex();
-                    logger.Debug($"Writing event[{eventHex}]");
-                    //check if it already exists
-                    var isNew = !t.Select<string, Event>(EventStore, eventHex).Exists;
+                    //insert [topo_index] => [event hash]
+                    var topoKey = TopologicalEventKey(ev.GetTopologicalIndex());
 
-                    //insert [event hash] => [event bytes]
-                    t.Insert(EventStore, eventHex, ev);
-
-                    if (isNew)
-                    {
-                        //insert [topo_index] => [event hash]
-                        var topoKey = TopologicalEventKey(ev.GetTopologicalIndex());
-
-                        t.Insert(TopoPrefix, topoKey, eventHex);
-                    }
-
-                    //insert [participant_index] => [event hash]
-                    var peKey = ParticipantEventKey(ev.Creator(), ev.Index());
-
-                    t.Insert(ParticipantPrefix, peKey, eventHex);
+                    tx.Insert(TopoPrefix, topoKey, eventHex);
                 }
 
-                t.Commit();
+                //insert [participant_index] => [event hash]
+                var peKey = ParticipantEventKey(ev.Creator(), ev.Index());
 
-                return Task.FromResult<StoreError>(null);
+                tx.Insert(ParticipantPrefix, peKey, eventHex);
             }
+
+            return Task.FromResult<StoreError>(null);
         }
 
         public Task<(Event[] events, StoreError error)> DbTopologicalEvents()
         {
-            using (var tx = db.GetTransaction())
+            var res = new List<Event>();
+
+            var t = 0;
+            var key = TopologicalEventKey(t);
+
+            var item = tx.Select<string, string>(TopoPrefix, key);
+
+            while (true)
             {
-                var res = new List<Event>();
-
-                var t = 0;
-                var key = TopologicalEventKey(t);
-
-                var item = tx.Select<string, string>(TopoPrefix, key);
-
-                while (true)
+                if (!item.Exists)
                 {
-                    if (!item.Exists)
-                    {
-                        break;
-                    }
-
-                    var evKey = item.Value;
-
-                    var eventItem = tx.Select<string, Event>(EventStore, evKey);
-
-                    res.Add(eventItem.Value);
-
-                    t++;
-                    key = TopologicalEventKey(t);
-                    item = tx.Select<string, string>(TopoPrefix, key);
+                    break;
                 }
 
-                return Task.FromResult<(Event[], StoreError)>((res.ToArray(), null));
+                var evKey = item.Value;
+
+                var eventItem = tx.Select<string, Event>(EventStore, evKey);
+
+                res.Add(eventItem.Value);
+
+                t++;
+                key = TopologicalEventKey(t);
+                item = tx.Select<string, string>(TopoPrefix, key);
             }
+
+            return Task.FromResult<(Event[], StoreError)>((res.ToArray(), null));
         }
 
         public Task<(string[] events, StoreError err)> DbParticipantEvents(string participant, int skip)
         {
-            using (var tx = db.GetTransaction())
+            var events = new List<string>();
+
+            var i = skip + 1;
+
+            while (true)
             {
-                var events = new List<string>();
-
-                var i = skip + 1;
-
-                while (true)
+                var key = ParticipantEventKey(participant, i);
+                var result = tx.Select<string, string>(ParticipantPrefix, key);
+                logger.Debug(key);
+                if (!result.Exists)
                 {
-                    var key = ParticipantEventKey(participant, i);
-                    var result = tx.Select<string, string>(ParticipantPrefix, key);
-                    logger.Debug(key);
-                    if (!result.Exists)
-                    {
-                        break;
-                    }
-
-                    events.Add(result.Value);
-
-                    i++;
+                    break;
                 }
 
-                return Task.FromResult<(string[], StoreError)>((events.ToArray(), null));
+                events.Add(result.Value);
+
+                i++;
             }
+
+            return Task.FromResult<(string[], StoreError)>((events.ToArray(), null));
         }
 
         public Task<(string ev, StoreError err)> DbParticipantEvent(string participant, int index)
 
         {
-            using (var tx = db.GetTransaction())
-            {
-                var key = ParticipantEventKey(participant, index);
-                var ev = tx.Select<string, string>(ParticipantPrefix, key).Value;
-                return Task.FromResult<(string, StoreError)>((ev, null));
-            }
+            var key = ParticipantEventKey(participant, index);
+            var ev = tx.Select<string, string>(ParticipantPrefix, key).Value;
+            return Task.FromResult<(string, StoreError)>((ev, null));
         }
 
         public Task<StoreError> DbSetRoots(Dictionary<string, Root> roots)
         {
-            using (var tx = db.GetTransaction())
+            foreach (var pr in roots)
+
             {
-                foreach (var pr in roots)
+                var participant = pr.Key;
+                var root = pr.Value;
 
-                {
-                    var participant = pr.Key;
-                    var root = pr.Value;
-
-                    var key = ParticipantRootKey(participant);
-                    //insert [participant_root] => [root bytes]
-                    tx.Insert(RootSuffix, key, root);
-                }
-
-                tx.Commit();
-
-                return Task.FromResult<StoreError>(null);
+                var key = ParticipantRootKey(participant);
+                //insert [participant_root] => [root bytes]
+                tx.Insert(RootSuffix, key, root);
             }
+
+            return Task.FromResult<StoreError>(null);
         }
 
         public Task<(Root, StoreError)> DbGetRoot(string participant)
         {
-            using (var tx = db.GetTransaction())
-            {
-                var key = ParticipantRootKey(participant);
+            var key = ParticipantRootKey(participant);
 
-                var root = tx.Select<string, Root>(RootSuffix, key).Value;
+            var root = tx.Select<string, Root>(RootSuffix, key).Value;
 
-                return Task.FromResult<(Root, StoreError)>((root, null));
-            }
+            return Task.FromResult<(Root, StoreError)>((root, null));
         }
 
         public Task<(RoundInfo round, StoreError err)> DbGetRound(int index)
         {
-            using (var tx = db.GetTransaction())
+            var key = RoundKey(index);
+            var result = tx.Select<string, RoundInfo>(RoundPrefix, key);
+
+            if (!result.Exists)
             {
-                var key = RoundKey(index);
-                var result = tx.Select<string, RoundInfo>(RoundPrefix, key);
-
-                if (!result.Exists)
-                {
-                    return Task.FromResult((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound)));
-                }
-
-                return Task.FromResult<(RoundInfo, StoreError)>((result.Value, null));
+                return Task.FromResult((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound)));
             }
+
+            return Task.FromResult<(RoundInfo, StoreError)>((result.Value, null));
         }
 
         public Task<StoreError> DbSetRound(int index, RoundInfo round)
         {
-            using (var tx = db.GetTransaction())
-            {
-                var key = RoundKey(index);
+            var key = RoundKey(index);
 
-                //insert [round_index] => [round bytes]
-                tx.Insert(RoundPrefix, key, round);
-                tx.Commit();
+            //insert [round_index] => [round bytes]
+            tx.Insert(RoundPrefix, key, round);
 
-                return Task.FromResult<StoreError>(null);
-            }
+            return Task.FromResult<StoreError>(null);
         }
 
         public Task<(Dictionary<string, int> participants, StoreError err)> DbGetParticipants()
         {
-            using (var tx = db.GetTransaction())
-            {
-                var p = tx.SelectDictionary<string, int>(ParticipantPrefix).ToDictionary(k=>string.Join(string.Empty,k.Key.Skip(ParticipantPrefix.Length+1)),v=>v.Value);
-                return Task.FromResult<(Dictionary<string, int>, StoreError)>((p, null));
-            }
+            var p = tx.SelectDictionary<string, int>(ParticipantPrefix).ToDictionary(k => string.Join(string.Empty, k.Key.Skip(ParticipantPrefix.Length + 1)), v => v.Value);
+            return Task.FromResult<(Dictionary<string, int>, StoreError)>((p, null));
         }
 
         public Task<StoreError> DbSetParticipants(Dictionary<string, int> ps)
         {
-            using (var tx = db.GetTransaction())
+            foreach (var participant in ps)
             {
-                foreach (var participant in ps)
-                {
-                    var key = ParticipantKey(participant.Key);
-                    var val = participant.Value;
+                var key = ParticipantKey(participant.Key);
+                var val = participant.Value;
 
-                    //insert [participant_participant] => [id]
-                    tx.Insert(ParticipantPrefix, key, val);
-                }
-
-                tx.Commit();
-
-                return Task.FromResult<StoreError>(null);
+                //insert [participant_participant] => [id]
+                tx.Insert(ParticipantPrefix, key, val);
             }
+
+            return Task.FromResult<StoreError>(null);
         }
     }
 }
