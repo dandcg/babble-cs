@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DBreeze;
 using DBreeze.Utils;
@@ -542,7 +543,7 @@ namespace Dotnatter.HashgraphImpl.Stores
         {
             using (var tx = db.GetTransaction())
             {
-                var p = tx.SelectDictionary<string, int>(ParticipantPrefix);
+                var p = tx.SelectDictionary<string, int>(ParticipantPrefix).ToDictionary(k=>string.Join(string.Empty,k.Key.Skip(ParticipantPrefix.Length+1)),v=>v.Value);
                 return Task.FromResult<(Dictionary<string, int>, StoreError)>((p, null));
             }
         }

@@ -195,7 +195,6 @@ namespace Dotnatter.HashgraphImpl.Stores
             }
 
             return Task.FromResult<StoreError>(null);
-
         }
 
         public int LastRound()

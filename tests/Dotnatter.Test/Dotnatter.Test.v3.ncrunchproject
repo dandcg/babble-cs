@@ -98,9 +98,6 @@
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -216,6 +213,24 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbEventMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBRoundMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBParticipantMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerEvents</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerRounds</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

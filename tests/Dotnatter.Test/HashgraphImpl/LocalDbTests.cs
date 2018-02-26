@@ -51,10 +51,10 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         //func removeBadgerStore(store *BadgerStore, t *testing.T) {
-        //    if err := store.Close(); err != nil {
+        //    if err = store.Close(); err != nil {
         //        t.Fatal(err)
         //    }
-        //    if err := os.RemoveAll(store.path); err != nil {
+        //    if err = os.RemoveAll(store.path); err != nil {
         //        t.Fatal(err)
         //    }
         //}
@@ -104,7 +104,7 @@ namespace Dotnatter.Test.HashgraphImpl
             //if (store.path != dbPath) {
             //    t.Fatalf("unexpected path %q", store.path)
             //}
-            //if _, err := os.Stat(dbPath); err != nil {
+            //if _, err = os.Stat(dbPath); err != nil {
             //    t.Fatalf("err: %s", err)
             //}
 
@@ -271,7 +271,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 (pEvents, err) = await store.DbParticipantEvents(p.Hex, skipIndex);
                 Assert.Null(err);
 
-                Assert.Equal(testSize,pEvents.Length);
+                Assert.Equal(testSize, pEvents.Length);
 
                 var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
 
@@ -279,9 +279,235 @@ namespace Dotnatter.Test.HashgraphImpl
                 foreach (var e in expectedEvents)
                 {
                     Assert.Equal(e.Hex(), pEvents[k]);
-               
+
                     k++;
                 }
+            }
+        }
+
+        [Fact]
+        public async Task TestDBRoundMethods()
+        {
+            var cacheSize = 0;
+            var (store, participants) = await initBadgerStore(cacheSize, dbPath, logger);
+
+            var round = new RoundInfo();
+            var events = new Dictionary<string, Event>();
+            foreach (var p in participants)
+            {
+                var ev = new Event(new[] {new byte[] { }},
+                    new[] {"", ""},
+                    p.PubKey,
+                    0);
+
+                events[p.Hex] = ev;
+                round.AddEvent(ev.Hex(), true);
+            }
+
+            var err = await store.DbSetRound(0, round);
+            Assert.Null(err);
+
+            RoundInfo storedRound;
+            (storedRound, err) = await store.DbGetRound(0);
+
+            Assert.Null(err);
+
+            storedRound.ShouldCompareTo(round);
+
+            var witnesses = await store.RoundWitnesses(0);
+            var expectedWitnesses = round.Witnesses();
+
+            Assert.Equal(expectedWitnesses.Length, witnesses.Length);
+
+            foreach (var w in expectedWitnesses)
+            {
+                Assert.True(witnesses.Contains(w));
+            }
+        }
+
+        [Fact]
+        public async Task TestDBParticipantMethods()
+        {
+            var cacheSize = 0;
+            var (store, _ ) = await initBadgerStore(cacheSize, dbPath, logger);
+
+            var (participants, err) = store.Participants();
+
+            Assert.Null(err);
+
+            err = await store.DbSetParticipants(participants);
+            Assert.Null(err);
+
+            Dictionary<string, int> participantsFromDb;
+            (participantsFromDb, err) = await store.DbGetParticipants();
+
+            foreach (var pp in participantsFromDb)
+            {
+                logger.Debug(pp.Key);
+            }
+
+            Assert.Null(err);
+
+            foreach (var pp in participants)
+            {
+                logger.Debug(pp.Key);
+
+                var p = pp.Key;
+                var id = pp.Value;
+                var ok = participantsFromDb.TryGetValue(p, out var dbId);
+                Assert.True(ok);
+                Assert.Equal(id, dbId);
+            }
+        }
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//Check that the wrapper methods work
+//These methods use the inmemStore as a cache on top of the DB
+
+        [Fact]
+        public async Task TestBadgerEvents()
+        {
+            //Insert more events than can fit in cache to test retrieving from db.
+            var cacheSize = 10;
+            var testSize = 10;
+            var (store, participants) = await initBadgerStore(cacheSize, dbPath, logger);
+
+            //insert event
+            var events = new Dictionary<string, Event[]>();
+            StoreError err;
+            foreach (var p in participants)
+            {
+                var items = new List<Event>();
+                for (var k = 0; k < testSize; k++)
+                {
+                    var ev = new Event(new[] {$"{p.Hex}_{k}".StringToBytes()}
+                        ,
+                        new[] {"", ""},
+                        p.PubKey,
+                        k);
+
+                    items.Add(ev);
+                    err = await store.SetEvent(ev);
+                    Assert.Null(err);
+                }
+
+                events[p.Hex] = items.ToArray();
+            }
+
+            // check that events were correclty inserted
+            foreach (var evd in events)
+            {
+                var p = evd.Key;
+                var evs = evd.Value;
+
+                int k = 0;
+                foreach (var ev in evs)
+                {
+                    Event rev;
+                    (rev, err) = await store.GetEvent(ev.Hex());
+                    Assert.Null(err);
+
+                    ev.Body.ShouldCompareTo(rev.Body);
+
+                    ev.Signiture.ShouldCompareTo(rev.Signiture);
+                }
+            }
+
+            //check retrieving events per participant
+            var skipIndex = -1; //do not skip any indexes
+            foreach (var p in participants)
+            {
+                string[] pEvents;
+                (pEvents, err) = await store.ParticipantEvents(p.Hex, skipIndex);
+                Assert.Null(err);
+
+                var l = pEvents.Length;
+                Assert.Equal(testSize, l);
+
+                var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
+
+                int k = 0;
+                foreach (var e in expectedEvents)
+                {
+                    Assert.Equal(pEvents[k], e.Hex());
+                    k++;
+                }
+            }
+
+            //check retrieving participant last
+            foreach (var p in participants)
+            {
+                string last;
+                (last, _, err) = store.LastFrom(p.Hex);
+                Assert.Null(err);
+
+                var evs = events[p.Hex];
+                var expectedLast = evs[evs.Length - 1];
+
+                Assert.Equal(expectedLast.Hex(), last);
+            }
+
+            var expectedKnown = new Dictionary<int, int>();
+            foreach (var p in participants)
+            {
+                expectedKnown[p.Id] = testSize - 1;
+            }
+
+            var known = await store.Known();
+
+            known.ShouldCompareTo(expectedKnown);
+
+            foreach (var p in participants)
+            {
+                var evs = events[p.Hex];
+                foreach (var ev in evs)
+                {
+                    err = store.AddConsensusEvent(ev.Hex());
+
+                    Assert.Null(err);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task TestBadgerRounds()
+        {
+            var cacheSize = 0;
+            var ( store, participants ) = await initBadgerStore(cacheSize, dbPath, logger);
+
+            var round = new RoundInfo();
+            var events = new Dictionary<string, Event>();
+
+            foreach (var p in participants)
+            {
+                var ev = new Event(new[] {new byte[] { }},
+                    new[] {"", ""},
+                    p.PubKey,
+                    0);
+
+                events[p.Hex] = ev;
+                round.AddEvent(ev.Hex(), true);
+            }
+
+            var err = await store.SetRound(0, round);
+            Assert.Null(err);
+            var c = store.LastRound();
+            Assert.Equal(0, c);
+
+            RoundInfo storedRound;
+            (storedRound, err) = await store.GetRound(0);
+            Assert.Null(err);
+
+            storedRound.ShouldCompareTo(round);
+
+            var witnesses = await store.RoundWitnesses(0);
+            var expectedWitnesses = round.Witnesses();
+
+            Assert.Equal(expectedWitnesses.Length, witnesses.Length);
+
+            foreach (var w in expectedWitnesses)
+            {
+                Assert.True(witnesses.Contains(w));
             }
         }
     }
