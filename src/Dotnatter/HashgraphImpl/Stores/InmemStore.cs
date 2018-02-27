@@ -17,33 +17,29 @@ namespace Dotnatter.HashgraphImpl.Stores
         private RollingIndex<string> consensusCache;
         private int totConsensusEvents;
         private readonly ParticipantEventsCache participantEventsCache;
-        private Dictionary<string, Root> roots;
         private int lastRound;
-        
+
         public InmemStore(Dictionary<string, int> participants, int cacheSize, ILogger logger)
         {
             var rts = new Dictionary<string, Root>();
 
             foreach (var p in participants)
             {
-                rts.Add(p.Key,  Root.NewBaseRoot());
+                rts.Add(p.Key, Root.NewBaseRoot());
             }
 
             this.participants = participants;
             this.cacheSize = cacheSize;
             this.logger = logger.AddNamedContext("InmemStore");
-            eventCache = new LruCache<string, Event>(cacheSize, null, logger,"EventCache");
-            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger,"RoundCache");
+            eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
+            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
             consensusCache = new RollingIndex<string>(cacheSize);
-            participantEventsCache = new ParticipantEventsCache(cacheSize, participants,logger);
-            roots = rts;
+            participantEventsCache = new ParticipantEventsCache(cacheSize, participants, logger);
+            Roots = rts;
             lastRound = -1;
         }
 
-        public Dictionary<string, Root> Roots
-        {
-            get { return roots; }
-        }
+        public Dictionary<string, Root> Roots { get; private set; }
 
         public int CacheSize()
         {
@@ -52,26 +48,20 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public (Dictionary<string, int> participants, StoreError err) Participants()
         {
-            return (participants,null);
+            return (participants, null);
         }
 
         public Task<(Event evt, StoreError err)> GetEvent(string key)
         {
-            bool ok=false;
-            Event res=null;
-            if (!string.IsNullOrEmpty(key))
-            {
-                (res,ok ) = eventCache.Get(key);
-                logger.Verbose("GetEvent found={ok}; key={key}",ok,key);
-            }
-            
+            var (res, ok ) = eventCache.Get(key);
+            logger.Verbose("GetEvent found={ok}; key={key}", ok, key);
+
             if (!ok)
             {
-                return Task.FromResult<(Event,StoreError)>((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
-                
+                return Task.FromResult((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
             }
-            
-            return Task.FromResult<(Event,StoreError)>((res,null));
+
+            return Task.FromResult<(Event, StoreError)>((res, null));
         }
 
         public async Task<StoreError> SetEvent(Event ev)
@@ -86,22 +76,21 @@ namespace Dotnatter.HashgraphImpl.Stores
 
             if (err != null && err.StoreErrorType == StoreErrorType.KeyNotFound)
             {
-                err =AddParticpantEvent(ev.Creator(), key, ev.Index());
+                err = AddParticpantEvent(ev.Creator(), key, ev.Index());
                 if (err != null)
                 {
                     return err;
                 }
             }
-            
+
             eventCache.Add(key, ev);
 
             return null;
-
         }
 
         private StoreError AddParticpantEvent(string participant, string hash, int index)
         {
-          return  participantEventsCache.Add(participant, hash, index);
+            return participantEventsCache.Add(participant, hash, index);
         }
 
         public Task<(string[] evts, StoreError err)> ParticipantEvents(string participant, int skip)
@@ -116,10 +105,9 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public (string last, bool isRoot, StoreError err) LastFrom(string participant)
         {
-            
             //try to get the last event from this participant
             var (last, err) = participantEventsCache.GetLast(participant);
-            
+
             var isRoot = false;
             if (err != null)
             {
@@ -127,7 +115,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             }
 
             //if there is none, grab the root
-            if (last =="")
+            if (last == "")
             {
                 var ok = Roots.TryGetValue(participant, out var root);
 
@@ -138,11 +126,11 @@ namespace Dotnatter.HashgraphImpl.Stores
                 }
                 else
                 {
-                    err=new  StoreError(StoreErrorType.NoRoot, participant);
+                    err = new StoreError(StoreErrorType.NoRoot, participant);
                 }
             }
 
-            return (last, isRoot,err);
+            return (last, isRoot, err);
         }
 
         public Task<Dictionary<int, int>> Known()
@@ -159,6 +147,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             {
                 res.Add(item);
             }
+
             return res.ToArray();
         }
 
@@ -169,6 +158,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public StoreError AddConsensusEvent(string key)
         {
+            logger.Debug("Add consensus event {key}",key);
             consensusCache.Add(key, totConsensusEvents);
             totConsensusEvents++;
             return null;
@@ -180,12 +170,14 @@ namespace Dotnatter.HashgraphImpl.Stores
 
             if (!ok)
             {
-                return Task.FromResult<(RoundInfo,StoreError)>((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound, r.ToString()))); ;
+                return Task.FromResult((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound, r.ToString())));
+                ;
             }
-            return Task.FromResult<(RoundInfo,StoreError)>((res,null));
+
+            return Task.FromResult<(RoundInfo, StoreError)>((res, null));
         }
 
-        public  Task<StoreError>  SetRound(int r, RoundInfo round)
+        public Task<StoreError> SetRound(int r, RoundInfo round)
         {
             roundCache.Add(r, round);
 
@@ -204,44 +196,46 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public async Task<string[]> RoundWitnesses(int r)
         {
-            var (round,err) = await GetRound(r);
+            var (round, err) = await GetRound(r);
 
             if (err != null)
             {
                 return new string[] { };
             }
+
             return round.Witnesses();
         }
 
         public async Task<int> RoundEvents(int i)
         {
-            var (round,err) = await GetRound(i);
+            var (round, err) = await GetRound(i);
             if (err != null)
             {
                 return 0;
             }
+
             return round.Events.Count;
         }
 
         public Task<(Root root, StoreError err)> GetRoot(string participant)
         {
-            var ok = (Roots.TryGetValue(participant, out var res));
+            var ok = Roots.TryGetValue(participant, out var res);
 
             if (!ok)
             {
-                return Task.FromResult<(Root,StoreError)>((new Root(), new StoreError(StoreErrorType.KeyNotFound, participant)));
+                return Task.FromResult((new Root(), new StoreError(StoreErrorType.KeyNotFound, participant)));
             }
 
-            return Task.FromResult<(Root,StoreError)>((res,null));
+            return Task.FromResult<(Root, StoreError)>((res, null));
         }
 
         public StoreError Reset(Dictionary<string, Root> newRoots)
         {
-            roots = newRoots;
+            Roots = newRoots;
 
-            eventCache = new LruCache<string, Event>(cacheSize, null, logger,"EventCache");
+            eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
 
-            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger,"RoundCache");
+            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
 
             consensusCache = new RollingIndex<string>(cacheSize);
 
@@ -255,15 +249,11 @@ namespace Dotnatter.HashgraphImpl.Stores
         public StoreError Close()
         {
             return null;
-
         }
 
         public StoreTx BeginTx()
         {
-            return new StoreTx(null,null);
-
+            return new StoreTx(null, null);
         }
-
-      
     }
 }

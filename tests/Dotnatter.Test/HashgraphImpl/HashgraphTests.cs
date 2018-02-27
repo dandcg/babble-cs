@@ -9,6 +9,7 @@ using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
+using Serilog.Events;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
@@ -362,16 +363,11 @@ namespace Dotnatter.Test.HashgraphImpl
 
             ev2.Body.Timestamp = ev.Body.Timestamp;
 
-            ev2.Sign(key);
+           Console.WriteLine(ev2.Hex());
 
-            Console.WriteLine(ev2.Hex());
+           Assert.Equal(ev.Hex(), ev2.Hex());
 
-            Assert.Equal(ev.Marhsal().ToHex(), ev2.Marhsal().ToHex());
-            Assert.Equal(ev.Hex(), ev2.Hex());
-
-            Assert.NotEqual(ev.Signiture, ev2.Signiture);
-
-            ev.ShouldCompareTo(ev2);
+  
         }
 
         /*
@@ -1123,6 +1119,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 i++;
             }
+                tx.Commit();
         }
 
         return (hashgraph, index);
@@ -1563,19 +1560,38 @@ namespace Dotnatter.Test.HashgraphImpl
             //Add events and run consensus methods on it
             var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);
 
-            await h.DivideRounds();
 
-            await h.DecideFame();
 
-            await h.FindOrder();
+
+            using (var tx = h.Store.BeginTx())
+            {
+
+                await h.DivideRounds();
+
+                await h.DecideFame();
+
+                await h.FindOrder();
+
+                tx.Commit();
+            }
+
 
             h.Store.Close();
 
             Exception err;
+            
+            logger.Debug("------- RecycledStore -------");
+
             //Now we want to create a new Hashgraph based on the database of the previous
             //Hashgraph and see if we can boostrap it to the same state.
             IStore recycledStore;
             (recycledStore, err) = await LocalDbStore.Load(CacheSize, dbPath, logger);
+            
+            Assert.Null(err);
+
+            Assert.Equal(h.Store.Participants().participants.Count, recycledStore.Participants().participants.Count);
+
+            recycledStore.Participants().participants.ShouldCompareTo(h.Store.Participants().participants);
 
             var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
 

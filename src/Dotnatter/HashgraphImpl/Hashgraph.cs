@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Dotnatter.Common;
@@ -36,7 +37,9 @@ namespace Dotnatter.HashgraphImpl
 
         public Hashgraph(Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event[]> commitCh, ILogger logger)
         {
-            this.logger = logger.AddNamedContext("HashGraph");
+            this.logger = logger.AddNamedContext("Hashgraph");
+            this.logger.Debug("Instantiate Hashgraph");
+
             var reverseParticipants = participants.ToDictionary(p => p.Value, p => p.Key);
             var cacheSize = store.CacheSize();
 
@@ -440,6 +443,8 @@ namespace Dotnatter.HashgraphImpl
 
         public async Task<Exception> InsertEvent(Event ev, bool setWireInfo)
         {
+            logger.Debug("Insert Event {eventKey}", ev.Hex());
+
             //verify signature
 
             var (ok, err) = ev.Verify();
@@ -505,6 +510,9 @@ namespace Dotnatter.HashgraphImpl
                 {
                     PendingLoadedEvents++;
                 }
+
+                tx.Commit();
+
             }
 
             return null;
@@ -809,20 +817,25 @@ namespace Dotnatter.HashgraphImpl
 
         public async Task<Exception> DivideRounds()
         {
+            logger.Debug("Divide Rounds {UndeterminedEvents}",UndeterminedEvents.Count);
+            
             foreach (var hash in UndeterminedEvents)
 
             {
+                logger.Debug("Undetermined Event {hex}",hash);
+
                 var roundNumber = await Round(hash);
 
                 var witness = await Witness(hash);
 
                 var (roundInfo, err) = await Store.GetRound(roundNumber);
 
+
                 //If the RoundInfo is not found in the Store's Cache, then the Hashgraph
                 //is not aware of it yet. We need to add the roundNumber to the queue of
                 //undecided rounds so that it will be processed in the other consensus
                 //methods
-                if (err != null && err?.StoreErrorType != StoreErrorType.KeyNotFound)
+                if (err != null && err.StoreErrorType != StoreErrorType.KeyNotFound)
                 {
                     return err;
                 }
@@ -832,11 +845,11 @@ namespace Dotnatter.HashgraphImpl
                 //field is not exported and therefore not persisted in the DB).
                 //RoundInfos taken from the DB directly will always have this field set
                 //to false
-                if (!roundInfo.Queued)
+                if (!roundInfo.Queued())
                 {
                     UndecidedRounds.Enqueue(roundNumber);
-
-                    roundInfo.Queued = true;
+                    
+                    roundInfo.SetQueued();
                 }
 
                 roundInfo.AddEvent(hash, witness);
@@ -855,6 +868,8 @@ namespace Dotnatter.HashgraphImpl
         //decide if witnesses are famous
         public async Task<Exception> DecideFame()
         {
+            logger.Debug("Decide Fame");
+
             var votes = new Dictionary<string, Dictionary<string, bool>>(); //[x][y]=>vote(x,y)
 
             var decidedRounds = new Dictionary<int, int>(); // [round number] => index in UndecidedRounds
@@ -998,6 +1013,8 @@ namespace Dotnatter.HashgraphImpl
         //remove items from UndecidedRounds
         public void UpdateUndecidedRounds(Dictionary<int, int> decidedRounds)
         {
+            logger.Debug("Update Undecided Rounds");
+
             var newUndecidedRounds = new Queue<int>();
             foreach (var ur in UndecidedRounds)
             {
@@ -1034,7 +1051,7 @@ namespace Dotnatter.HashgraphImpl
                     }
 
                     //skip if some witnesses are left undecided
-                    if (!(tr.WitnessesDecided() && UndecidedRounds.Peek() > i))
+                    if (!(tr.WitnessesDecided() && UndecidedRounds.Count > i))
                     {
                         continue;
                     }
@@ -1083,6 +1100,7 @@ namespace Dotnatter.HashgraphImpl
         public async Task<Exception> FindOrder()
         {
             await DecideRoundReceived();
+
             var newConsensusEvents = new List<Event>();
 
             var newUndeterminedEvents = new List<string>();
@@ -1111,6 +1129,8 @@ namespace Dotnatter.HashgraphImpl
 
             foreach (var e in newConsensusEvents)
             {
+    
+
                 Store.AddConsensusEvent(e.Hex());
 
                 ConsensusTransactions += e.Transactions().Length;
@@ -1320,6 +1340,8 @@ namespace Dotnatter.HashgraphImpl
             if (Store is LocalDbStore)
 
             {
+                logger.Debug("Bootstrap");
+
                 using (var tx = Store.BeginTx())
                 {
                     //Retreive the Events from the underlying DB. They come out in topological
@@ -1332,11 +1354,13 @@ namespace Dotnatter.HashgraphImpl
                         return err;
                     }
 
+                    logger.Debug("Topological Event Count {count}", topologicalEvents.Length);
+
                     //Insert the Events in the Hashgraph
                     foreach (var e in topologicalEvents)
                     {
                         err = await InsertEvent(e, true);
-
+                        
                         if (err != null)
                         {
                             return err;

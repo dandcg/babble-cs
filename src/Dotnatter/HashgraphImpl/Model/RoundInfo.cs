@@ -7,6 +7,7 @@ namespace Dotnatter.HashgraphImpl.Model
 {
     public class RoundInfo
     {
+        private bool queued;
 
         public RoundInfo()
         {
@@ -14,8 +15,16 @@ namespace Dotnatter.HashgraphImpl.Model
         }
 
         public Dictionary<string, RoundEvent> Events { get; set; }  = new Dictionary<string, RoundEvent>();
-        public bool Queued { get; set; }
 
+        public void SetQueued()
+        {
+            queued = true;
+        }
+
+        public bool Queued()
+        {
+            return queued;
+        }
 
         public void AddEvent(string x, bool witness)
         {
