@@ -1051,7 +1051,7 @@ namespace Dotnatter.HashgraphImpl
                     }
 
                     //skip if some witnesses are left undecided
-                    if (!(tr.WitnessesDecided() && UndecidedRounds.Count > i))
+                    if (!(tr.WitnessesDecided() && UndecidedRounds.Peek() > i))
                     {
                         continue;
                     }

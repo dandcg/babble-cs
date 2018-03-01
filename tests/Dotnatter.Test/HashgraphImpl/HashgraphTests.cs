@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
@@ -1591,8 +1592,11 @@ namespace Dotnatter.Test.HashgraphImpl
 
             Assert.Equal(h.Store.Participants().participants.Count, recycledStore.Participants().participants.Count);
 
-            recycledStore.Participants().participants.ShouldCompareTo(h.Store.Participants().participants);
-
+            foreach (var p in h.Store.Participants().participants )
+            {
+                Assert.Equal(recycledStore.Participants().participants[p.Key], p.Value);
+            }
+      
             var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
 
             err = await nh.Bootstrap();
@@ -1609,7 +1613,13 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var nhKnown = await nh.Known();
 
-            hKnown.ShouldCompareTo(nhKnown);
+            Assert.Equal(hKnown.Count,nhKnown.Count);
+
+            foreach (var p in hKnown )
+            {
+                Assert.Equal(nhKnown[p.Key], p.Value);
+            }
+
 
             Assert.Equal(h.LastConsensusRound, nh.LastConsensusRound);
 
