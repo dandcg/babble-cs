@@ -29,211 +29,211 @@
         <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDBParticipantMethods</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReadWireInfo</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestOldestSelfAncestorToSee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestResetFromFrame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestWireEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFunkyHashgraphFame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbEventMethods</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFindOrder</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInitCores</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDivideRoundsAsync</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestParentRound</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndex</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbParticipantMethods</TestName>
+        <TestName>Dotnatter.Test.Common.LruTests.TestLru</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Common.LruTests.TestLru_Add</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundInc</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerEvents</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestBootstrapAllNodes</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestSignEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallBody</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.InmemStoreTests.TestInmemRounds</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
+        <TestName>Dotnatter.Test.Common.LruTests.TestLru_Contains</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Common.LruTests.TestLru_Peek</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundDiff</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestSync</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRound</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbRoundMethods</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.CachesTests.TestParticipantEventsCacheEdge</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideRoundReceived</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestLoadStore</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Common.LruTests.TestLru</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestWitness</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryWithRaw</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensus</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.CachesTests.TestParticipantEventsCache</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestOut</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestGossip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.InmemStoreTests.TestInmemEvents</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestIsLoaded</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestNewStore</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestStronglySee</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideFame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestKnown</TestName>
+        <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndex</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndexSkip</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensusFF</TestName>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencySigning</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerRounds</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestShutdown</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestBigIntegerSignitureEncoding</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestOverSyncLimit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReset</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Net.InMemTransportTests.TestInmemTransportImpl</TestName>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TestOut</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.Crypto.CryptoTests.TryOutput</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestDiff</TestName>
+        <TestName>Dotnatter.Test.Crypto.CryptoTests.TryWithRaw</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.Common.LruTests.TestLru_Contains</TestName>
+        <TestName>Dotnatter.Test.HashgraphImpl.CachesTests.TestParticipantEventsCache</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
+        <TestName>Dotnatter.Test.HashgraphImpl.CachesTests.TestParticipantEventsCacheEdge</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestBigIntegerSignitureEncoding</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestIsLoaded</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallBody</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestMarshallEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestSignEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.EventTests.TestWireEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideFame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDecideRoundReceived</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestDivideRoundsAsync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFindOrder</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestFunkyHashgraphFame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestKnown</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestOldestSelfAncestorToSee</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestParentRound</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReadWireInfo</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestReset</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestResetFromFrame</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRound</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundDiff</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestRoundInc</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestSigningIssue</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestStronglySee</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.HashgraphTests.TestWitness</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.InmemStoreTests.TestInmemEvents</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.InmemStoreTests.TestInmemRounds</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerEvents</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestBadgerRounds</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbEventMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbParticipantMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestDbRoundMethods</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestLoadStore</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.HashgraphImpl.LocalDbTests.TestNewStore</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Net.InMemTransportTests.TestInmemTransportImpl</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensus</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestConsensusFF</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestDiff</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestInitCores</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestOverSyncLimit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.CoreTests.TestSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestBootstrapAllNodes</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestGossip</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestShutdown</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

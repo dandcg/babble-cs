@@ -91,28 +91,33 @@ namespace Dotnatter.Test.HashgraphImpl
         public async Task TestNewStore()
         {
             logger.Information(Directory.GetCurrentDirectory());
-            
+
             var store = await CreateTestDb(dbPath, logger);
 
             Assert.NotNull(store);
             Assert.Equal(store.Path, dbPath);
-            
-            //check roots
 
             StoreError err;
-            var inmemRoots = store.InMemStore.Roots;
-            foreach (var pr in inmemRoots)
 
+            //check roots
+            using (var tx = store.BeginTx())
             {
-                var participant = pr.Key;
-                var root = pr.Value;
+  
+                var inmemRoots = store.InMemStore.Roots;
+                foreach (var pr in inmemRoots)
 
-                Root dbRoot;
-                (dbRoot, err) = await store.DbGetRoot(participant);
-                Assert.Null(err);
+                {
+                    var participant = pr.Key;
+                    var root = pr.Value;
 
-                dbRoot.ShouldCompareTo(root);
+                    Root dbRoot;
+                    (dbRoot, err) = await store.DbGetRoot(participant);
+                    Assert.Null(err);
+
+                    dbRoot.ShouldCompareTo(root);
+                }
             }
+
 
             err = store.Close();
             Assert.Null(err);
@@ -121,7 +126,6 @@ namespace Dotnatter.Test.HashgraphImpl
         [Fact]
         public async Task TestLoadStore()
         {
-
             //Create the test db
             var tempStore = await CreateTestDb(dbPath, logger);
 
@@ -174,7 +178,7 @@ namespace Dotnatter.Test.HashgraphImpl
             var topologicalEvents = new List<Event>();
             foreach (var p in participants)
             {
-                using (var tx =store.BeginTx())
+                using (var tx = store.BeginTx())
                 {
                     var items = new List<Event>();
                     for (var k = 0; k < testSize; k++)
@@ -193,90 +197,89 @@ namespace Dotnatter.Test.HashgraphImpl
 
                         err = await store.DbSetEvents(new[] {ev});
                         Assert.Null(err);
-
                     }
-
 
                     events[p.Hex] = items.ToArray();
 
                     tx.Commit();
                 }
-
             }
 
             bool ver;
 
-            //check events where correctly inserted and can be retrieved
-            foreach (var evsd in events)
+            using (var tx = store.BeginTx())
             {
-                var p = evsd.Key;
-                var evs = evsd.Value;
-
-                foreach (var ev in evs)
+                //check events where correctly inserted and can be retrieved
+                foreach (var evsd in events)
                 {
-                    logger.Debug($"Testing events[{p}][{ev.Hex()}]");
+                    var p = evsd.Key;
+                    var evs = evsd.Value;
 
-                    Event rev;
-                    (rev, err) = await store.DbGetEvent(ev.Hex());
-                    Assert.Null(err);
+                    foreach (var ev in evs)
+                    {
+                        logger.Debug($"Testing events[{p}][{ev.Hex()}]");
 
-                    ev.Body.ShouldCompareTo(rev.Body);
+                        Event rev;
+                        (rev, err) = await store.DbGetEvent(ev.Hex());
+                        Assert.Null(err);
 
-                    rev.ShouldCompareTo(ev);
+                        ev.Body.ShouldCompareTo(rev.Body);
 
-                    Assert.Equal(ev.Signiture, rev.Signiture);
+                        rev.ShouldCompareTo(ev);
 
-                    (ver, err) = rev.Verify();
+                        Assert.Equal(ev.Signiture, rev.Signiture);
+
+                        (ver, err) = rev.Verify();
+                        Assert.Null(err);
+                        Assert.True(ver);
+                    }
+                }
+
+                //check topological order of events was correctly created
+                Event[] dbTopologicalEvents;
+                (dbTopologicalEvents, err) = await store.DbTopologicalEvents();
+                Assert.Null(err);
+
+                Assert.Equal(topologicalEvents.Count, dbTopologicalEvents.Length);
+
+                int i = 0;
+                foreach (var dte in dbTopologicalEvents)
+
+                {
+                    var te = topologicalEvents[i];
+
+                    Assert.Equal(te.Hex(), dte.Hex());
+
+                    dte.Body.ShouldCompareTo(te.Body);
+
+                    Assert.Equal(te.Signiture, dte.Signiture);
+
+                    (ver, err) = dte.Verify();
                     Assert.Null(err);
                     Assert.True(ver);
 
+                    i++;
                 }
-            }
 
-            //check topological order of events was correctly created
-            Event[] dbTopologicalEvents;
-            (dbTopologicalEvents, err) = await store.DbTopologicalEvents();
-            Assert.Null(err);
-
-            Assert.Equal(topologicalEvents.Count, dbTopologicalEvents.Length);
-
-            int i = 0;
-            foreach (var dte in dbTopologicalEvents)
-
-            {
-                var te = topologicalEvents[i];
-
-                Assert.Equal(te.Hex(), dte.Hex());
-
-                dte.Body.ShouldCompareTo(te.Body);
-
-                Assert.Equal(te.Signiture, dte.Signiture);
-
-                (ver, err) = dte.Verify();
-                Assert.Null(err);
-                Assert.True(ver);
-
-                i++;
-            }
-
-            //check that participant events where correctly added
-            var skipIndex = -1; //do not skip any indexes
-            foreach (var p in participants)
-            {
-                string[] pEvents;
-                (pEvents, err) = await store.DbParticipantEvents(p.Hex, skipIndex);
-                Assert.Null(err);
-
-                Assert.Equal(testSize, pEvents.Length);
-
-                var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
-
-                int k = 0;
-                foreach (var e in expectedEvents)
+                //check that participant events where correctly added
+                var skipIndex = -1; //do not skip any indexes
+                foreach (var p in participants)
                 {
-                    Assert.Equal(e.Hex(), pEvents[k]);
+                    string[] pEvents;
+                    (pEvents, err) = await store.DbParticipantEvents(p.Hex, skipIndex);
+                    Assert.Null(err);
 
-                    k++;
+                    Assert.Equal(testSize, pEvents.Length);
+
+                    var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
+
+                    int k = 0;
+                    foreach (var e in expectedEvents)
+                    {
+                        Assert.Equal(e.Hex(), pEvents[k]);
+
+                        k++;
+                    }
                 }
             }
         }
@@ -303,26 +306,26 @@ namespace Dotnatter.Test.HashgraphImpl
             StoreError err;
             using (var tx = store.BeginTx())
             {
-             err = await store.DbSetRound(0, round);
+                err = await store.DbSetRound(0, round);
                 Assert.Null(err);
                 tx.Commit();
-            }
 
-            RoundInfo storedRound;
-            (storedRound, err) = await store.DbGetRound(0);
+                RoundInfo storedRound;
+                (storedRound, err) = await store.DbGetRound(0);
 
-            Assert.Null(err);
+                Assert.Null(err);
 
-            storedRound.ShouldCompareTo(round);
+                storedRound.ShouldCompareTo(round);
 
-            var witnesses = await store.RoundWitnesses(0);
-            var expectedWitnesses = round.Witnesses();
+                var witnesses = await store.RoundWitnesses(0);
+                var expectedWitnesses = round.Witnesses();
 
-            Assert.Equal(expectedWitnesses.Length, witnesses.Length);
+                Assert.Equal(expectedWitnesses.Length, witnesses.Length);
 
-            foreach (var w in expectedWitnesses)
-            {
-                Assert.Contains(w, witnesses);
+                foreach (var w in expectedWitnesses)
+                {
+                    Assert.Contains(w, witnesses);
+                }
             }
         }
 
@@ -340,27 +343,27 @@ namespace Dotnatter.Test.HashgraphImpl
                 err = await store.DbSetParticipants(participants);
                 Assert.Null(err);
                 tx.Commit();
-            }
 
-            Dictionary<string, int> participantsFromDb;
-            (participantsFromDb, err) = await store.DbGetParticipants();
+                Dictionary<string, int> participantsFromDb;
+                (participantsFromDb, err) = await store.DbGetParticipants();
 
-            foreach (var pp in participantsFromDb)
-            {
-                logger.Debug(pp.Key);
-            }
+                foreach (var pp in participantsFromDb)
+                {
+                    logger.Debug(pp.Key);
+                }
 
-            Assert.Null(err);
+                Assert.Null(err);
 
-            foreach (var pp in participants)
-            {
-                logger.Debug(pp.Key);
+                foreach (var pp in participants)
+                {
+                    logger.Debug(pp.Key);
 
-                var p = pp.Key;
-                var id = pp.Value;
-                var ok = participantsFromDb.TryGetValue(p, out var dbId);
-                Assert.True(ok);
-                Assert.Equal(id, dbId);
+                    var p = pp.Key;
+                    var id = pp.Value;
+                    var ok = participantsFromDb.TryGetValue(p, out var dbId);
+                    Assert.True(ok);
+                    Assert.Equal(id, dbId);
+                }
             }
         }
 
@@ -399,82 +402,85 @@ namespace Dotnatter.Test.HashgraphImpl
 
                     events[p.Hex] = items.ToArray();
 
-                   tx.Commit();
+                    tx.Commit();
                 }
             }
 
-            // check that events were correclty inserted
-            foreach (var evd in events)
+            using (var tx = store.BeginTx())
             {
-                var p = evd.Key;
-                var evs = evd.Value;
-
-                int k = 0;
-                foreach (var ev in evs)
+                // check that events were correclty inserted
+                foreach (var evd in events)
                 {
-                    Event rev;
-                    (rev, err) = await store.GetEvent(ev.Hex());
+                    var p = evd.Key;
+                    var evs = evd.Value;
+
+                    int k = 0;
+                    foreach (var ev in evs)
+                    {
+                        Event rev;
+                        (rev, err) = await store.GetEvent(ev.Hex());
+                        Assert.Null(err);
+
+                        ev.Body.ShouldCompareTo(rev.Body);
+
+                        ev.Signiture.ShouldCompareTo(rev.Signiture);
+                        k++;
+                    }
+                }
+
+                //check retrieving events per participant
+                var skipIndex = -1; //do not skip any indexes
+                foreach (var p in participants)
+                {
+                    string[] pEvents;
+                    (pEvents, err) = await store.ParticipantEvents(p.Hex, skipIndex);
                     Assert.Null(err);
 
-                    ev.Body.ShouldCompareTo(rev.Body);
+                    var l = pEvents.Length;
+                    Assert.Equal(testSize, l);
 
-                    ev.Signiture.ShouldCompareTo(rev.Signiture);
-                    k++;
+                    var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
+
+                    int k = 0;
+                    foreach (var e in expectedEvents)
+                    {
+                        Assert.Equal(pEvents[k], e.Hex());
+                        k++;
+                    }
                 }
-            }
 
-            //check retrieving events per participant
-            var skipIndex = -1; //do not skip any indexes
-            foreach (var p in participants)
-            {
-                string[] pEvents;
-                (pEvents, err) = await store.ParticipantEvents(p.Hex, skipIndex);
-                Assert.Null(err);
-
-                var l = pEvents.Length;
-                Assert.Equal(testSize, l);
-
-                var expectedEvents = events[p.Hex].Skip(skipIndex + 1);
-
-                int k = 0;
-                foreach (var e in expectedEvents)
+                //check retrieving participant last
+                foreach (var p in participants)
                 {
-                    Assert.Equal(pEvents[k], e.Hex());
-                    k++;
-                }
-            }
-
-            //check retrieving participant last
-            foreach (var p in participants)
-            {
-                string last;
-                (last, _, err) = store.LastFrom(p.Hex);
-                Assert.Null(err);
-
-                var evs = events[p.Hex];
-                var expectedLast = evs[evs.Length - 1];
-
-                Assert.Equal(expectedLast.Hex(), last);
-            }
-
-            var expectedKnown = new Dictionary<int, int>();
-            foreach (var p in participants)
-            {
-                expectedKnown[p.Id] = testSize - 1;
-            }
-
-            var known = await store.Known();
-
-            known.ShouldCompareTo(expectedKnown);
-
-            foreach (var p in participants)
-            {
-                var evs = events[p.Hex];
-                foreach (var ev in evs)
-                {
-                    err = store.AddConsensusEvent(ev.Hex());
-
+                    string last;
+                    (last, _, err) = store.LastFrom(p.Hex);
                     Assert.Null(err);
+
+                    var evs = events[p.Hex];
+                    var expectedLast = evs[evs.Length - 1];
+
+                    Assert.Equal(expectedLast.Hex(), last);
+                }
+
+                var expectedKnown = new Dictionary<int, int>();
+                foreach (var p in participants)
+                {
+                    expectedKnown[p.Id] = testSize - 1;
+                }
+
+                var known = await store.Known();
+
+                known.ShouldCompareTo(expectedKnown);
+
+                foreach (var p in participants)
+                {
+                    var evs = events[p.Hex];
+                    foreach (var ev in evs)
+                    {
+                        err = store.AddConsensusEvent(ev.Hex());
+
+                        Assert.Null(err);
+                    }
                 }
             }
         }
@@ -502,12 +508,10 @@ namespace Dotnatter.Test.HashgraphImpl
             StoreError err;
             using (var tx = store.BeginTx())
             {
-                 err = await store.SetRound(0, round);
+                err = await store.SetRound(0, round);
                 Assert.Null(err);
                 tx.Commit();
-
             }
-
 
             var c = store.LastRound();
             Assert.Equal(0, c);
