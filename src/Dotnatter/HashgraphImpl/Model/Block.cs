@@ -10,7 +10,7 @@ namespace Dotnatter.HashgraphImpl.Model
     public class Block
     {
         public BlockBody Body { get; set; }
-        public Dictionary<string, string> Signatures { get; set; }
+        public Dictionary<string, byte[]> Signatures { get; set; }
 
         private byte[] hash;
 
@@ -23,7 +23,7 @@ namespace Dotnatter.HashgraphImpl.Model
                 Transactions = transactions
             };
 
-            Signatures = new Dictionary<string, string>();
+            Signatures = new Dictionary<string, byte[]>();
         }
 
         public int Index()
@@ -99,7 +99,7 @@ namespace Dotnatter.HashgraphImpl.Model
             {
                 Validator = CryptoUtils.FromEcdsaPub(privKey),
                 Index = Index(),
-                Signature = signiture.ToHex()
+                Signature = signiture
             };
 
             return (bs, null);
@@ -115,7 +115,7 @@ namespace Dotnatter.HashgraphImpl.Model
         {
             var signBytes = Body.Hash();
             var pubKey = CryptoUtils.ToEcdsaPub(sig.Validator);
-            var signature = sig.Signature.FromHex();
+            var signature = sig.Signature;
             return (CryptoUtils.Verify(pubKey, signBytes, signature), null);
         }
     }

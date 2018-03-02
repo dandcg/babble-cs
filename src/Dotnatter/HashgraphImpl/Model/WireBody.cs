@@ -13,5 +13,6 @@ namespace Dotnatter.HashgraphImpl.Model
 
         public DateTimeOffset Timestamp { get; set; }
         public int Index { get; set; }
+        public WireBlockSignature[] BlockSignatures { get; set; }
     }
 }

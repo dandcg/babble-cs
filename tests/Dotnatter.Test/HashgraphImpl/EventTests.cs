@@ -23,8 +23,11 @@ namespace Dotnatter.Test.HashgraphImpl
                 Transactions = new[] {"abc".StringToBytes(), "def".StringToBytes()},
                 Parents = new[] {"self", "other"},
                 Creator = "public key".StringToBytes(),
-                Timestamp = DateTime.MinValue
+                Timestamp = DateTimeOffset.UtcNow,
+                
             };
+
+            body.BlockSignatures = new[] {new BlockSignature() {Validator = body.Creator, Index = 0, Signature = "r|s".StringToBytes()}};
             return body;
         }
 
@@ -38,6 +41,17 @@ namespace Dotnatter.Test.HashgraphImpl
             var newBody = EventBody.Unmarshal(raw);
 
             newBody.ShouldCompareTo(body);
+
+            newBody.Transactions.ShouldCompareTo(body.Transactions);
+
+            newBody.BlockSignatures.ShouldCompareTo(body.BlockSignatures);
+
+            newBody.Parents.ShouldCompareTo(body.Parents);
+
+            newBody.Creator.ShouldCompareTo(body.Creator);
+
+            Assert.Equal(body.Timestamp,newBody.Timestamp);
+
         }
 
         [Fact]
@@ -125,7 +139,8 @@ namespace Dotnatter.Test.HashgraphImpl
                     OtherParentIndex = 2,
                     CreatorId = 67,
                     Timestamp = ev.Body.Timestamp,
-                    Index = ev.Body.Index
+                    Index = ev.Body.Index,
+                    BlockSignatures = ev.WireBlockSignatures()
                 },
                 Signiture = ev.Signiture            };
 
@@ -139,20 +154,30 @@ namespace Dotnatter.Test.HashgraphImpl
         public void TestIsLoaded()
         {
             //nil payload
-            var ev = new Event(null, new[] {"p1", "p2"}, "creator".StringToBytes(), 1);
+            var ev = new Event(null, null,new[] {"p1", "p2"}, "creator".StringToBytes(), 1);
             Assert.False(ev.IsLoaded(), "IsLoaded() should return false for nil Body.Transactions");
             
             //empty payload
             ev.Body.Transactions = new byte[0][];
             Assert.False(ev.IsLoaded(), "IsLoaded() should return false for empty Body.Transactions");
 
+
+            ev.Body.BlockSignatures = new BlockSignature[]{};
+            Assert.False(ev.IsLoaded(), "IsLoaded() should return false for empty Body.BlockSignatures");
+
             //initial event
             ev.Body.Index = 0;
             Assert.True(ev.IsLoaded(), "IsLoaded() should return true for initial event");
             
-            //non-empty payload
+            //non-empty tx payload
             ev.Body.Transactions = new[] {"abc".StringToBytes()};
-            Assert.True(ev.IsLoaded(), "IsLoaded() should return true for non-empty payload");
+            Assert.True(ev.IsLoaded(), "IsLoaded() should return true for non-empty transaction payload");
+
+            //non-empty signiture payload
+            ev.Body.Transactions = null;
+            ev.Body.BlockSignatures = new[] {new BlockSignature() {Validator = "validator".StringToBytes(), Index = 0, Signature = "r|s".StringToBytes()}};
+            Assert.True(ev.IsLoaded(), "IsLoaded() should return true for non-empty transaction payload");
+
         }
     }
 }

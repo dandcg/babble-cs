@@ -6,7 +6,7 @@ namespace Dotnatter.HashgraphImpl.Model
     {
         public byte[] Validator { get; set; }
         public int Index { get; set; }
-        public string Signature { get; set; }
+        public byte[] Signature { get; set; }
 
         public string ValidatorHex()
         {

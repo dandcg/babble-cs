@@ -3,6 +3,6 @@
     public class WireBlockSignature
     {
         public int Index { get; set; }
-        public string Signature { get; set; }
+        public byte[] Signature { get; set; }
     }
 }

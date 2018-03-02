@@ -18,6 +18,8 @@ namespace Dotnatter.HashgraphImpl.Model
 
         public int Index { get; set; } //index in the sequence of events created by Creator
 
+        public BlockSignature[] BlockSignatures { get; set; }
+
         //wire
         //It is cheaper to send ints then hashes over the wire
 

@@ -102,11 +102,12 @@ namespace Dotnatter.HashgraphImpl.Model
         {
         }
 
-        public Event(byte[][] transactions, string[] parents, byte[] creator, int index)
+        public Event(byte[][] transactions, BlockSignature[] blockSignatures, string[] parents, byte[] creator, int index)
         {
             var body = new EventBody
             {
                 Transactions = transactions,
+                BlockSignatures = blockSignatures,
                 Parents = parents,
                 Creator = creator,
                 Timestamp = DateTime.UtcNow, //strip monotonic time
@@ -130,6 +131,12 @@ namespace Dotnatter.HashgraphImpl.Model
             return Body.Index;
         }
 
+        public BlockSignature[] BlockSignatures()
+        {
+            return Body.BlockSignatures;
+        }
+
+
         //True if Event contains a payload or is the initial Event of its creator
         public bool IsLoaded()
         {
@@ -138,7 +145,11 @@ namespace Dotnatter.HashgraphImpl.Model
                 return true;
             }
 
-            return Body.Transactions?.Length > 0;
+            var hasTransactions = Body.Transactions != null && Body.Transactions.Length > 0;
+
+            var hasBlockSignatures = Body.BlockSignatures != null && Body.BlockSignatures.Length > 0;
+
+            return hasTransactions || hasBlockSignatures;
         }
 
         //ecdsa sig
@@ -180,6 +191,25 @@ namespace Dotnatter.HashgraphImpl.Model
             Body.SetCreatorId(creatorId);
         }
 
+
+       public WireBlockSignature[] WireBlockSignatures() 
+       {
+            if (Body.BlockSignatures != null)
+            {
+                var wireSignatures = new List<WireBlockSignature>();
+                
+                foreach (var bs in Body.BlockSignatures)
+                {
+                    wireSignatures.Add(bs.ToWire());
+                }
+
+                return wireSignatures.ToArray();
+            }
+
+           return null;
+       }
+
+
         public WireEvent ToWire()
         {
             return new WireEvent
@@ -192,10 +222,10 @@ namespace Dotnatter.HashgraphImpl.Model
                     OtherParentIndex = Body.GetOtherParentIndex(),
                     CreatorId = Body.GetCreatorId(),
                     Timestamp = Body.Timestamp,
-                    Index = Body.Index
+                    Index = Body.Index,
+                    BlockSignatures=WireBlockSignatures()
                 },
-                Signiture = Signiture //R = Signiture.R,
-                // S = Signiture.S
+                Signiture = Signiture 
             };
         }
 
