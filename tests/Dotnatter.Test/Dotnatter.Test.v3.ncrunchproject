@@ -41,12 +41,6 @@
         <TestName>Dotnatter.Test.Common.LruTests.TestLru_Peek</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndex</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndexSkip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Dotnatter.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -231,6 +225,9 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

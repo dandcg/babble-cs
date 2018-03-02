@@ -158,8 +158,8 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         public StoreError AddConsensusEvent(string key)
         {
-            logger.Debug("Add consensus event {key}",key);
-            consensusCache.Add(key, totConsensusEvents);
+            logger.Debug("Set consensus event {key}",key);
+            consensusCache.Set(key, totConsensusEvents);
             totConsensusEvents++;
             return null;
         }

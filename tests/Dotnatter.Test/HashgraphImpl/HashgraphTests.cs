@@ -1558,7 +1558,7 @@ namespace Dotnatter.Test.HashgraphImpl
         public async Task TestBootstrap()
         {
             //Initialize a first Hashgraph with a DB backend
-            //Add events and run consensus methods on it
+            //Set events and run consensus methods on it
             var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);
 
 

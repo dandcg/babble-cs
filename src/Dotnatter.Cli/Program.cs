@@ -29,7 +29,7 @@ namespace Dotnatter.Cli
 
         private static void ConfigureServices(IServiceCollection serviceCollection)
         {
-            // Add logging
+            // Set logging
             serviceCollection.AddSingleton(new LoggerFactory()
                 .AddConsole()
                 .AddSerilog()
@@ -52,13 +52,13 @@ namespace Dotnatter.Cli
                  .Enrich.FromLogContext()
                  .CreateLogger();
 
-            // Add access to generic IConfigurationRoot
+            // Set access to generic IConfigurationRoot
             serviceCollection.AddSingleton<IConfigurationRoot>(configuration);
 
-            // Add services
+            // Set services
             //serviceCollection.AddTransient<IBackupService, BackupService>();
 
-            // Add app
+            // Set app
             serviceCollection.AddTransient<App>();
         }
 

@@ -36,7 +36,7 @@ namespace Dotnatter.Common
             var oldestCachedIndex = LastIndex - cachedItems + 1;
             if (skipIndex + 1 < oldestCachedIndex)
             {
-                return (res, new StoreError(StoreErrorType.TooLate));
+                return (res, new StoreError(StoreErrorType.TooLate, $"{skipIndex}"));
             }
 
             //index of 'skipped' in RollingIndex
@@ -53,40 +53,58 @@ namespace Dotnatter.Common
 
             if (index < oldestCached)
             {
-                return (default, new StoreError(StoreErrorType.TooLate));
+                return (default, new StoreError(StoreErrorType.TooLate, $"{index}"));
             }
 
             var findex = index - oldestCached;
             if (findex >= itemCount)
             {
-                return (default, new StoreError(StoreErrorType.KeyNotFound));
+                return (default, new StoreError(StoreErrorType.KeyNotFound,  $"{index}"));
             }
 
             return (Items[findex], null);
         }
 
-        public StoreError Add(T item, int index)
+        public StoreError Set(T item, int index)
         {
-            if (index <= LastIndex)
-            {
-                return new StoreError(StoreErrorType.PassedIndex, $"{index}");
-            }
-
+            //only allow to set items with index <= lastIndex + 1
+            //so that we may assume there are no gaps between items
             if (LastIndex >= 0 && index > LastIndex + 1)
             {
                 return new StoreError(StoreErrorType.SkippedIndex, $"{index}");
             }
 
-            if (Items.Count >= 2 * Size)
+
+            if (LastIndex < 0 || index == LastIndex + 1)
             {
-                Roll();
+                if (Items.Count >= 2 * Size)
+                {
+                    Roll();
+                }
+
+                Items.Add(item);
+
+                LastIndex = index;
+
+                return null;
             }
 
-            Items.Add(item);
+            //replace and existing item
+            //make sure index is also greater or equal than the oldest cached item's index
+            var cachedItems = Items.Count;
+            var oldestCachedIndex = LastIndex - cachedItems + 1;
 
-            LastIndex = index;
+            if (index < oldestCachedIndex) {
+                        return new StoreError(StoreErrorType.TooLate, $"{index}");
+            }
+
+            //replacing existing item
+            var position = index - oldestCachedIndex; //position of 'index' in RollingIndex
+            Items[position] = item;
 
             return null;
+
+
         }
 
         public void Roll()

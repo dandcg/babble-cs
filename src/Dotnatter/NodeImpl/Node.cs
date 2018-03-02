@@ -464,7 +464,7 @@ namespace Dotnatter.NodeImpl
                 return (true, null, null);
             }
 
-            //Add Events to Hashgraph and create new Head if necessary
+            //Set Events to Hashgraph and create new Head if necessary
             using (await coreLock.LockAsync())
             {
                 err = await Sync(resp.Events);

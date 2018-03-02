@@ -42,7 +42,7 @@
 
 //// Start a goroutine and add it to waitgroup
 //func (b *nodeState) goFunc(f func()) {
-//b.wg.Add(1)
+//b.wg.Set(1)
 //go func() {
 //defer b.wg.Done()
 //f()

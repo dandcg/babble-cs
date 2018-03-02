@@ -98,7 +98,7 @@ namespace Dotnatter.Test.Common
         }
 
 
-        // Test that Add returns true/false if an eviction occurred
+        // Test that Set returns true/false if an eviction occurred
         [Fact]
         public void TestLru_Add()
         {

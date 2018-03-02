@@ -36,7 +36,7 @@ namespace Dotnatter.Common
             evictList.Clear();
         }
 
-        // Add adds a value to the cache.  Returns true if an eviction occurred.
+        // Set adds a value to the cache.  Returns true if an eviction occurred.
         [MethodImpl(MethodImplOptions.Synchronized)]
         public bool Add(TKey key, TValue value)
         {

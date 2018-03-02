@@ -10,6 +10,8 @@
 
         SkippedIndex,
 
-        NoRoot
+        NoRoot,
+
+        UnknownParticipant
     }
 }

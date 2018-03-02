@@ -100,7 +100,7 @@ namespace Dotnatter.HashgraphImpl
                 ParticipantEvents.Add(participant, pe);
             }
 
-            return pe.Add(hash, index);
+            return pe.Set(hash, index);
       
         }
 
