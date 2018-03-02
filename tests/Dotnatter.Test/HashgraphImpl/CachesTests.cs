@@ -50,7 +50,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {
                     var item = $"{p.Key}:{i}";
 
-                    pec.Add(p.Key, item, i);
+                    pec.Set(p.Key, item, i);
 
                     var pitems = items[p.Key];
 
@@ -179,7 +179,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 {
                     var item = $"{p.Key}:{i}";
 
-                    pec.Add(p.Key, item, i);
+                    pec.Set(p.Key, item, i);
 
                     var pitems = items[p.Key];
 

@@ -22,6 +22,25 @@ namespace Dotnatter.Common
             Mapping = items;
         }
 
+        //return key items with index > skip
+        public (T[], StoreError) Get(int key, int skipIndex)
+
+        {
+            var ok = Mapping.TryGetValue(key, out var items);
+            if (!ok)
+            {
+                return (null, new StoreError(StoreErrorType.KeyNotFound, $"{key}"));
+            }
+
+            var (cached, err) = items.Get(skipIndex);
+            if (err != null)
+            {
+                return (null, err);
+            }
+
+            return (cached, null);
+        }
+
         public (T, StoreError) GetItem(int key, int index)
         {
             return Mapping[key].GetItem(index);

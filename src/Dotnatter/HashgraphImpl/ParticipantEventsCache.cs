@@ -8,48 +8,59 @@ namespace Dotnatter.HashgraphImpl
 {
     public class ParticipantEventsCache
     {
+        
         private readonly ILogger logger;
 
-        public int Size { get; set; }
-        public Dictionary<string, int> Participants { get; set; } //[public key] => id
-        public Dictionary<string, RollingIndex<string>> ParticipantEvents { get; set; }
+
+        public Dictionary<string, int> Participants { get; private set; } //[public key] => id
+        public RollingIndexMap<string> Rim { get;private set; }
+
         
+
         public ParticipantEventsCache(int size, Dictionary<string, int> participants, ILogger logger, string instanceName = null)
         {
-            var items = new Dictionary<string, RollingIndex<string>>();
-
-            foreach (var k in participants.Keys)
-            {
-                items.Add(k, new RollingIndex<string>(size));
-            }
+            this.logger = logger.AddNamedContext("ParticipantEventsCache", instanceName);
             
-            Size = size;
             Participants = participants;
-            this.logger = logger.AddNamedContext("ParticipantEventsCache");
-            ParticipantEvents = items;
+            Rim= new RollingIndexMap<string>(size,participants.GetValues());
         }
+
+        public (int,StoreError) ParticipantId(string participant)
+        {
+            var ok = Participants.TryGetValue(participant, out var id);
+            if (!ok)
+            {
+                return (-1, new StoreError(StoreErrorType.UnknownParticipant, participant));
+            }
+
+            return (id, null);
+        }
+
+
 
         //return participant events with index > skip
         public (string[] items, StoreError err) Get(string participant, int skipIndex)
         {
-            var ok = ParticipantEvents.TryGetValue(participant, out var pe);
-            if (!ok)
+
+            var (id, err) = ParticipantId(participant);
+            if (err != null)
             {
-                return (new string[] { }, new StoreError(StoreErrorType.KeyNotFound, participant));
-            }
-
-            var (cached,err) = pe.Get(skipIndex);
-
-            if (err!=null)
-            {
-
                 return (new string[] { }, err);
+
             }
 
-            var res = new List<string>();
-            for (var k = 0; k < cached.Count(); k++)
+            string[] pe;
+            (pe, err) = Rim.Get(id, skipIndex);
+            if (err != null)
             {
-                res.Add(cached[k]);
+                return (new string[] { }, err);
+
+            }
+            
+            var res = new List<string>();
+            for (var k = 0; k < pe.Count(); k++)
+            {
+                res.Add(pe[k]);
             }
 
             return ( res.ToArray(), null);
@@ -58,78 +69,70 @@ namespace Dotnatter.HashgraphImpl
 
         public (string item, StoreError err) GetItem(string participant, int index)
         {
-            var (res, err) = ParticipantEvents[participant].GetItem(index);
-
+            var (id, err) = ParticipantId(participant);
             if (err != null)
             {
                 return ("", err);
+
+            }
+
+            string item;
+            (item, err) = Rim.GetItem(id, index);
+            if (err != null)
+            {
+                return ("", err);
+
             }
         
-            return (res,null);
+            return (item,null);
         }
 
         public (string item, StoreError err) GetLast(string participant)
         {
-            var ok = ParticipantEvents.TryGetValue(participant, out var pe);
 
-            if (!ok)
+            var (id, err) = ParticipantId(participant);
+            if (err != null)
             {
-                return ("", new StoreError(StoreErrorType.KeyNotFound, participant));
+                return ("", err);
+
             }
 
-            var (cached, _) = pe.GetLastWindow();
+            string last;
+            (last, err) = Rim.GetLast(id);
+            if (err != null)
+            {
+                return ("", err);
 
-                if (cached.Length == 0)
-                {
-                    return ("",null);
-                }
-
-                var last = cached[cached.Length - 1];
-                return (last,null);
+            }
+        
+            return (last,null);
 
  
         }
 
-        public StoreError Add(string participant, string hash, int index)
+        public StoreError Set(string participant, string hash, int index)
         {
-           var ok = ParticipantEvents.TryGetValue(participant, out var pe);
-
-            if (!ok)
+            var (id, err) = ParticipantId(participant);
+            if (err != null)
             {
-                pe = new RollingIndex<string>(Size);
-                ParticipantEvents.Add(participant, pe);
+                return err;
+
             }
 
-            return pe.Set(hash, index);
+            return Rim.Set(id,hash, index);
       
         }
 
         //returns [participant id] => lastKnownIndex
         public Dictionary<int, int> Known()
         {
-            var kn = new Dictionary<int, int>();
-
-            foreach (var p in ParticipantEvents)
-            {
-                var (_, lastIndex) = p.Value.GetLastWindow();
-                kn.Add(Participants[p.Key], lastIndex);
-            }
-
-            return kn;
+            return Rim.Known();
         }
 
         public StoreError Reset()
         {
-            
-                var items = new Dictionary<string, RollingIndex<string>>();
-                foreach (var key in Participants.Keys)
-                {
-                    items.Add(key, new RollingIndex<string>(Size));
-                }
 
-                ParticipantEvents = items;
-
-                return null;
-            }
+            return Rim.Reset();
+        }
     }
 }

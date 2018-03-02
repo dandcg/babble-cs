@@ -90,7 +90,7 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         private StoreError AddParticpantEvent(string participant, string hash, int index)
         {
-            return participantEventsCache.Add(participant, hash, index);
+            return participantEventsCache.Set(participant, hash, index);
         }
 
         public Task<(string[] evts, StoreError err)> ParticipantEvents(string participant, int skip)
