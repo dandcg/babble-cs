@@ -229,6 +229,15 @@
       <NamedTestSelector>
         <TestName>Dotnatter.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndex</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Dotnatter.Test.Common.RollingIndexTests.TestRollingIndexSkip</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Dotnatter.Test.HashgraphImpl.BlockTests</FixtureName>
+      </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>
