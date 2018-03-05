@@ -15,7 +15,6 @@ namespace Dotnatter.Core.NodeImpl
             TickCh = new AsyncProducerConsumerQueue<bool>();
             ResetCh = new AsyncProducerConsumerQueue<bool>();
             StopCh = new AsyncProducerConsumerQueue<bool>();
-            ShutdownCh = new AsyncProducerConsumerQueue<bool>();
         }
 
         public AsyncProducerConsumerQueue<bool> TickCh { get; }
@@ -24,8 +23,7 @@ namespace Dotnatter.Core.NodeImpl
 
         public AsyncProducerConsumerQueue<bool> StopCh { get; }
 
-        public AsyncProducerConsumerQueue<bool> ShutdownCh { get; }
-
+  
         public bool Set { get; private set; }
 
         public static ControlTimer NewRandomControlTimer(TimeSpan baseDuration)
@@ -84,18 +82,10 @@ namespace Dotnatter.Core.NodeImpl
                     Set = false;
                 }
             });
-            var shutdownTask = new Task(async () =>
-            {
-                await ShutdownCh.OutputAvailableAsync(ct);
-                await ShutdownCh.DequeueAsync(ct);
-                Set = false;
-            });
 
-            await Task.WhenAny(Task.WhenAll(timerTask, resetTask, stopTask), shutdownTask, Task.Delay(Timeout.Infinite, ct));
+            await Task.WhenAny(Task.WhenAll(timerTask, resetTask, stopTask), Task.Delay(Timeout.Infinite, ct));
         }
 
-        public async Task Shutdown() {
-          await ShutdownCh.EnqueueAsync(true);
-        }
+    
     }
 }

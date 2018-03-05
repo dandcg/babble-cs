@@ -212,7 +212,7 @@ namespace Dotnatter.Test.NodeImpl
             node0.Shutdown();
             node1.Shutdown();
 
-            await Task.WhenAny(node0Task, node1Task);
+
         }
 
         [Fact]

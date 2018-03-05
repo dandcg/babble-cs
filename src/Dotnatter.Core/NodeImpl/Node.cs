@@ -94,6 +94,7 @@ namespace Dotnatter.Core.NodeImpl
 
         public async Task RunAsync(bool gossip, CancellationToken ct = default)
         {
+
             cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             //The ControlTimer allows the background routines to control the
@@ -105,7 +106,7 @@ namespace Dotnatter.Core.NodeImpl
             //Execute some background work regardless of the state of the node.
             //Process RPC requests as well as SumbitTx and CommitBlock requests
 
-            var backgroundWork = BackgroundWorkRunAsync(cts.Token);
+            var (backgroundWork,_) = BackgroundWorkRunAsync(cts.Token);
 
             //Execute Node State Machine
 
@@ -138,11 +139,15 @@ namespace Dotnatter.Core.NodeImpl
             }
         }
 
-        public async Task BackgroundWorkRunAsync(CancellationToken ct)
+        public (Task readyTask, Task runTask)  BackgroundWorkRunAsync(CancellationToken ct)
         {
-            async Task ProcessingRpc()
 
+            var tcsProcessingRpc = new TaskCompletionSource<bool>();
+           
+            async Task ProcessingRpc()
             {
+                tcsProcessingRpc.SetResult(true);
+
                 while (!ct.IsCancellationRequested)
                 {
                     await netCh.OutputAvailableAsync(ct);
@@ -157,6 +162,8 @@ namespace Dotnatter.Core.NodeImpl
             async Task AddingTransactions()
 
             {
+
+                
                 while (!ct.IsCancellationRequested)
                 {
                     await submitCh.OutputAvailableAsync(ct);
@@ -184,9 +191,11 @@ namespace Dotnatter.Core.NodeImpl
                 }
             }
 
-            ;
 
-            await Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
+            var readyTask = Task.WhenAll(tcsProcessingRpc.Task);
+            var runTask =Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
+          
+            return (readyTask, runTask);
         }
 
         private async Task Babble(bool gossip, CancellationToken ct)
@@ -581,7 +590,7 @@ namespace Dotnatter.Core.NodeImpl
             }
 
             //Run consensus methods
-            start = new Stopwatch();
+            start = Stopwatch.StartNew();
             err = await Core.RunConsensus();
 
             elapsed = start.Nanoseconds();
