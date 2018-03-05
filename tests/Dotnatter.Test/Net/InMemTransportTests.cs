@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Dotnatter.Core.NetImpl.TransportImpl;
+﻿using Dotnatter.Core.NetImpl.TransportImpl;
 using Xunit;
 
 namespace Dotnatter.Test.Net

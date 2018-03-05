@@ -38,8 +38,8 @@ namespace Dotnatter.Core.NodeImpl
 
             return new Config
             {
-                HeartbeatTimeout = new TimeSpan(0, 0, 0, 0, 2000),
-                TcpTimeout = new TimeSpan(0, 0, 0, 0, 2000),
+                HeartbeatTimeout = new TimeSpan(0, 0, 0, 0, 1000),
+                TcpTimeout = new TimeSpan(0, 0, 0, 0, 1000),
                 CacheSize = 500,
                 SyncLimit = 100,
                 StoreType = storeType,

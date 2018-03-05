@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Dotnatter.Core.Crypto;
+﻿using Dotnatter.Core.Crypto;
 using Dotnatter.Core.HashgraphImpl.Model;
 using Dotnatter.Core.Util;
 using Dotnatter.Test.Helpers;
