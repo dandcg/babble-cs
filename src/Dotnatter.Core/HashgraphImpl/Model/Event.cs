@@ -100,14 +100,16 @@ namespace Dotnatter.Core.HashgraphImpl.Model
 
         public Event()
         {
+       
+
         }
 
         public Event(byte[][] transactions, BlockSignature[] blockSignatures, string[] parents, byte[] creator, int index)
         {
             var body = new EventBody
             {
-                Transactions = transactions,
-                BlockSignatures = blockSignatures,
+                Transactions = transactions?? new byte[][]{},
+                BlockSignatures = blockSignatures ?? new BlockSignature[]{},
                 Parents = parents,
                 Creator = creator,
                 Timestamp = DateTime.UtcNow, //strip monotonic time

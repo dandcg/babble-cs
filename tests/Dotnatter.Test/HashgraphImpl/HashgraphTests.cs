@@ -420,8 +420,6 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 await hashgraph.InsertEvent(ev, true);
 
-                nodes.Add(node);
-
                 i++;
             }
 
