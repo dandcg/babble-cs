@@ -36,12 +36,11 @@ namespace Dotnatter.Core.NodeImpl
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private readonly AsyncProducerConsumerQueue<Block> commitCh;
-        private CancellationTokenSource cts =new CancellationTokenSource() ;
+        private CancellationTokenSource cts = new CancellationTokenSource();
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
         {
-         
             LocalAddr = trans.LocalAddr;
 
             var (pmap, _) = store.Participants();
@@ -58,9 +57,9 @@ namespace Dotnatter.Core.NodeImpl
 
             this.logger = logger.AddNamedContext("Node", Id.ToString());
 
-            this.Trans = trans;
+            Trans = trans;
             netCh = trans.Consumer;
-            this.Proxy = proxy;
+            Proxy = proxy;
             this.participants = participants;
             submitCh = proxy.SubmitCh();
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
@@ -70,8 +69,6 @@ namespace Dotnatter.Core.NodeImpl
             //Initialize as Babbling
             nodeState.SetStarting(true);
             nodeState.SetState(NodeStateEnum.Babbling);
-
-
         }
 
         public async Task<Exception> Init(bool bootstrap)
@@ -94,30 +91,26 @@ namespace Dotnatter.Core.NodeImpl
 
         public Task RunAsync(bool gossip, CancellationToken ct = default)
         {
-
             cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             //The ControlTimer allows the background routines to control the
             //heartbeat timer when the node is in the Babbling state. The timer should
             //only be running when there are uncommitted transactions in the system.
 
-            Task.Run( ()=>  controlTimer.RunAsync(cts.Token));
+            Task.Run(() => controlTimer.RunAsync(cts.Token));
 
             //Execute some background work regardless of the state of the node.
             //Process RPC requests as well as SumbitTx and CommitBlock requests
 
-            var tcsBackgroundWork= new TaskCompletionSource<bool>();
-            Task.Run( ()=> BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork));
+            var tcsBackgroundWork = new TaskCompletionSource<bool>();
+            Task.Run(() => BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork));
 
             //Execute Node State Machine
 
-            Task.Run( ()=> StateMachineRunAsync(gossip, cts.Token));
+            Task.Run(() => StateMachineRunAsync(gossip, cts.Token));
 
             return tcsBackgroundWork.Task;
-
         }
-
- 
 
         private async Task StateMachineRunAsync(bool gossip, CancellationToken ct)
         {
@@ -143,14 +136,13 @@ namespace Dotnatter.Core.NodeImpl
             }
         }
 
-        public Task  BackgroundWorkRunAsync(CancellationToken ct, TaskCompletionSource<bool> tcsBackgroundWork)
+        public async Task BackgroundWorkRunAsync(CancellationToken ct, TaskCompletionSource<bool> tcsBackgroundWork)
         {
+            var tcsProcessingRpc = new TaskCompletionSource<bool>();
 
-        
-           
             async Task ProcessingRpc()
             {
-                tcsBackgroundWork.SetResult(true);
+                tcsProcessingRpc.SetResult(true);
 
                 while (!ct.IsCancellationRequested)
                 {
@@ -161,13 +153,13 @@ namespace Dotnatter.Core.NodeImpl
                 }
             }
 
-            ;
+            var tcsAddingTransactions = new TaskCompletionSource<bool>();
 
             async Task AddingTransactions()
 
             {
+                tcsAddingTransactions.SetResult(true);
 
-                
                 while (!ct.IsCancellationRequested)
                 {
                     await submitCh.OutputAvailableAsync(ct);
@@ -178,10 +170,12 @@ namespace Dotnatter.Core.NodeImpl
             }
 
             ;
+            var tcsCommitBlocks = new TaskCompletionSource<bool>();
 
             async Task CommitBlocks()
-
             {
+                tcsCommitBlocks.SetResult(true);
+
                 while (!ct.IsCancellationRequested)
                 {
                     await commitCh.OutputAvailableAsync(ct);
@@ -195,8 +189,13 @@ namespace Dotnatter.Core.NodeImpl
                 }
             }
 
-            
-            return Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
+            var runTasks = Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
+
+            await Task.WhenAll(tcsProcessingRpc.Task, tcsAddingTransactions.Task, tcsCommitBlocks.Task);
+
+            tcsBackgroundWork.SetResult(true);
+
+            await runTasks;
         }
 
         private async Task Babble(bool gossip, CancellationToken ct)
@@ -271,11 +270,11 @@ namespace Dotnatter.Core.NodeImpl
 
         private async Task ProcessSyncRequest(Rpc rpc, SyncRequest cmd)
         {
-            logger.Debug("Process SyncRequest FromId={FromId}; Known={@Known};",cmd.FromId, cmd.Known);
+            logger.Debug("Process SyncRequest FromId={FromId}; Known={@Known};", cmd.FromId, cmd.Known);
 
             var resp = new SyncResponse
             {
-                FromId =Id
+                FromId = Id
             };
 
             Exception respErr = null;
@@ -328,12 +327,13 @@ namespace Dotnatter.Core.NodeImpl
             Dictionary<int, int> known;
             using (await coreLock.LockAsync())
             {
-                known =(await  Core.KnownEvents()).Clone();
+                known = (await Core.KnownEvents()).Clone();
             }
 
             resp.Known = known;
 
-            logger.Debug("Responding to SyncRequest {SyncRequest}", new{
+            logger.Debug("Responding to SyncRequest {SyncRequest}", new
+            {
                 Events = resp.Events.Length,
                 resp.Known,
                 resp.SyncLimit,
@@ -345,7 +345,7 @@ namespace Dotnatter.Core.NodeImpl
 
         private async Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
         {
-            logger.Debug("EagerSyncRequest {EagerSyncRequest}",new
+            logger.Debug("EagerSyncRequest {EagerSyncRequest}", new
             {
                 cmd.FromId,
                 Events = cmd.Events.Length
@@ -388,7 +388,7 @@ namespace Dotnatter.Core.NodeImpl
 
                 //If the transaction pool is not empty, create a new self-event and empty the
                 //transaction pool in its payload
-                var err =await  Core.AddSelfEvent();
+                var err = await Core.AddSelfEvent();
                 if (err != null)
                 {
                     logger.Error("Adding SelfEvent", err);
@@ -457,8 +457,7 @@ namespace Dotnatter.Core.NodeImpl
                 return (false, null, err);
             }
 
-
-            logger.Debug("SyncResponse {@SyncResponse}",new {resp.FromId, resp.SyncLimit, Events = resp.Events.Length, resp.Known});
+            logger.Debug("SyncResponse {@SyncResponse}", new {resp.FromId, resp.SyncLimit, Events = resp.Events.Length, resp.Known});
 
             if (resp.SyncLimit)
             {
@@ -534,8 +533,8 @@ namespace Dotnatter.Core.NodeImpl
                 logger.Error("requestEagerSync()", err);
                 return err;
             }
-            
-            logger.Debug("EagerSyncResponse {@EagerSyncResponse}", new {FromId = resp2.FromId, resp2.Success});
+
+            logger.Debug("EagerSyncResponse {@EagerSyncResponse}", new {resp2.FromId, resp2.Success});
 
             return null;
         }
@@ -603,10 +602,10 @@ namespace Dotnatter.Core.NodeImpl
         {
             Exception err;
             byte[] stateHash;
-            (stateHash,err)=  Proxy.CommitBlock(block);
+            (stateHash, err) = Proxy.CommitBlock(block);
 
             logger.Debug("CommitBlockResponse {@CommitBlockResponse}", new {Index = block.Index(), StateHash = stateHash.ToHex(), Err = err});
-            
+
             block.Body.StateHash = stateHash;
 
             using (await coreLock.LockAsync())
@@ -623,10 +622,6 @@ namespace Dotnatter.Core.NodeImpl
                 return null;
             }
         }
-
-
-
-
 
         private async Task AddTransaction(byte[] tx, CancellationToken ct)
         {
@@ -655,9 +650,6 @@ namespace Dotnatter.Core.NodeImpl
                 Core.hg.Store.Close();
             }
         }
-
-
-
 
         public Dictionary<string, string> GetStats()
         {
@@ -728,7 +720,5 @@ namespace Dotnatter.Core.NodeImpl
 
             throw new NotImplementedException();
         }
-
-
     }
 }
