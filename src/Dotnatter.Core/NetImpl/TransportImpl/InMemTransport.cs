@@ -85,9 +85,12 @@ namespace Dotnatter.Core.NetImpl.TransportImpl
 
             var timeoutTask = Task.Delay(tmout);
 
-            await Task.WhenAny(responseTask, timeoutTask);
+            var resultTask =await Task.WhenAny(responseTask, timeoutTask);
 
-            if (!responseTask.IsCompleted) return (null, new NetError("command timed out"));
+            if (resultTask==timeoutTask)
+            {
+                return (null, new NetError("command timed out"));
+            }
 
             var rpcResp = await rpc.RespChan.DequeueAsync();
 

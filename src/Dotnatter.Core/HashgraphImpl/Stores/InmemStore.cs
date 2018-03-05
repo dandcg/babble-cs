@@ -14,7 +14,7 @@ namespace Dotnatter.Core.HashgraphImpl.Stores
         private readonly Dictionary<string, int> participants;
         private LruCache<string, Event> eventCache;
         private LruCache<int, RoundInfo> roundCache;
-        private LruCache<int, Block> blockCache;
+        private readonly LruCache<int, Block> blockCache;
         private RollingIndex<string> consensusCache;
         private int totConsensusEvents;
         private readonly ParticipantEventsCache participantEventsCache;

@@ -25,7 +25,7 @@ namespace Dotnatter.Test.NodeImpl
     {
         private readonly ITestOutputHelper output;
         private readonly ILogger logger;
-        private string dbPath;
+        private readonly string dbPath;
 
         public NodeTests(ITestOutputHelper output)
         {

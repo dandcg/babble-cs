@@ -54,7 +54,7 @@ namespace Dotnatter.Core.HashgraphImpl
             }
 
             var res = new List<BlockSignature>();
-            for (var k = 0; k < ps.Count(); k++)
+            for (var k = 0; k < ps.Length; k++)
             {
                 res.Add(ps[k]);
             }

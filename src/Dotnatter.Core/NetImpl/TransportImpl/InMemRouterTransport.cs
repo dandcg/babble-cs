@@ -18,7 +18,7 @@ namespace Dotnatter.Core.NetImpl.TransportImpl
             Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
             LocalAddr = addr;
             Router = router;
-            Timeout = TimeSpan.FromMilliseconds(1000);
+            Timeout = TimeSpan.FromMilliseconds(2000);
         }
 
         public AsyncProducerConsumerQueue<Rpc> Consumer { get; }

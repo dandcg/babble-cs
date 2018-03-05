@@ -419,7 +419,7 @@ namespace Dotnatter.Core.NodeImpl
                 PeerSelector.UpdateLast(peerAddr);
             }
 
-            logStats();
+            LogStats();
 
             nodeState.SetStarting(false);
 
@@ -438,7 +438,7 @@ namespace Dotnatter.Core.NodeImpl
             //Send SyncRequest
             var start = new Stopwatch();
 
-            var (resp, err) = await requestSync(peerAddr, knownEvents);
+            var (resp, err) = await RequestSync(peerAddr, knownEvents);
             var elapsed = start.Nanoseconds();
             logger.Debug("requestSync() Duration = {duration}", elapsed);
             if (err != null)
@@ -516,7 +516,7 @@ namespace Dotnatter.Core.NodeImpl
             start = new Stopwatch();
 
             EagerSyncResponse resp2;
-            (resp2, err) = await requestEagerSync(peerAddr, wireEvents);
+            (resp2, err) = await RequestEagerSync(peerAddr, wireEvents);
             elapsed = start.Nanoseconds();
             logger.Debug("requestEagerSync() {duration}", elapsed);
             if (err != null)
@@ -542,7 +542,7 @@ namespace Dotnatter.Core.NodeImpl
             return Task.FromResult(true);
         }
 
-        private async Task<(SyncResponse resp, Exception err)> requestSync(string target, Dictionary<int, int> known)
+        private async Task<(SyncResponse resp, Exception err)> RequestSync(string target, Dictionary<int, int> known)
         {
             var args = new SyncRequest
             {
@@ -554,7 +554,7 @@ namespace Dotnatter.Core.NodeImpl
             return (resp, err);
         }
 
-        private async Task<(EagerSyncResponse resp, Exception err)> requestEagerSync(string target, WireEvent[] events)
+        private async Task<(EagerSyncResponse resp, Exception err)> RequestEagerSync(string target, WireEvent[] events)
         {
             var args = new EagerSyncRequest
             {
@@ -687,7 +687,7 @@ namespace Dotnatter.Core.NodeImpl
             throw new NotImplementedException();
         }
 
-        private void logStats()
+        private void LogStats()
         {
             //stats := n.GetStats()
             //n.logger.WithFields(logrus.Fields{

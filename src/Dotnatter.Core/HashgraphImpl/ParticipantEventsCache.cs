@@ -12,8 +12,8 @@ namespace Dotnatter.Core.HashgraphImpl
         private readonly ILogger logger;
 
 
-        public Dictionary<string, int> Participants { get; private set; } //[public key] => id
-        public RollingIndexMap<string> Rim { get;private set; }
+        public Dictionary<string, int> Participants { get; } //[public key] => id
+        public RollingIndexMap<string> Rim { get; }
 
         
 
@@ -58,7 +58,7 @@ namespace Dotnatter.Core.HashgraphImpl
             }
             
             var res = new List<string>();
-            for (var k = 0; k < pe.Count(); k++)
+            for (var k = 0; k < pe.Length; k++)
             {
                 res.Add(pe[k]);
             }

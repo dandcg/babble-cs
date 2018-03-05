@@ -181,10 +181,8 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var p in plays)
             {
-                var parents = new List<string>();
-                parents.Add(index[p.SelfParent]);
+                var parents = new List<string> {index[p.SelfParent]};
                 index.TryGetValue(p.OtherParent, out var otherParent);
-
                 parents.Add(otherParent ?? "");
 
                 var e = new Event(p.TxPayload, p.SigPayload,

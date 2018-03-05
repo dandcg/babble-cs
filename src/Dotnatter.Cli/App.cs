@@ -18,7 +18,7 @@ namespace Dotnatter.Cli
 
         public void Run()
         {
-            logger.LogInformation($"Running application.");
+            logger.LogInformation("Running application.");
             System.Console.ReadKey();
         }
 
