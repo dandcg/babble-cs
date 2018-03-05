@@ -92,7 +92,7 @@ namespace Dotnatter.Core.NodeImpl
             return await Core.Init();
         }
 
-        public async Task RunAsync(bool gossip, CancellationToken ct = default)
+        public Task RunAsync(bool gossip, CancellationToken ct = default)
         {
 
             cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -101,19 +101,23 @@ namespace Dotnatter.Core.NodeImpl
             //heartbeat timer when the node is in the Babbling state. The timer should
             //only be running when there are uncommitted transactions in the system.
 
-            var timer = controlTimer.RunAsync(cts.Token);
+            Task.Run( ()=>  controlTimer.RunAsync(cts.Token));
 
             //Execute some background work regardless of the state of the node.
             //Process RPC requests as well as SumbitTx and CommitBlock requests
 
-            var (backgroundWork,_) = BackgroundWorkRunAsync(cts.Token);
+            var tcsBackgroundWork= new TaskCompletionSource<bool>();
+            Task.Run( ()=> BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork));
 
             //Execute Node State Machine
 
-            var stateMachine = StateMachineRunAsync(gossip, cts.Token);
+            Task.Run( ()=> StateMachineRunAsync(gossip, cts.Token));
 
-            await Task.WhenAll(timer, backgroundWork, stateMachine);
+            return tcsBackgroundWork.Task;
+
         }
+
+ 
 
         private async Task StateMachineRunAsync(bool gossip, CancellationToken ct)
         {
@@ -139,14 +143,14 @@ namespace Dotnatter.Core.NodeImpl
             }
         }
 
-        public (Task readyTask, Task runTask)  BackgroundWorkRunAsync(CancellationToken ct)
+        public Task  BackgroundWorkRunAsync(CancellationToken ct, TaskCompletionSource<bool> tcsBackgroundWork)
         {
 
-            var tcsProcessingRpc = new TaskCompletionSource<bool>();
+        
            
             async Task ProcessingRpc()
             {
-                tcsProcessingRpc.SetResult(true);
+                tcsBackgroundWork.SetResult(true);
 
                 while (!ct.IsCancellationRequested)
                 {
@@ -191,11 +195,8 @@ namespace Dotnatter.Core.NodeImpl
                 }
             }
 
-
-            var readyTask = Task.WhenAll(tcsProcessingRpc.Task);
-            var runTask =Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
-          
-            return (readyTask, runTask);
+            
+            return Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
         }
 
         private async Task Babble(bool gossip, CancellationToken ct)
