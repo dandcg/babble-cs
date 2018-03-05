@@ -1,9 +1,8 @@
 using System;
-using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl;
-using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.Util;
 using Dotnatter.Test.Helpers;
-using Dotnatter.Util;
 using Xunit;
 using Xunit.Abstractions;
 

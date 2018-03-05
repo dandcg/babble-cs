@@ -1,5 +1,5 @@
 ﻿using System;
-using Dotnatter.Common;
+using Dotnatter.Core.Common;
 using Dotnatter.Test.Helpers;
 using Serilog;
 using Xunit;

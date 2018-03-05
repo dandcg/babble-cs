@@ -4,15 +4,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl;
-using Dotnatter.HashgraphImpl.Model;
-using Dotnatter.HashgraphImpl.Stores;
-using Dotnatter.Util;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.HashgraphImpl;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.HashgraphImpl.Stores;
+using Dotnatter.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
 
-namespace Dotnatter.NodeImpl
+namespace Dotnatter.Core.NodeImpl
 {
     public class Core
     {

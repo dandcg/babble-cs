@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.Common
+namespace Dotnatter.Core.Common
 {
     public class StoreError : ApplicationException
     {

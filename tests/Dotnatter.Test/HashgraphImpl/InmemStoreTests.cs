@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl.Model;
-using Dotnatter.HashgraphImpl.Stores;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.HashgraphImpl.Stores;
+using Dotnatter.Core.Util;
 using Dotnatter.Test.Helpers;
-using Dotnatter.Util;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;

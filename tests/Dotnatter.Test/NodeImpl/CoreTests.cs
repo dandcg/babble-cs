@@ -2,13 +2,11 @@
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl;
-using Dotnatter.HashgraphImpl.Model;
-using Dotnatter.HashgraphImpl.Stores;
-using Dotnatter.NodeImpl;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.HashgraphImpl.Stores;
+using Dotnatter.Core.Util;
 using Dotnatter.Test.Helpers;
-using Dotnatter.Util;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;
@@ -32,18 +30,18 @@ namespace Dotnatter.Test.NodeImpl
             var key = CryptoUtils.GenerateEcdsaKey();
 
             var participants = new Dictionary<string, int> {{CryptoUtils.FromEcdsaPub(key).ToHex(), 0}};
-            var core = new Core(0, key, participants, new InmemStore(participants, 10, logger), null, logger);
+            var core = new Core.NodeImpl.Core(0, key, participants, new InmemStore(participants, 10, logger), null, logger);
 
             var err = await core.Init();
 
             Assert.Null(err);
         }
 
-        private async Task<(Core[] cores, CngKey[] privateKey, Dictionary<string, string> index)> InitCores(int n)
+        private async Task<(Core.NodeImpl.Core[] cores, CngKey[] privateKey, Dictionary<string, string> index)> InitCores(int n)
         {
             var cacheSize = 1000;
 
-            var cores = new List<Core>();
+            var cores = new List<Core.NodeImpl.Core>();
             var index = new Dictionary<string, string>();
 
             var participantKeys = new List<CngKey>();
@@ -57,7 +55,7 @@ namespace Dotnatter.Test.NodeImpl
 
             for (var i = 0; i < n; i++)
             {
-                var core = new Core(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
+                var core = new Core.NodeImpl.Core(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
                 var err=await core.Init();
                 Assert.Null(err);
 
@@ -90,7 +88,7 @@ namespace Dotnatter.Test.NodeImpl
         e0  e1  e2
         0   1   2
         */
-        private async Task InitHashgraph(Core[] cores, CngKey[] keys, Dictionary<string, string> index, int participant)
+        private async Task InitHashgraph(Core.NodeImpl.Core[] cores, CngKey[] keys, Dictionary<string, string> index, int participant)
 
         {
             Exception err;
@@ -143,7 +141,7 @@ namespace Dotnatter.Test.NodeImpl
             }
         }
 
-        public async Task<Exception> InsertEvent(Core[] cores, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
+        public async Task<Exception> InsertEvent(Core.NodeImpl.Core[] cores, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
         {
             Exception err;
             if (particant == creator)
@@ -397,7 +395,7 @@ e0  e1  e2
             }
         }
 
-        private async Task<Core[]> InitConsensusHashgraph()
+        private async Task<Core.NodeImpl.Core[]> InitConsensusHashgraph()
         {
             var (cores, _, _) =await  InitCores(3);
             var playbook = new[]
@@ -538,7 +536,7 @@ e0  e1  e2
    e0   e1  e2  e3
     0	1	2	3
 */
-        private async Task InitFFHashgraph(Core[] cores)
+        private async Task InitFFHashgraph(Core.NodeImpl.Core[] cores)
         {
             var playbook = new[]
             {
@@ -608,7 +606,7 @@ e0  e1  e2
             }
         }
 
-        private async Task<Exception> SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
+        private async Task<Exception> SynchronizeCores(Core.NodeImpl.Core[] cores, int from, int to, byte[][] payload)
         {
             var knownByTo = await cores[to].KnownEvents();
             var ( unknownByTo, err) = await cores[from].EventDiff(knownByTo);
@@ -632,7 +630,7 @@ e0  e1  e2
             return await  cores[to].Sync(unknownWire);
         }
 
-        private async Task<Exception> SyncAndRunConsensus(Core[] cores, int from, int to, byte[][] payload)
+        private async Task<Exception> SyncAndRunConsensus(Core.NodeImpl.Core[] cores, int from, int to, byte[][] payload)
         {
             var err = await SynchronizeCores(cores, from, to, payload);
 

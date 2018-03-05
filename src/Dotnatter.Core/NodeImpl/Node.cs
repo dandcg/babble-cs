@@ -4,19 +4,18 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using Dotnatter.HashgraphImpl;
-using Dotnatter.HashgraphImpl.Model;
-using Dotnatter.HashgraphImpl.Stores;
-using Dotnatter.NetImpl;
-using Dotnatter.NetImpl.PeerImpl;
-using Dotnatter.NetImpl.TransportImpl;
-using Dotnatter.NodeImpl.PeerSelector;
-using Dotnatter.ProxyImpl;
-using Dotnatter.Util;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.HashgraphImpl.Stores;
+using Dotnatter.Core.NetImpl;
+using Dotnatter.Core.NetImpl.PeerImpl;
+using Dotnatter.Core.NetImpl.TransportImpl;
+using Dotnatter.Core.NodeImpl.PeerSelector;
+using Dotnatter.Core.ProxyImpl;
+using Dotnatter.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
 
-namespace Dotnatter.NodeImpl
+namespace Dotnatter.Core.NodeImpl
 {
     public class Node
     {

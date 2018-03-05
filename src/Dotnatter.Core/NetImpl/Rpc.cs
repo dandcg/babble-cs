@@ -1,9 +1,7 @@
-﻿using System.IO;
-using System.Threading.Tasks;
-using Dotnatter.Util;
+﻿using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.NetImpl
+namespace Dotnatter.Core.NetImpl
 {
     public class Rpc
     {

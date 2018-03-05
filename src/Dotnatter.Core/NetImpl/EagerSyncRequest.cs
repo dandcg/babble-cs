@@ -1,6 +1,6 @@
-﻿using Dotnatter.HashgraphImpl.Model;
+﻿using Dotnatter.Core.HashgraphImpl.Model;
 
-namespace Dotnatter.NetImpl
+namespace Dotnatter.Core.NetImpl
 {
     public class EagerSyncRequest
     {

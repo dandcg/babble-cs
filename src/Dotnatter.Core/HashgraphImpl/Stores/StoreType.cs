@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Dotnatter.HashgraphImpl.Stores
+﻿namespace Dotnatter.Core.HashgraphImpl.Stores
 {
    public enum StoreType
     {

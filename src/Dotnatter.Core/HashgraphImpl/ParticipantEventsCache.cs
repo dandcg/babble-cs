@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Dotnatter.Common;
-using Dotnatter.Util;
+using Dotnatter.Core.Common;
+using Dotnatter.Core.Util;
 using Serilog;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.Core.HashgraphImpl
 {
     public class ParticipantEventsCache
     {

@@ -2,7 +2,7 @@
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Dotnatter.Util
+namespace Dotnatter.Core.Util
 {
     public static class StringUtils
     {

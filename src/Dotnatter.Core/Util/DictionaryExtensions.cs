@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
-namespace Dotnatter.Util
+namespace Dotnatter.Core.Util
 {
     public static class DictionaryExtensions
     {

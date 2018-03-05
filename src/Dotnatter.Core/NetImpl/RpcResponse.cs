@@ -1,6 +1,4 @@
-﻿using Dotnatter.HashgraphImpl;
-
-namespace Dotnatter.NetImpl
+﻿namespace Dotnatter.Core.NetImpl
 {
     // RPCResponse captures both a response and a potential error.
     public class RpcResponse

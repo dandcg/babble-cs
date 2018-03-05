@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Dotnatter.Util;
+using Dotnatter.Core.Util;
 using Serilog;
 
-namespace Dotnatter.Common
+namespace Dotnatter.Core.Common
 {
     public class LruCache<TKey, TValue>
     {

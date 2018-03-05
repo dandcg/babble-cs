@@ -2,9 +2,8 @@
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
-using Dotnatter.Util;
 
-namespace Dotnatter.Crypto
+namespace Dotnatter.Core.Crypto
 {
     public static class CryptoUtils
     {

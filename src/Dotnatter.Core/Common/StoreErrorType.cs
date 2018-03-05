@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Common
+﻿namespace Dotnatter.Core.Common
 {
     public enum StoreErrorType
     {

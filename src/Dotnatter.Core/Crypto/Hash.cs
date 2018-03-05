@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Security.Cryptography;
 
-namespace Dotnatter.Crypto
+namespace Dotnatter.Core.Crypto
 {
     public static class Hash
     {

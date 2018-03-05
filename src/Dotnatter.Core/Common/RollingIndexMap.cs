@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Dotnatter.Common
+namespace Dotnatter.Core.Common
 {
     public class RollingIndexMap<T>
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dotnatter.NodeImpl
+namespace Dotnatter.Core.NodeImpl
 {
     public class Config
     {

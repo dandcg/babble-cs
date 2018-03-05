@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.Core.HashgraphImpl
 {
     public class HashgraphError : ApplicationException
     {

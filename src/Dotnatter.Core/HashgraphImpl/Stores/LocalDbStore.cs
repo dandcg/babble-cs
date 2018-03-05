@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 using DBreeze;
 using DBreeze.Transactions;
 using DBreeze.Utils;
-using Dotnatter.Common;
-using Dotnatter.HashgraphImpl.Model;
-using Dotnatter.Util;
+using Dotnatter.Core.Common;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.Util;
 using Serilog;
 using Serilog.Events;
 
-namespace Dotnatter.HashgraphImpl.Stores
+namespace Dotnatter.Core.HashgraphImpl.Stores
 {
     public class LocalDbStore : IStore
     {

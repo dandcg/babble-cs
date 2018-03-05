@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Dotnatter.Common
+namespace Dotnatter.Core.Common
 {
     public class RollingIndex<T>
     {

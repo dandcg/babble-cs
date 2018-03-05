@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Serilog;
+﻿using Serilog;
 
-namespace Dotnatter.Util
+namespace Dotnatter.Core.Util
 {
     public static class LoggingExtensions
     {

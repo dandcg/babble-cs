@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.ProxyImpl
+namespace Dotnatter.Core.ProxyImpl
 {
     public class ProxyError : ApplicationException
     {

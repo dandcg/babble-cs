@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.HashgraphImpl.Model;
+using Dotnatter.Core.Util;
 using Dotnatter.Test.Helpers;
-using Dotnatter.Util;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;

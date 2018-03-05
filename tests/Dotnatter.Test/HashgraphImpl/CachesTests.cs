@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Dotnatter.Common;
-using Dotnatter.HashgraphImpl;
+using Dotnatter.Core.Common;
+using Dotnatter.Core.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Serilog;
 using Xunit;

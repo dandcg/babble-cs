@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using Dotnatter.Common;
-using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.Core.Common;
+using Dotnatter.Core.HashgraphImpl.Model;
 
-namespace Dotnatter.HashgraphImpl
+namespace Dotnatter.Core.HashgraphImpl
 {
     public class ParticipantBlockSignaturesCache
     {

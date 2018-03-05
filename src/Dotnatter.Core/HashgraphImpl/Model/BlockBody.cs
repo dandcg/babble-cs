@@ -1,7 +1,7 @@
-﻿using Dotnatter.Crypto;
-using Dotnatter.Util;
+﻿using Dotnatter.Core.Crypto;
+using Dotnatter.Core.Util;
 
-namespace Dotnatter.HashgraphImpl.Model
+namespace Dotnatter.Core.HashgraphImpl.Model
 {
     public class BlockBody
     {

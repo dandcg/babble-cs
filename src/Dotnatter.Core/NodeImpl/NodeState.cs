@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.NodeImpl
+﻿namespace Dotnatter.Core.NodeImpl
 {
 
     public class NodeState

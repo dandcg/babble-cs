@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.HashgraphImpl.Model
+﻿namespace Dotnatter.Core.HashgraphImpl.Model
 {
     public class ParentRoundInfo
     {

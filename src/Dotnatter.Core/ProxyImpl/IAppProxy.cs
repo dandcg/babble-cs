@@ -1,8 +1,7 @@
-﻿using Dotnatter.HashgraphImpl.Model;
-using Dotnatter.NodeImpl;
+﻿using Dotnatter.Core.HashgraphImpl.Model;
 using Nito.AsyncEx;
 
-namespace Dotnatter.ProxyImpl
+namespace Dotnatter.Core.ProxyImpl
 {
 
 public interface IAppProxy

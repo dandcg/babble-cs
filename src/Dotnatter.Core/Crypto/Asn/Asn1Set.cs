@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Xml.Linq;
 
-namespace Dotnatter.Crypto.Asn {
+namespace Dotnatter.Core.Crypto.Asn {
     public class Asn1Set : Asn1CompositeNode {
 
         public const string NODE_NAME = "Set";

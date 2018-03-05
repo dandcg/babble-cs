@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.NetImpl
+﻿namespace Dotnatter.Core.NetImpl
 {
     public class EagerSyncResponse
     {

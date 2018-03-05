@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using Dotnatter.Util;
+using Dotnatter.Core.Util;
 
-namespace Dotnatter.HashgraphImpl.Model
+namespace Dotnatter.Core.HashgraphImpl.Model
 {
     /*
     Roots constitute the base of a Hashgraph. Each Participant is assigned a Root on

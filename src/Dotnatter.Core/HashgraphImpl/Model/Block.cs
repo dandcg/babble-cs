@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
-using Dotnatter.Crypto;
-using Dotnatter.Util;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.Util;
 
-namespace Dotnatter.HashgraphImpl.Model
+namespace Dotnatter.Core.HashgraphImpl.Model
 {
     public class Block
     {

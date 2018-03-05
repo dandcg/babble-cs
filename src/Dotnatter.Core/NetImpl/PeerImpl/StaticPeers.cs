@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.NetImpl.PeerImpl
+namespace Dotnatter.Core.NetImpl.PeerImpl
 {
     public class StaticPeers : IPeerStore
     {

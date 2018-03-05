@@ -1,6 +1,6 @@
-﻿using Dotnatter.Util;
+﻿using Dotnatter.Core.Util;
 
-namespace Dotnatter.HashgraphImpl.Model
+namespace Dotnatter.Core.HashgraphImpl.Model
 {
     public class BlockSignature
     {

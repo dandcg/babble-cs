@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.NetImpl.TransportImpl
+namespace Dotnatter.Core.NetImpl.TransportImpl
 {
     public interface ITransport
     {

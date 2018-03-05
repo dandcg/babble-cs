@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.NetImpl.TransportImpl
+namespace Dotnatter.Core.NetImpl.TransportImpl
 {
     public class TcpTransport:ITransport
     {

@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Dotnatter.NetImpl.PeerImpl
+namespace Dotnatter.Core.NetImpl.PeerImpl
 {
     public interface IPeerStore
     {

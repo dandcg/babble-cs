@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Crypto.Asn {
+﻿namespace Dotnatter.Core.Crypto.Asn {
     public enum Asn1TagClass : byte {
         Universal = 0,
         Application = 1,

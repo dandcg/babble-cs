@@ -5,9 +5,9 @@ using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using Dotnatter.Crypto;
-using Dotnatter.Crypto.Asn;
-using Dotnatter.Util;
+using Dotnatter.Core.Crypto;
+using Dotnatter.Core.Crypto.Asn;
+using Dotnatter.Core.Util;
 using Xunit;
 
 namespace Dotnatter.Test.Crypto

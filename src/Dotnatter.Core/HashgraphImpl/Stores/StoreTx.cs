@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dotnatter.HashgraphImpl.Stores
+namespace Dotnatter.Core.HashgraphImpl.Stores
 {
     public class StoreTx:IDisposable
     {
