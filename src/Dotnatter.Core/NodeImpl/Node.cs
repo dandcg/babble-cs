@@ -91,52 +91,57 @@ namespace Dotnatter.Core.NodeImpl
 
         public Task RunAsync(bool gossip, CancellationToken ct = default)
         {
-            cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-
             //The ControlTimer allows the background routines to control the
             //heartbeat timer when the node is in the Babbling state. The timer should
             //only be running when there are uncommitted transactions in the system.
 
-            Task.Run(() => controlTimer.RunAsync(cts.Token));
+            var controlTimerTask = controlTimer.RunAsync(cts.Token);
 
             //Execute some background work regardless of the state of the node.
             //Process RPC requests as well as SumbitTx and CommitBlock requests
-
-            var tcsBackgroundWork = new TaskCompletionSource<bool>();
-            Task.Run(() => BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork));
+            
+            var backgroundWorkTask= BackgroundWorkRunAsync(cts.Token);
 
             //Execute Node State Machine
 
-            Task.Run(() => StateMachineRunAsync(gossip, cts.Token));
+            var stateMachineTask =StateMachineRunAsync(gossip, cts.Token);
 
-            return tcsBackgroundWork.Task;
+
+            Task.WhenAll(controlTimerTask, stateMachineTask);
+
+            return backgroundWorkTask;
         }
 
-        private async Task StateMachineRunAsync(bool gossip, CancellationToken ct)
+        private  async Task StateMachineRunAsync(bool gossip, CancellationToken ct)
         {
-            while (!ct.IsCancellationRequested)
-            {
-                //    // Run different routines depending on node state
-                var state = nodeState.GetState();
-                logger.Debug("Run Loop {state}", state);
 
-                switch (state)
+
+
+                while (!ct.IsCancellationRequested)
                 {
-                    case NodeStateEnum.Babbling:
-                        await Babble(gossip, ct);
-                        break;
+                    //    // Run different routines depending on node state
+                    var state = nodeState.GetState();
+                    logger.Debug("Run Loop {state}", state);
 
-                    case NodeStateEnum.CatchingUp:
-                        await FastForward();
-                        break;
+                    switch (state)
+                    {
+                        case NodeStateEnum.Babbling:
+                            await Babble(gossip, ct);
+                            break;
 
-                    case NodeStateEnum.Shutdown:
-                        return;
+                        case NodeStateEnum.CatchingUp:
+                            await FastForward();
+                            break;
+
+                        case NodeStateEnum.Shutdown:
+                            return;
+                    }
                 }
-            }
+       
+
         }
 
-        public async Task BackgroundWorkRunAsync(CancellationToken ct, TaskCompletionSource<bool> tcsBackgroundWork)
+        public async Task BackgroundWorkRunAsync(CancellationToken ct)
         {
             var tcsProcessingRpc = new TaskCompletionSource<bool>();
 
@@ -192,10 +197,7 @@ namespace Dotnatter.Core.NodeImpl
             var runTasks = Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
 
             await Task.WhenAll(tcsProcessingRpc.Task, tcsAddingTransactions.Task, tcsCommitBlocks.Task);
-
-            tcsBackgroundWork.SetResult(true);
-
-            await runTasks;
+            
         }
 
         private async Task Babble(bool gossip, CancellationToken ct)
