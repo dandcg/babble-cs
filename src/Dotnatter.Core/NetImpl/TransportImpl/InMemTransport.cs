@@ -22,7 +22,7 @@ namespace Dotnatter.Core.NetImpl.TransportImpl
             Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
             LocalAddr = addr;
             Peers = new Dictionary<string, ITransport>();
-            Timeout = TimeSpan.FromMilliseconds(2000);
+            Timeout = TimeSpan.FromMilliseconds(5000);
         }
 
         public AsyncProducerConsumerQueue<Rpc> Consumer { get; }
