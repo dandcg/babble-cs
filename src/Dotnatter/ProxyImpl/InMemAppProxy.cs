@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Dotnatter.Crypto;
+using Dotnatter.HashgraphImpl.Model;
 using Nito.AsyncEx;
 using Serilog;
 
@@ -8,14 +11,14 @@ namespace Dotnatter.ProxyImpl
     public class InMemAppProxy : IAppProxy
     {
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
-        private readonly List<byte[]> commitedTxs;
+        private readonly List<byte[]> committedTransactions;
         private readonly ILogger logger;
+        private byte[] stateHash;
 
         public InMemAppProxy(ILogger logger)
         {
             submitCh = new AsyncProducerConsumerQueue<byte[]>();
-            commitedTxs = new List<byte[]>();
-
+            committedTransactions = new List<byte[]>();
             this.logger = logger;
         }
 
@@ -24,11 +27,27 @@ namespace Dotnatter.ProxyImpl
             return submitCh;
         }
 
-        public ProxyError CommitTx(byte[] tx)
+        private (byte[] stateHash, ProxyError err) Commit(Block block)
+
         {
-            logger.ForContext("tx", tx).Debug("InmemProxy CommitTx");
-            commitedTxs.Add(tx);
-            return null;
+            committedTransactions.AddRange(block.Transactions());
+
+            var hash = stateHash.ToArray();
+            foreach (var t in block.Transactions())
+            {
+                var tHash = CryptoUtils.Sha256(t);
+                hash = Hash.SimpleHashFromTwoHashes(hash, tHash);
+            }
+
+            stateHash = hash;
+
+            return (stateHash, null);
+        }
+
+        public (byte[] stateHash, ProxyError err) CommitBlock(Block block)
+        {
+            logger.Debug("InmemProxy CommitBlock RoundReceived={RoundReceived}; TxCount={TxCount}", block.RoundReceived());
+            return Commit(block);
         }
 
 //-------------------------------------------------------
@@ -41,7 +60,7 @@ namespace Dotnatter.ProxyImpl
 
         public byte[][] GetCommittedTransactions()
         {
-            return commitedTxs.ToArray();
+            return committedTransactions.ToArray();
         }
     }
 }

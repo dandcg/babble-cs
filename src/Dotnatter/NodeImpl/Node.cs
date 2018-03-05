@@ -36,20 +36,18 @@ namespace Dotnatter.NodeImpl
         private readonly AsyncLock selectorLock;
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
-        private readonly AsyncProducerConsumerQueue<Event[]> commitCh;
+        private readonly AsyncProducerConsumerQueue<Block> commitCh;
         private CancellationTokenSource cts =new CancellationTokenSource() ;
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
         {
          
-
-
             LocalAddr = trans.LocalAddr;
 
             var (pmap, _) = store.Participants();
 
-            commitCh = new AsyncProducerConsumerQueue<Event[]>(400);
+            commitCh = new AsyncProducerConsumerQueue<Block>(400);
 
             Core = new Core(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
@@ -59,7 +57,7 @@ namespace Dotnatter.NodeImpl
             Store = store;
             Conf = conf;
 
-            this.logger = logger.ForContext("node", LocalAddr);
+            this.logger = logger.AddNamedContext("Node", Id.ToString());
 
             this.Trans = trans;
             netCh = trans.Consumer;
@@ -106,7 +104,7 @@ namespace Dotnatter.NodeImpl
             var timer = controlTimer.RunAsync(cts.Token);
 
             //Execute some background work regardless of the state of the node.
-            //Process RPC requests as well as SumbitTx and CommitTx requests
+            //Process RPC requests as well as SumbitTx and CommitBlock requests
 
             var backgroundWork = BackgroundWorkRunAsync(cts.Token);
 
@@ -171,25 +169,25 @@ namespace Dotnatter.NodeImpl
 
             ;
 
-            async Task CommitEvents()
+            async Task CommitBlocks()
 
             {
                 while (!ct.IsCancellationRequested)
                 {
                     await commitCh.OutputAvailableAsync(ct);
-                    var events = await commitCh.DequeueAsync(ct);
-                    logger.Debug("Committing Events {events}", events.Length);
-                    var err = await Commit(events, ct);
+                    var block = await commitCh.DequeueAsync(ct);
+                    logger.Debug("Committing Block Index={Index}; RoundReceived={RoundReceived}; TxCount={TxCount}", block.Index(), block.RoundReceived(), block.Transactions().Length);
+                    var err = await Commit(block, ct);
                     if (err != null)
                     {
-                        logger.Error("Committing Event", err);
+                        logger.Error("Committing Block", err);
                     }
                 }
             }
 
             ;
 
-            await Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitEvents());
+            await Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
         }
 
         private async Task Babble(bool gossip, CancellationToken ct)
@@ -236,7 +234,7 @@ namespace Dotnatter.NodeImpl
             if (s != NodeStateEnum.Babbling)
             {
                 logger.Debug("Discarding RPC Request {state}", s);
-                var resp = new RpcResponse {Error = new NetError($"not ready: {s}"), Response = new SyncResponse {From = LocalAddr}};
+                var resp = new RpcResponse {Error = new NetError($"not ready: {s}"), Response = new SyncResponse {FromId = Id}};
                 await rpc.RespChan.EnqueueAsync(resp, ct);
             }
             else
@@ -264,15 +262,11 @@ namespace Dotnatter.NodeImpl
 
         private async Task ProcessSyncRequest(Rpc rpc, SyncRequest cmd)
         {
-            logger.ForContext("Fields", new
-            {
-                cmd.From,
-                cmd.Known
-            }).Debug("Process SyncRequest");
+            logger.Debug("Process SyncRequest FromId={FromId}; Known={@Known};",cmd.FromId, cmd.Known);
 
             var resp = new SyncResponse
             {
-                From = LocalAddr
+                FromId =Id
             };
 
             Exception respErr = null;
@@ -291,19 +285,19 @@ namespace Dotnatter.NodeImpl
             }
             else
             {
-                //Compute Diff
+                //Compute EventDiff
                 var start = Stopwatch.StartNew();
                 Event[] diff;
                 Exception err;
                 using (await coreLock.LockAsync())
                 {
-                    (diff, err) = await Core.Diff(cmd.Known);
+                    (diff, err) = await Core.EventDiff(cmd.Known);
                 }
 
-                logger.Debug("Diff() duration={duration}", start.Nanoseconds());
+                logger.Debug("EventDiff() duration={duration}", start.Nanoseconds());
                 if (err != null)
                 {
-                    logger.Error("Calculating Diff {err}", err);
+                    logger.Error("Calculating EventDiff {err}", err);
                     respErr = err;
                 }
 
@@ -321,33 +315,32 @@ namespace Dotnatter.NodeImpl
                 }
             }
 
-            //Get Self Known
+            //Get Self KnownEvents
             Dictionary<int, int> known;
             using (await coreLock.LockAsync())
             {
-                known =(await  Core.Known()).Clone();
+                known =(await  Core.KnownEvents()).Clone();
             }
 
             resp.Known = known;
 
-            logger.ForContext("Fields", new
-            {
+            logger.Debug("Responding to SyncRequest {SyncRequest}", new{
                 Events = resp.Events.Length,
                 resp.Known,
                 resp.SyncLimit,
                 Error = respErr
-            }).Debug("Responding to SyncRequest");
+            });
 
-            await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.From, respErr) : null);
+            await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.FromId.ToString(), respErr) : null);
         }
 
         private async Task ProcessEagerSyncRequest(Rpc rpc, EagerSyncRequest cmd)
         {
-            logger.ForContext("Fields", new
+            logger.Debug("EagerSyncRequest {EagerSyncRequest}",new
             {
-                cmd.From,
+                cmd.FromId,
                 Events = cmd.Events.Length
-            }).Debug("EagerSyncRequest");
+            });
 
             var success = true;
 
@@ -365,11 +358,11 @@ namespace Dotnatter.NodeImpl
 
             var resp = new EagerSyncResponse
             {
-                From = LocalAddr,
+                FromId = Id,
                 Success = success
             };
 
-            await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.From, respErr) : null);
+            await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.FromId.ToString(), respErr) : null);
         }
 
         private async Task<(bool proceed, Exception error)> PreGossip()
@@ -399,8 +392,8 @@ namespace Dotnatter.NodeImpl
 
         public async Task<Exception> Gossip(string peerAddr)
         {
-            //pull
-            var (syncLimit, otherKnown, err) = await pull(peerAddr);
+            //Pull
+            var (syncLimit, otherKnownEvents, err) = await Pull(peerAddr);
             if (err != null)
             {
                 return err;
@@ -414,8 +407,8 @@ namespace Dotnatter.NodeImpl
                 return null;
             }
 
-            //push
-            err = await push(peerAddr, otherKnown);
+            //Push
+            err = await Push(peerAddr, otherKnownEvents);
             if (err != null)
             {
                 return err;
@@ -434,19 +427,19 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        private async Task<( bool syncLimit, Dictionary<int, int> otherKnown, Exception err)> pull(string peerAddr)
+        private async Task<( bool syncLimit, Dictionary<int, int> otherKnown, Exception err)> Pull(string peerAddr)
         {
-            //Compute Known
-            Dictionary<int, int> known;
+            //Compute KnownEvents
+            Dictionary<int, int> knownEvents;
             using (await coreLock.LockAsync())
             {
-                known = await Core.Known();
+                knownEvents = await Core.KnownEvents();
             }
 
             //Send SyncRequest
             var start = new Stopwatch();
 
-            var (resp, err) = await requestSync(peerAddr, known);
+            var (resp, err) = await requestSync(peerAddr, knownEvents);
             var elapsed = start.Nanoseconds();
             logger.Debug("requestSync() Duration = {duration}", elapsed);
             if (err != null)
@@ -455,9 +448,8 @@ namespace Dotnatter.NodeImpl
                 return (false, null, err);
             }
 
-            var logFields = new {resp.SyncLimit, Events = resp.Events.Length, resp.Known};
 
-            logger.Debug("SyncResponse {@fields}", logFields);
+            logger.Debug("SyncResponse {@SyncResponse}",new {resp.FromId, resp.SyncLimit, Events = resp.Events.Length, resp.Known});
 
             if (resp.SyncLimit)
             {
@@ -479,13 +471,13 @@ namespace Dotnatter.NodeImpl
             return (false, resp.Known, null);
         }
 
-        private async Task<Exception> push(string peerAddr, Dictionary<int, int> known)
+        private async Task<Exception> Push(string peerAddr, Dictionary<int, int> knownEvents)
         {
             //Check SyncLimit
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = await Core.OverSyncLimit(known, Conf.SyncLimit);
+                overSyncLimit = await Core.OverSyncLimit(knownEvents, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -494,21 +486,21 @@ namespace Dotnatter.NodeImpl
                 return null;
             }
 
-            //Compute Diff
+            //Compute EventDiff
             var start = new Stopwatch();
 
             Event[] diff;
             Exception err;
             using (await coreLock.LockAsync())
             {
-                (diff, err) = await Core.Diff(known);
+                (diff, err) = await Core.EventDiff(knownEvents);
             }
 
             var elapsed = start.Nanoseconds();
-            logger.Debug("Diff() {duration}", elapsed);
+            logger.Debug("EventDiff() {duration}", elapsed);
             if (err != null)
             {
-                logger.Error("Calculating Diff", err);
+                logger.Error("Calculating EventDiff", err);
                 return err;
             }
 
@@ -533,10 +525,8 @@ namespace Dotnatter.NodeImpl
                 logger.Error("requestEagerSync()", err);
                 return err;
             }
-
-            var logFields = new {Fromm = resp2.From, resp2.Success};
-
-            logger.Debug("EagerSyncResponse {@fields}", logFields);
+            
+            logger.Debug("EagerSyncResponse {@EagerSyncResponse}", new {FromId = resp2.FromId, resp2.Success});
 
             return null;
         }
@@ -557,7 +547,7 @@ namespace Dotnatter.NodeImpl
         {
             var args = new SyncRequest
             {
-                From = LocalAddr,
+                FromId = Id,
                 Known = known
             };
 
@@ -569,7 +559,7 @@ namespace Dotnatter.NodeImpl
         {
             var args = new EagerSyncRequest
             {
-                From = LocalAddr,
+                FromId = Id,
                 Events = events
             };
 
@@ -600,22 +590,34 @@ namespace Dotnatter.NodeImpl
             return err;
         }
 
-        private  Task<Exception> Commit(Event[] events, CancellationToken ct)
+        private async Task<Exception> Commit(Block block, CancellationToken ct)
         {
-            foreach (var ev in events)
-            {
-                foreach (var tx in ev.Transactions())
-                {
-                    var err = Proxy.CommitTx(tx);
-                    if (err != null)
-                    {
-                        return Task.FromResult<Exception>(err);
-                    }
-                }
-            }
+            Exception err;
+            byte[] stateHash;
+            (stateHash,err)=  Proxy.CommitBlock(block);
 
-            return Task.FromResult<Exception>(null);
+            logger.Debug("CommitBlockResponse {@CommitBlockResponse}", new {Index = block.Index(), StateHash = stateHash.ToHex(), Err = err});
+            
+            block.Body.StateHash = stateHash;
+
+            using (await coreLock.LockAsync())
+            {
+                BlockSignature sig;
+                (sig, err) = await Core.SignBlock(block);
+                if (err != null)
+                {
+                    return err;
+                }
+
+                Core.AddBlockSignature(sig);
+
+                return null;
+            }
         }
+
+
+
+
 
         private async Task AddTransaction(byte[] tx, CancellationToken ct)
         {

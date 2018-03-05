@@ -14,6 +14,7 @@ namespace Dotnatter.HashgraphImpl.Stores
         private readonly Dictionary<string, int> participants;
         private LruCache<string, Event> eventCache;
         private LruCache<int, RoundInfo> roundCache;
+        private LruCache<int, Block> blockCache;
         private RollingIndex<string> consensusCache;
         private int totConsensusEvents;
         private readonly ParticipantEventsCache participantEventsCache;
@@ -33,6 +34,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             this.logger = logger.AddNamedContext("InmemStore");
             eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
             roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
+            blockCache= new LruCache<int, Block>(cacheSize, null, logger,"BlockCache");
             consensusCache = new RollingIndex<string>(cacheSize);
             participantEventsCache = new ParticipantEventsCache(cacheSize, participants, logger);
             Roots = rts;
@@ -103,7 +105,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             return Task.FromResult(participantEventsCache.GetItem(particant, index));
         }
 
-        public (string last, bool isRoot, StoreError err) LastFrom(string participant)
+        public (string last, bool isRoot, StoreError err) LastEventFrom(string participant)
         {
             //try to get the last event from this participant
             var (last, err) = participantEventsCache.GetLast(participant);
@@ -111,11 +113,11 @@ namespace Dotnatter.HashgraphImpl.Stores
             var isRoot = false;
             if (err != null)
             {
-                return (last, isRoot, err);
+                return (last, false, err);
             }
 
             //if there is none, grab the root
-            if (last == "")
+            if (string.IsNullOrEmpty(last))
             {
                 var ok = Roots.TryGetValue(participant, out var root);
 
@@ -133,7 +135,7 @@ namespace Dotnatter.HashgraphImpl.Stores
             return (last, isRoot, err);
         }
 
-        public Task<Dictionary<int, int>> Known()
+        public Task<Dictionary<int, int>> KnownEvents()
         {
             return Task.FromResult(participantEventsCache.Known());
         }
@@ -227,6 +229,30 @@ namespace Dotnatter.HashgraphImpl.Stores
             }
 
             return Task.FromResult<(Root, StoreError)>((res, null));
+        }
+
+        public Task<(Block block, StoreError err)> GetBlock(int index)
+        {
+
+            var (res, ok) = blockCache.Get(index);
+            if (!ok)
+            {
+                return Task.FromResult((new Block(), new StoreError(StoreErrorType.KeyNotFound,$"{index}")));
+            }
+
+            return Task.FromResult<(Block, StoreError)>((res, null));
+        }
+
+        public async Task<StoreError> SetBlock(Block block)
+        {
+            var (_,err) = await GetBlock(block.Index());
+            if (err != null && err.StoreErrorType!=StoreErrorType.KeyNotFound)
+            {
+                return err;
+            }
+
+            blockCache.Add(block.Index(), block);
+            return null;
         }
 
         public StoreError Reset(Dictionary<string, Root> newRoots)

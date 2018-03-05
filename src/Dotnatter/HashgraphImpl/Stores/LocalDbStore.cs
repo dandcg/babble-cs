@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -11,7 +10,6 @@ using Dotnatter.Common;
 using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.Util;
 using Serilog;
-using Serilog.Data;
 using Serilog.Events;
 
 namespace Dotnatter.HashgraphImpl.Stores
@@ -149,6 +147,7 @@ namespace Dotnatter.HashgraphImpl.Stores
         private const string ParticipantPrefix = "participant";
         private const string RootSuffix = "root";
         private const string RoundPrefix = "round";
+        private const string BlockPrefix = "block";
         private const string TopoPrefix = "topo";
 
         private const string EventStore = "event";
@@ -181,6 +180,11 @@ namespace Dotnatter.HashgraphImpl.Stores
             return $"{RoundPrefix}_{index}";
         }
 
+        public string BlockKey(int index)
+        {
+            return $"{BlockPrefix}_{index}";
+        }
+
         public int CacheSize()
         {
             return InMemStore.CacheSize();
@@ -200,7 +204,8 @@ namespace Dotnatter.HashgraphImpl.Stores
 
             //try to get it from cache
             var (ev, err) = await InMemStore.GetEvent(key);
-            //try to get it from db
+
+            //if not in cache, try to get it from db
             if (err != null)
             {
                 (ev, err) = await DbGetEvent(key);
@@ -246,12 +251,12 @@ namespace Dotnatter.HashgraphImpl.Stores
             return (result, err);
         }
 
-        public (string last, bool isRoot, StoreError err) LastFrom(string participant)
+        public (string last, bool isRoot, StoreError err) LastEventFrom(string participant)
         {
-            return InMemStore.LastFrom(participant);
+            return InMemStore.LastEventFrom(participant);
         }
 
-        public async Task<Dictionary<int, int>> Known()
+        public async Task<Dictionary<int, int>> KnownEvents()
         {
             var known = new Dictionary<int, int>();
 
@@ -261,7 +266,7 @@ namespace Dotnatter.HashgraphImpl.Stores
                 var pid = pp.Value;
 
                 var index = -1;
-                var (last, isRoot, err) = LastFrom(p);
+                var (last, isRoot, err) = LastEventFrom(p);
                 if (err == null)
                 {
                     if (isRoot)
@@ -270,7 +275,7 @@ namespace Dotnatter.HashgraphImpl.Stores
                         (root, err) = await GetRoot(p);
                         if (err != null)
                         {
-                            last = root.X;
+                            //last = root.X;
                             index = root.Index;
                         }
                     }
@@ -368,6 +373,30 @@ namespace Dotnatter.HashgraphImpl.Stores
             return (root, err);
         }
 
+        public async Task<(Block block, StoreError err)> GetBlock(int index)
+        {
+            var (res, err) = await InMemStore.GetBlock(index);
+            if (err != null)
+            {
+                (res, err) = await DbGetBlock(index);
+            }
+
+            return (res, err);
+        }
+
+        public async Task<StoreError> SetBlock(Block block)
+        {
+            var err = await InMemStore.SetBlock(block);
+            if (err != null)
+            {
+                return err;
+            }
+
+            err = await DbSetBlock(block);
+
+            return err;
+        }
+
         public StoreError Reset(Dictionary<string, Root> roots)
         {
             return InMemStore.Reset(roots);
@@ -411,11 +440,9 @@ namespace Dotnatter.HashgraphImpl.Stores
                 tx = db.GetTransaction();
                 stx = new StoreTx(() =>
                     {
-                        if (txLevel == 1)
-                        {
-                            tx.Commit();
-                            logger.Verbose($"Commit Transaction");
-                        }
+                        if (txLevel != 1) return;
+                        tx.Commit();
+                        logger.Verbose($"Commit Transaction");
                     },
                     () =>
                     {
@@ -646,5 +673,38 @@ namespace Dotnatter.HashgraphImpl.Stores
 
             return Task.FromResult<StoreError>(null);
         }
+
+        public Task<(Block block, StoreError error)> DbGetBlock(int index)
+        {
+
+            logger.Verbose("Db - GetBlock");
+
+            var key = BlockKey(index);
+            var result = tx.Select<string, Block>(BlockPrefix, key);
+
+            if (!result.Exists)
+            {
+                return Task.FromResult((new Block(), new StoreError(StoreErrorType.KeyNotFound)));
+            }
+
+            return Task.FromResult<(Block, StoreError)>((result.Value, null));
+
+
+        }
+
+
+        public Task<StoreError> DbSetBlock(Block block)
+        {
+            logger.Verbose("Db - SetRound");
+
+            var key = BlockKey(block.Index());
+            
+            tx.Insert(BlockPrefix, key, block);
+
+            return Task.FromResult<StoreError>(null);
+        }
+
+
+
     }
 }

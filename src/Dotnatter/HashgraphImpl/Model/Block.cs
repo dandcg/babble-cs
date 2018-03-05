@@ -14,6 +14,10 @@ namespace Dotnatter.HashgraphImpl.Model
 
         private byte[] hash;
 
+        public Block()
+        {
+
+        }
         public Block(int blockIndex, int roundReceived, byte[][] transactions)
         {
             Body = new BlockBody

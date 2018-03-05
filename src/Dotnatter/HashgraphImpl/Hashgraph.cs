@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Dotnatter.Common;
@@ -21,10 +20,11 @@ namespace Dotnatter.HashgraphImpl
         public List<string> UndeterminedEvents { get; set; } //[index] => hash
         public Queue<int> UndecidedRounds { get; set; } //queue of Rounds which have undecided witnesses
         public int? LastConsensusRound { get; set; } //index of last round where the fame of all witnesses has been decided
+        public int LastBlockIndex { get; set; } //index of last block
         public int LastCommitedRoundEvents { get; set; } //number of evs in round before LastConsensusRound
         public int ConsensusTransactions { get; set; } //number of consensus transactions
         public int PendingLoadedEvents { get; set; } //number of loaded evs that are not yet committed
-        public AsyncProducerConsumerQueue<Event[]> CommitChannel { get; set; } //channel for committing evs
+        public AsyncProducerConsumerQueue<Block> CommitChannel { get; set; } //channel for committing evs
         public int TopologicalIndex { get; set; } //counter used to order evs in topological order
         public int SuperMajority { get; set; }
 
@@ -35,7 +35,7 @@ namespace Dotnatter.HashgraphImpl
         public LruCache<string, ParentRoundInfo> ParentRoundCache { get; set; }
         public LruCache<string, int> RoundCache { get; set; }
 
-        public Hashgraph(Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event[]> commitCh, ILogger logger)
+        public Hashgraph(Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger logger)
         {
             this.logger = logger.AddNamedContext("Hashgraph");
             this.logger.Debug("Instantiate Hashgraph");
@@ -56,6 +56,7 @@ namespace Dotnatter.HashgraphImpl
             UndeterminedEvents = new List<string>();
             SuperMajority = 2 * participants.Count / 3 + 1;
             UndecidedRounds = new Queue<int>(); //initialize
+            LastBlockIndex = -1;
         }
 
         //true if y is an ancestor of x
@@ -271,8 +272,8 @@ namespace Dotnatter.HashgraphImpl
             }
 
             var spRound = -1;
-
             var spRoot = false;
+            
             //If it is the creator's first Event, use the corresponding Root
             if (ex.SelfParent == root.X)
             {
@@ -443,20 +444,13 @@ namespace Dotnatter.HashgraphImpl
 
         public async Task<Exception> InsertEvent(Event ev, bool setWireInfo)
         {
-            logger.Debug("Insert Event {eventKey}", ev.Hex());
-
             //verify signature
 
             var (ok, err) = ev.Verify();
 
             if (!ok)
             {
-                if (err != null)
-                {
-                    return err;
-                }
-
-                return new HashgraphError($"Invalid signature");
+                return err ?? new HashgraphError($"Invalid Event signature");
             }
 
             using (var tx = Store.BeginTx())
@@ -511,11 +505,64 @@ namespace Dotnatter.HashgraphImpl
                     PendingLoadedEvents++;
                 }
 
-                tx.Commit();
+                if (ev.BlockSignatures() != null)
+                {
+                    await RecordBlockSignatures(ev.BlockSignatures());
+                }
 
+                tx.Commit();
             }
 
             return null;
+        }
+
+        private async Task RecordBlockSignatures(BlockSignature[] blockSignatures)
+        {
+            foreach (var bs in blockSignatures)
+            {
+                //check if validator belongs to list of participants
+                var validatorHex = bs.Validator.ToHex();
+
+                var ok = Participants.ContainsKey(validatorHex);
+                if (!ok)
+                {
+                    logger.Warning("Verifying Block signature. Unknown validator", new {bs.Index, Validator = validatorHex});
+                    continue;
+                }
+
+                
+                Exception err;
+                Block block;
+                (block, err) = await Store.GetBlock(bs.Index);
+                if (err != null)
+                {
+                    logger.Warning("Verifying Block signature. Could not fetch Block", new {bs.Index, err.Message});
+                    continue;
+                }
+
+                bool valid;
+                (valid, err) = block.Verify(bs);
+                if (err != null)
+                {
+                    logger.Warning("Verifying Block signature.", new {bs.Index, err.Message});
+                    continue;
+                }
+
+                if (!valid)
+                {
+                    logger.Warning("Verifying Block signature. Invalid signature.", new {bs.Index});
+                    continue;
+                }
+
+                block.SetSignature(bs);
+
+                err = await Store.SetBlock(block);
+
+                if (err != null)
+                {
+                    logger.Warning("Saving Block.", new {bs.Index, err.Message});
+                }
+            }
         }
 
         //Check the SelfParent is the Creator's last known Event
@@ -524,7 +571,7 @@ namespace Dotnatter.HashgraphImpl
             var selfParent = ev.SelfParent;
             var creator = ev.Creator();
 
-            var (creatorLastKnown, _, err) = Store.LastFrom(creator);
+            var (creatorLastKnown, _, err) = Store.LastEventFrom(creator);
             if (err != null)
             {
                 return err;
@@ -532,12 +579,7 @@ namespace Dotnatter.HashgraphImpl
 
             var selfParentLegit = selfParent == creatorLastKnown;
 
-            if (!selfParentLegit)
-            {
-                return new HashgraphError($"Self-parent not last known ev by creator");
-            }
-
-            return null;
+            return !selfParentLegit ? new HashgraphError($"Self-parent not last known ev by creator") : null;
         }
 
         //Check if we know the OtherParent
@@ -586,9 +628,9 @@ namespace Dotnatter.HashgraphImpl
 
             ev.SetFirstDescendants(new EventCoordinates[members]);
 
-            for (var fakeId = 0; fakeId < members; fakeId++)
+            for (var id = 0; id < members; id++)
             {
-                ev.GetFirstDescendants()[fakeId] = new EventCoordinates
+                ev.GetFirstDescendants()[id] = new EventCoordinates
                 {
                     Index = int.MaxValue
                 };
@@ -601,9 +643,9 @@ namespace Dotnatter.HashgraphImpl
 
             if (selfParentError != null && otherParentError != null)
             {
-                for (var fakeId = 0; fakeId < members; fakeId++)
+                for (var id = 0; id < members; id++)
                 {
-                    ev.GetLastAncestors()[fakeId] = new EventCoordinates
+                    ev.GetLastAncestors()[id] = new EventCoordinates
                     {
                         Index = -1
                     };
@@ -627,13 +669,11 @@ namespace Dotnatter.HashgraphImpl
 
                 for (var i = 0; i < members; i++)
                 {
-                    if (ev.GetLastAncestors()[i].Index < otherParentLastAncestors[i].Index)
+                    if (ev.GetLastAncestors()[i].Index >= otherParentLastAncestors[i].Index) continue;
                     {
-                        {
-                            ev.GetLastAncestors()[i] = new EventCoordinates();
-                            ev.GetLastAncestors()[i].Index = otherParentLastAncestors[i].Index;
-                            ev.GetLastAncestors()[i].Hash = otherParentLastAncestors[i].Hash;
-                        }
+                        ev.GetLastAncestors()[i] = new EventCoordinates();
+                        ev.GetLastAncestors()[i].Index = otherParentLastAncestors[i].Index;
+                        ev.GetLastAncestors()[i].Hash = otherParentLastAncestors[i].Hash;
                     }
                 }
             }
@@ -642,17 +682,17 @@ namespace Dotnatter.HashgraphImpl
 
             var creator = ev.Creator();
 
-            var ok = Participants.TryGetValue(creator, out var fakeCreatorId);
+            var ok = Participants.TryGetValue(creator, out var creatorId);
 
             if (!ok)
             {
-                return new HashgraphError("Could not find fake creator id");
+                return new HashgraphError($"Could not find fake creator id {creator}");
             }
 
             var hash = ev.Hex();
 
-            ev.GetFirstDescendants()[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
-            ev.GetLastAncestors()[fakeCreatorId] = new EventCoordinates {Index = index, Hash = hash};
+            ev.GetFirstDescendants()[creatorId] = new EventCoordinates {Index = index, Hash = hash};
+            ev.GetLastAncestors()[creatorId] = new EventCoordinates {Index = index, Hash = hash};
 
             return null;
         }
@@ -660,7 +700,7 @@ namespace Dotnatter.HashgraphImpl
         //update first decendant of each last ancestor to point to ev
         public async Task<Exception> UpdateAncestorFirstDescendant(Event ev)
         {
-            var ok = Participants.TryGetValue(ev.Creator(), out int fakeCreatorId);
+            var ok = Participants.TryGetValue(ev.Creator(), out int creatorId);
 
             if (!ok)
             {
@@ -683,9 +723,9 @@ namespace Dotnatter.HashgraphImpl
                         break;
                     }
 
-                    if (a.GetFirstDescendants()[fakeCreatorId].Index == int.MaxValue)
+                    if (a.GetFirstDescendants()[creatorId].Index == int.MaxValue)
                     {
-                        a.GetFirstDescendants()[fakeCreatorId] = new EventCoordinates
+                        a.GetFirstDescendants()[creatorId] = new EventCoordinates
                         {
                             Index = index,
                             Hash = hash
@@ -719,7 +759,7 @@ namespace Dotnatter.HashgraphImpl
             var otherParentIndex = -1;
 
             //could be the first Event inserted for this creator. In this case, use Root
-            var (lf, isRoot, _) = Store.LastFrom(ev.Creator());
+            var (lf, isRoot, _) = Store.LastEventFrom(ev.Creator());
 
             if (isRoot && lf == ev.SelfParent)
             {
@@ -796,6 +836,7 @@ namespace Dotnatter.HashgraphImpl
             var body = new EventBody
             {
                 Transactions = wev.Body.Transactions,
+                BlockSignatures = wev.BlockSignatures(creatorBytes),
                 Parents = new[] {selfParent, otherParent},
                 Creator = creatorBytes,
                 Timestamp = wev.Body.Timestamp,
@@ -817,19 +858,18 @@ namespace Dotnatter.HashgraphImpl
 
         public async Task<Exception> DivideRounds()
         {
-            logger.Debug("Divide Rounds {UndeterminedEvents}",UndeterminedEvents.Count);
-            
+            logger.Debug("Divide Rounds {UndeterminedEvents}", UndeterminedEvents.Count);
+
             foreach (var hash in UndeterminedEvents)
 
             {
-                logger.Debug("Undetermined Event {hex}",hash);
+                logger.Debug("Undetermined Event {hex}", hash);
 
                 var roundNumber = await Round(hash);
 
                 var witness = await Witness(hash);
 
                 var (roundInfo, err) = await Store.GetRound(roundNumber);
-
 
                 //If the RoundInfo is not found in the Store's Cache, then the Hashgraph
                 //is not aware of it yet. We need to add the roundNumber to the queue of
@@ -848,7 +888,7 @@ namespace Dotnatter.HashgraphImpl
                 if (!roundInfo.Queued())
                 {
                     UndecidedRounds.Enqueue(roundNumber);
-                    
+
                     roundInfo.SetQueued();
                 }
 
@@ -876,7 +916,7 @@ namespace Dotnatter.HashgraphImpl
 
             try
             {
-                int pos = 0;
+                var pos = 0;
 
                 foreach (var i in UndecidedRounds)
                 {
@@ -1104,9 +1144,11 @@ namespace Dotnatter.HashgraphImpl
             var newConsensusEvents = new List<Event>();
 
             var newUndeterminedEvents = new List<string>();
+            Exception err;
             foreach (var x in UndeterminedEvents)
             {
-                var (ex, err) = await Store.GetEvent(x);
+                Event ex;
+                (ex, err) = await Store.GetEvent(x);
 
                 if (err != null)
                 {
@@ -1127,10 +1169,17 @@ namespace Dotnatter.HashgraphImpl
 
             newConsensusEvents.Sort(new Event.EventByConsensus());
 
+            err = await HandleNewConsensusEvents(newConsensusEvents);
+            return err;
+        }
+
+        public async Task<HashgraphError> HandleNewConsensusEvents(IEnumerable<Event> newConsensusEvents)
+        {
+            var blockMap = new Dictionary<int, List<byte[]>>(); // [RoundReceived] => []Transactions
+            var blockOrder = new List<int>(); // [index] => RoundReceived
+
             foreach (var e in newConsensusEvents)
             {
-    
-
                 Store.AddConsensusEvent(e.Hex());
 
                 ConsensusTransactions += e.Transactions().Length;
@@ -1139,17 +1188,50 @@ namespace Dotnatter.HashgraphImpl
                 {
                     PendingLoadedEvents--;
                 }
+
+                var rr = e.GetRoundReceived() ?? -1;
+                var ok = blockMap.TryGetValue(rr, out var btxs);
+                if (!ok)
+                {
+                    btxs = new List<byte[]>();
+                    blockOrder.Add(rr);
+                }
+
+                btxs.AddRange(e.Transactions());
+                blockMap[rr] = btxs;
             }
 
-            if (CommitChannel != null && newConsensusEvents.Count > 0)
+            foreach (var rr in blockOrder)
             {
-                foreach (var nce in newConsensusEvents)
+                var blockTxs = blockMap[rr];
+                if (blockTxs.Count > 0)
                 {
-                    CommitChannel.Enqueue(new[] {nce});
+                    var (block, err) = await CreateAndInsertBlock(rr, blockTxs.ToArray());
+                    if (err != null)
+                    {
+                        return err;
+                    }
+
+                    CommitChannel?.Enqueue(block);
                 }
             }
 
             return null;
+        }
+
+        public async Task<(Block, HashgraphError)> CreateAndInsertBlock(int roundReceived, byte[][] txs)
+        {
+            var block = new Block(LastBlockIndex + 1, roundReceived, txs);
+
+            Exception err = await Store.SetBlock(block);
+
+            if (err != null)
+            {
+                return (new Block(), new HashgraphError(err.Message, err));
+            }
+
+            LastBlockIndex++;
+            return (block, null);
         }
 
         public async Task<DateTimeOffset> MedianTimestamp(List<string> evHashes)
@@ -1171,9 +1253,9 @@ namespace Dotnatter.HashgraphImpl
         }
 
         //number of evs per participants
-        public Task<Dictionary<int, int>> Known()
+        public Task<Dictionary<int, int>> KnownEvents()
         {
-            return Store.Known();
+            return Store.KnownEvents();
         }
 
         public Exception Reset(Dictionary<string, Root> roots)
@@ -1259,7 +1341,7 @@ namespace Dotnatter.HashgraphImpl
             {
                 if (!roots.ContainsKey(p.Key))
                 {
-                    var (last, isRoot, errp) = Store.LastFrom(p.Key);
+                    var (last, isRoot, errp) = Store.LastEventFrom(p.Key);
                     if (errp != null)
                     {
                         return (new Frame(), errp);
@@ -1360,7 +1442,7 @@ namespace Dotnatter.HashgraphImpl
                     foreach (var e in topologicalEvents)
                     {
                         err = await InsertEvent(e, true);
-                        
+
                         if (err != null)
                         {
                             return err;

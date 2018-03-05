@@ -101,7 +101,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 if (k != expectedLastIndex)
                 {
-                    throw new Exception(string.Format("Known[{0}] should be {1}, not {2}", p, expectedLastIndex, k));
+                    throw new Exception(string.Format("KnownEvents[{0}] should be {1}, not {2}", p, expectedLastIndex, k));
                 }
             }
 

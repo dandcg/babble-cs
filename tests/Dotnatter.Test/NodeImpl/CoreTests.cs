@@ -58,9 +58,11 @@ namespace Dotnatter.Test.NodeImpl
             for (var i = 0; i < n; i++)
             {
                 var core = new Core(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
-                await core.Init();
-                cores.Add(core);
+                var err=await core.Init();
+                Assert.Null(err);
 
+                cores.Add(core);
+                
                 index[$"e{i}"] = core.Head;
             }
 
@@ -97,7 +99,7 @@ namespace Dotnatter.Test.NodeImpl
                 if (i != participant)
                 {
                     var evh = index[$"e{i}"];
-
+                    
                     var ( ev, _) = await cores[i].GetEvent(evh);
 
                     err = await cores[participant].InsertEvent(ev, true);
@@ -109,7 +111,7 @@ namespace Dotnatter.Test.NodeImpl
                 }
             }
 
-            var event01 = new Event(new byte[][] { },
+            var event01 = new Event(new byte[][] { },null,
                 new[] {index["e0"], index["e1"]}, //e0 and e1
                 cores[0].PubKey(), 1);
 
@@ -119,7 +121,7 @@ namespace Dotnatter.Test.NodeImpl
                 output.WriteLine("error inserting e01: {0}", err);
             }
 
-            var event20 = new Event(new byte[][] { },
+            var event20 = new Event(new byte[][] { },null,
                 new[] {index["e2"], index["e01"]}, //e2 and e01
                 cores[2].PubKey(), 1);
 
@@ -129,7 +131,7 @@ namespace Dotnatter.Test.NodeImpl
                 output.WriteLine("error inserting e20: {0}", err);
             }
 
-            var event12 = new Event(new byte[][] { },
+            var event12 = new Event(new byte[][] { },null,
                 new[] {index["e1"], index["e20"]}, //e1 and e20
                 cores[1].PubKey(), 1);
 
@@ -174,7 +176,7 @@ namespace Dotnatter.Test.NodeImpl
         }
 
         [Fact]
-        public async Task TestDiff()
+        public async Task TestEventDiff()
         {
             var (cores, keys, index) =await  InitCores(3);
 
@@ -195,8 +197,8 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2
             */
 
-            var knownBy1 =await  cores[1].Known();
-            var (unknownBy1, err) =await  cores[0].Diff(knownBy1);
+            var knownBy1 =await  cores[1].KnownEvents();
+            var (unknownBy1, err) =await  cores[0].EventDiff(knownBy1);
 
             Assert.Null(err);
             var l = unknownBy1.Length;
@@ -242,7 +244,7 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2       0   1   2
             */
 
-            var knownBy0 =await  cores[0].Known();
+            var knownBy0 =await  cores[0].KnownEvents();
 
             var k = knownBy0[cores[0].Id()];
             Assert.False(k != 1, "core 0 should have last-index 1 for core 0, not {k}");
@@ -281,7 +283,7 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2       0   1   2
             */
 
-            var knownBy2 = await cores[2].Known();
+            var knownBy2 = await cores[2].KnownEvents();
 
             k = knownBy2[cores[0].Id()];
             Assert.False(k != 1, "core 2 should have last-index 1 for core 0, not {k}");
@@ -320,7 +322,7 @@ namespace Dotnatter.Test.NodeImpl
                0   1   2        0   1   2       0   1   2
             */
 
-            var knownBy1 = await cores[1].Known();
+            var knownBy1 = await cores[1].KnownEvents();
             k = knownBy1[cores[0].Id()];
 
             Assert.False(k != 1, "core 1 should have last-index 1 for core 0, not {k}");
@@ -608,8 +610,8 @@ e0  e1  e2
 
         private async Task<Exception> SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
         {
-            var knownByTo = await cores[to].Known();
-            var ( unknownByTo, err) = await cores[from].Diff(knownByTo);
+            var knownByTo = await cores[to].KnownEvents();
+            var ( unknownByTo, err) = await cores[from].EventDiff(knownByTo);
             if (err != null)
             {
                 return err;
@@ -624,7 +626,7 @@ e0  e1  e2
 
             cores[to].AddTransactions(payload);
 
-            //output.WriteLine($"From: {from}; To: {to}");
+            //output.WriteLine($"FromId: {from}; To: {to}");
             //output.WriteLine(unknownWire.DumpToString());
 
             return await  cores[to].Sync(unknownWire);

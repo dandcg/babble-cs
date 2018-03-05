@@ -13,8 +13,8 @@ namespace Dotnatter.HashgraphImpl.Stores
         Task<StoreError> SetEvent(Event ev);
         Task<(string[] evts, StoreError err)> ParticipantEvents(string str, int i);
         Task<(string ev, StoreError err)> ParticipantEvent(string str, int i);
-        (string last, bool isRoot, StoreError err) LastFrom(string str);
-        Task<Dictionary<int, int>> Known();
+        (string last, bool isRoot, StoreError err) LastEventFrom(string str);
+        Task<Dictionary<int, int>> KnownEvents();
         string[] ConsensusEvents();
 
         int ConsensusEventsCount();
@@ -26,6 +26,10 @@ namespace Dotnatter.HashgraphImpl.Stores
 
         Task<int> RoundEvents(int i );
         Task<(Root root, StoreError err)> GetRoot(string str);
+        
+        Task<(Block block, StoreError err)> GetBlock(int index);
+        Task<StoreError> SetBlock(Block block);
+        
         StoreError Reset(Dictionary<string, Root> d);
         StoreError Close();
 

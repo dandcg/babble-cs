@@ -14,6 +14,7 @@ var (
 	rootSuffix        = "root"
 	roundPrefix       = "round"
 	topoPrefix        = "topo"
+	blockPrefix       = "block"
 )
 
 type BadgerStore struct {
@@ -108,7 +109,7 @@ func participantKey(participant string) []byte {
 }
 
 func participantEventKey(participant string, index int) []byte {
-	return []byte(fmt.Sprintf("%s_%09d", participant, index))
+	return []byte(fmt.Sprintf("%s__event_%09d", participant, index))
 }
 
 func participantRootKey(participant string) []byte {
@@ -117,6 +118,10 @@ func participantRootKey(participant string) []byte {
 
 func roundKey(index int) []byte {
 	return []byte(fmt.Sprintf("%s_%09d", roundPrefix, index))
+}
+
+func blockKey(index int) []byte {
+	return []byte(fmt.Sprintf("%s_%09d", blockPrefix, index))
 }
 
 //==============================================================================
@@ -133,7 +138,7 @@ func (s *BadgerStore) Participants() (map[string]int, error) {
 func (s *BadgerStore) GetEvent(key string) (event Event, err error) {
 	//try to get it from cache
 	event, err = s.inmemStore.GetEvent(key)
-	//try to get it from db
+	//if not in cache, try to get it from db
 	if err != nil {
 		event, err = s.dbGetEvent(key)
 	}
@@ -165,15 +170,15 @@ func (s *BadgerStore) ParticipantEvent(participant string, index int) (string, e
 	return result, mapError(err, string(participantEventKey(participant, index)))
 }
 
-func (s *BadgerStore) LastFrom(participant string) (last string, isRoot bool, err error) {
-	return s.inmemStore.LastFrom(participant)
+func (s *BadgerStore) LastEventFrom(participant string) (last string, isRoot bool, err error) {
+	return s.inmemStore.LastEventFrom(participant)
 }
 
-func (s *BadgerStore) Known() map[int]int {
+func (s *BadgerStore) KnownEvents() map[int]int {
 	known := make(map[int]int)
 	for p, pid := range s.participants {
 		index := -1
-		last, isRoot, err := s.LastFrom(p)
+		last, isRoot, err := s.LastEventFrom(p)
 		if err == nil {
 			if isRoot {
 				root, err := s.GetRoot(p)
@@ -247,6 +252,21 @@ func (s *BadgerStore) GetRoot(participant string) (Root, error) {
 		root, err = s.dbGetRoot(participant)
 	}
 	return root, mapError(err, string(participantRootKey(participant)))
+}
+
+func (s *BadgerStore) GetBlock(rr int) (Block, error) {
+	res, err := s.inmemStore.GetBlock(rr)
+	if err != nil {
+		res, err = s.dbGetBlock(rr)
+	}
+	return res, mapError(err, string(blockKey(rr)))
+}
+
+func (s *BadgerStore) SetBlock(block Block) error {
+	if err := s.inmemStore.SetBlock(block); err != nil {
+		return err
+	}
+	return s.dbSetBlock(block)
 }
 
 func (s *BadgerStore) Reset(roots map[string]Root) error {
@@ -528,6 +548,48 @@ func (s *BadgerStore) dbSetParticipants(participants map[string]int) error {
 			return err
 		}
 	}
+	return tx.Commit(nil)
+}
+
+func (s *BadgerStore) dbGetBlock(index int) (Block, error) {
+	var blockBytes []byte
+	key := blockKey(index)
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		blockBytes, err = item.Value()
+		return err
+	})
+
+	if err != nil {
+		return Block{}, err
+	}
+
+	block := new(Block)
+	if err := block.Unmarshal(blockBytes); err != nil {
+		return Block{}, err
+	}
+
+	return *block, nil
+}
+
+func (s *BadgerStore) dbSetBlock(block Block) error {
+	tx := s.db.NewTransaction(true)
+	defer tx.Discard()
+
+	key := blockKey(block.Index())
+	val, err := block.Marshal()
+	if err != nil {
+		return err
+	}
+
+	//insert [index] => [block bytes]
+	if err := tx.Set(key, val); err != nil {
+		return err
+	}
+
 	return tx.Commit(nil)
 }
 

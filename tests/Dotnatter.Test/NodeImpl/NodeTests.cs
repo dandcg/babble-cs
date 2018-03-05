@@ -94,14 +94,14 @@ namespace Dotnatter.Test.NodeImpl
 
             //Manually prepare SyncRequest and expected SyncResponse
 
-            var node0Known = await node0.Core.Known();
+            var node0Known = await node0.Core.KnownEvents();
 
-            var node1Known = await node1.Core.Known();
+            var node1Known = await node1.Core.KnownEvents();
 
             Exception err;
 
             Event[] unknown;
-            (unknown, err) = await node1.Core.Diff(node0Known);
+            (unknown, err) = await node1.Core.EventDiff(node0Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
@@ -110,13 +110,13 @@ namespace Dotnatter.Test.NodeImpl
 
             var args = new SyncRequest
             {
-                From = node0.LocalAddr,
+                FromId = node0.Id,
                 Known = node0Known
             };
 
             var expectedResp = new SyncResponse
             {
-                From = node1.LocalAddr,
+                FromId = node1.Id,
                 Events = unknownWire,
                 Known = node1Known
             };
@@ -176,11 +176,11 @@ namespace Dotnatter.Test.NodeImpl
 
             //Manually prepare EagerSyncRequest and expected EagerSyncResponse
 
-            var node1Known = await node1.Core.Known();
+            var node1Known = await node1.Core.KnownEvents();
 
             Event[] unknown;
             Exception err;
-            (unknown, err) = await node0.Core.Diff(node1Known);
+            (unknown, err) = await node0.Core.EventDiff(node1Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
@@ -189,13 +189,13 @@ namespace Dotnatter.Test.NodeImpl
 
             var args = new EagerSyncRequest
             {
-                From = node0.LocalAddr,
+                FromId = node0.Id,
                 Events = unknownWire
             };
 
             var expectedResp = new EagerSyncResponse
             {
-                From = node1.LocalAddr,
+                FromId = node1.Id,
                 Success = true
             };
 
@@ -247,10 +247,10 @@ namespace Dotnatter.Test.NodeImpl
 
             //simulate a SyncRequest from node0 to node1
 
-            var node0Known = await node0.Core.Known();
+            var node0Known = await node0.Core.KnownEvents();
             var args = new SyncRequest
             {
-                From = node0.LocalAddr,
+                FromId = node0.Id,
                 Known = node0Known
             };
 
@@ -449,7 +449,7 @@ namespace Dotnatter.Test.NodeImpl
             try
             {
                 //create fake node[0] known to artificially reach SyncLimit
-                var node0Known = await nodes[0].Core.Known();
+                var node0Known = await nodes[0].Core.KnownEvents();
                 int k = 0;
                 foreach (var kn in node0Known.ToList())
                 {
@@ -459,13 +459,13 @@ namespace Dotnatter.Test.NodeImpl
 
                 var args = new SyncRequest
                 {
-                    From = nodes[0].LocalAddr,
+                    FromId = nodes[0].Id,
                     Known = node0Known,
                 };
 
                 var expectedResp = new SyncResponse
                 {
-                    From = nodes[1].LocalAddr,
+                    FromId = nodes[1].Id,
                     SyncLimit = true,
                 };
 
@@ -475,7 +475,7 @@ namespace Dotnatter.Test.NodeImpl
 
                 // Verify the response
 
-                Assert.Equal(expectedResp.From, resp.From);
+                Assert.Equal(expectedResp.FromId, resp.FromId);
                 Assert.True(expectedResp.SyncLimit);
                 
             }

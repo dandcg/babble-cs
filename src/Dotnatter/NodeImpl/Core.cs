@@ -23,24 +23,27 @@ namespace Dotnatter.NodeImpl
 
         public readonly Hashgraph hg;
 
-        //private readonly Dictionary<string, int> participants;
+        private readonly Dictionary<string, int> participants;
         private readonly Dictionary<int, string> reverseParticipants;
-        //private readonly IStore store;
-        //private readonly Channel<Event> commitCh;
+
+        private readonly IStore store;
+        private readonly AsyncProducerConsumerQueue<Block> commitCh;
 
         public string Head { get; private set; }
         public int Seq { get; private set; }
 
         public List<byte[]> TransactionPool { get; } = new List<byte[]>();
+        public List<BlockSignature> BlockSignaturePool { get; } = new List<BlockSignature>();
+
         private readonly ILogger logger;
 
-        public Core(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Event[]> commitCh, ILogger logger)
+        public Core(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger logger)
         {
             this.id = id;
             Key = key;
-            //this.participants = participants;
-            //this.store = store;
-            //this.commitCh = commitCh;
+            this.participants = participants;
+            this.store = store;
+            this.commitCh = commitCh;
             this.logger = logger.ForContext("SourceContext", "Core");
 
             reverseParticipants = new Dictionary<int, string>();
@@ -75,13 +78,24 @@ namespace Dotnatter.NodeImpl
             return hexId;
         }
 
-        public Task<Exception> Init()
+        public async Task<Exception> Init()
         {
-            var initialEvent = new Event(new byte[][] { }, new[] {"", ""},
+            //Create and save the first Event
+            var initialEvent = new Event(
+                new byte[][] { }, 
+                null, 
+                new[] {"", ""},
                 PubKey(),
-                Seq);
+                Seq)
+            {
+                Body = {Timestamp = DateTimeOffset.UtcNow}
+            };
+            
+            var err = await SignAndInsertSelfEvent(initialEvent);
+            
+            logger.Debug("Initial {@Event}", new {Index = initialEvent.Index(), Hex = initialEvent.Hex()});
 
-            return SignAndInsertSelfEvent(initialEvent);
+            return err;
         }
 
         public async Task<Exception> Bootstrap()
@@ -98,7 +112,7 @@ namespace Dotnatter.NodeImpl
 
             string last;
             bool isRoot;
-            (last, isRoot, err) = hg.Store.LastFrom(HexId());
+            (last, isRoot, err) = hg.Store.LastEventFrom(HexId());
 
             if (err != null)
             {
@@ -166,18 +180,39 @@ namespace Dotnatter.NodeImpl
             return null;
         }
 
-        public Task<Dictionary<int, int>> Known()
+        public Task<Dictionary<int, int>> KnownEvents()
         {
-            return hg.Known();
+            return hg.KnownEvents();
         }
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+        public async Task<(BlockSignature bs, Exception err)> SignBlock(Block block)
+        {
+            var (sig, err) = block.Sign(Key);
+            if (err != null)
+            {
+                return (new BlockSignature(), err);
+            }
+
+            err = block.SetSignature(sig);
+
+            if (err != null)
+            {
+                return (new BlockSignature(), err);
+            }
+
+            return (sig, await hg.Store.SetBlock(block));
+        }
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         public async Task<bool> OverSyncLimit(Dictionary<int, int> known, int syncLimit)
         {
             var totUnknown = 0;
-            var myKnown = await Known();
+            var myKnownEvents = await KnownEvents();
 
-            //int i = 0;
-            foreach (var kn in myKnown)
+            foreach (var kn in myKnownEvents)
             {
                 var i = kn.Key;
                 var li = kn.Value;
@@ -202,12 +237,12 @@ namespace Dotnatter.NodeImpl
         }
 
         //returns events that c knowns about that are not in 'known'
-        public async Task<(Event[] events, Exception err)> Diff(Dictionary<int, int> known)
+        public async Task<(Event[] events, Exception err)> EventDiff(Dictionary<int, int> known)
         {
             var unknown = new List<Event>();
 
-            //known represents the number of events known for every participant
-            //compare this to our view of events and fill unknown with events that we know of
+            //known represents the index of the last event known for every participant
+            //compare this to our view of events and fill unknownEvents with events that we know of
             // and the other doesnt
 
             foreach (var kn in known)
@@ -215,6 +250,7 @@ namespace Dotnatter.NodeImpl
                 var ct = kn.Value;
 
                 var pk = reverseParticipants[kn.Key];
+                //get participant Events with index > ct
                 var (participantEvents, err) = await hg.Store.ParticipantEvents(pk, ct);
 
                 if (err != null)
@@ -240,16 +276,16 @@ namespace Dotnatter.NodeImpl
             return (unknown.ToArray(), null);
         }
 
-        public async Task<Exception> Sync(WireEvent[] unknown)
+        public async Task<Exception> Sync(WireEvent[] unknownEvents)
         {
-            logger.Debug("Sync unknown={@unknown}; txPool={txPool}", unknown.Select(s => s.Body.Index), TransactionPool);
+            logger.Debug("Sync unknownEvents={@unknownEvents}; transactionPool={transactionPoolCount}; blockSignaturePool={blockSignaturePoolCount}", unknownEvents.Select(s => s.Body.Index), TransactionPool.Count, BlockSignaturePool.Count);
 
             string otherHead = "";
 
-            //add unknown events
+            //add unknownEvents events
             int k = 0;
             Exception err;
-            foreach (var we in unknown)
+            foreach (var we in unknownEvents)
 
             {
                 //logger.Debug("wev={wev}",we.Body.CreatorId);
@@ -272,7 +308,7 @@ namespace Dotnatter.NodeImpl
                 }
 
                 //assume last event corresponds to other-head
-                if (k == unknown.Length - 1)
+                if (k == unknownEvents.Length - 1)
                 {
                     otherHead = ev.Hex();
                 }
@@ -282,9 +318,9 @@ namespace Dotnatter.NodeImpl
 
             //create new event with self head and other head
             //only if there are pending loaded events or the transaction pool is not empty
-            if (unknown.Length > 0 || TransactionPool.Count > 0)
+            if (unknownEvents.Length > 0 || TransactionPool.Count > 0 || BlockSignaturePool.Count > 0)
             {
-                var newHead = new Event(TransactionPool.ToArray(),
+                var newHead = new Event(TransactionPool.ToArray(), BlockSignaturePool.ToArray(),
                     new[] {Head, otherHead},
                     PubKey(),
                     Seq + 1);
@@ -296,8 +332,9 @@ namespace Dotnatter.NodeImpl
                     return new CoreError($"Error inserting new head: {err.Message}", err);
                 }
 
-                //empty the transaction pool
+                //empty the  pool
                 TransactionPool.Clear();
+                BlockSignaturePool.Clear();
             }
 
             return null;
@@ -313,7 +350,7 @@ namespace Dotnatter.NodeImpl
 
             //create new event with self head and empty other parent
             //empty transaction pool in its payload
-            var newHead = new Event(TransactionPool.ToArray(),
+            var newHead = new Event(TransactionPool.ToArray(), BlockSignaturePool.ToArray(),
                 new[] {Head, ""},
                 PubKey(), Seq + 1);
 
@@ -324,9 +361,10 @@ namespace Dotnatter.NodeImpl
                 return new CoreError($"Error inserting new head: {err.Message}", err);
             }
 
-            logger.Debug("Created Self-Event Transactions={TransactionCount}", TransactionPool.Count);
+            logger.Debug("Created Self-Event Transactions={TransactionCount}; BlockSignatures={BlockSignatureCount}", TransactionPool.Count, BlockSignaturePool.Count);
 
             TransactionPool.Clear();
+            BlockSignaturePool.Clear();
 
             return null;
         }
@@ -363,7 +401,7 @@ namespace Dotnatter.NodeImpl
         public async Task<Exception> RunConsensus()
         {
             // DivideRounds
-            
+
             var watch = Stopwatch.StartNew();
             var err = await hg.DivideRounds();
             watch.Stop();
@@ -410,6 +448,11 @@ namespace Dotnatter.NodeImpl
         public void AddTransactions(byte[][] txs)
         {
             TransactionPool.AddRange(txs);
+        }
+
+        public void AddBlockSignature(BlockSignature bs)
+        {
+            BlockSignaturePool.Add(bs);
         }
 
         public async Task<(Event ev, Exception err)> GetHead()
@@ -486,9 +529,14 @@ namespace Dotnatter.NodeImpl
             return hg.LastCommitedRoundEvents;
         }
 
+        public int GetLastBlockIndex()
+        {
+            return hg.LastBlockIndex;
+        }
+
         public bool NeedGossip()
         {
-            return hg.PendingLoadedEvents > 0 || TransactionPool.Count > 0;
+            return hg.PendingLoadedEvents > 0 || TransactionPool.Count > 0 || BlockSignaturePool.Count > 0;
         }
     }
 }

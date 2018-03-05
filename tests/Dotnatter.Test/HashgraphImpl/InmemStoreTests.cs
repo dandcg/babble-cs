@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
-using Dotnatter.HashgraphImpl;
 using Dotnatter.HashgraphImpl.Model;
 using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.Test.Helpers;
@@ -19,10 +19,8 @@ namespace Dotnatter.Test.HashgraphImpl
 
         public InmemStoreTests(ITestOutputHelper output)
         {
-             logger = output.SetupLogging();
+            logger = output.SetupLogging();
         }
-
- 
 
         public (InmemStore, Pub[]) InitInmemStore(int cacheSize)
         {
@@ -53,17 +51,18 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var events = new Dictionary<string, List<Event>>();
 
+            // Store Events
             foreach (var p in participants)
             {
                 var items = new List<Event>();
 
                 for (var k = 0; k < testSize; k++)
                 {
-                    var ev = new Event(new[] {$"{p.Hex}_{k}".StringToBytes()},
+                    var ev = new Event(new[] {$"{p.Hex}_{k}".StringToBytes()}, new[] {new BlockSignature {Validator = "validator".StringToBytes(), Index = 0, Signature = "r|s".StringToBytes()}},
                         new[] {"", ""},
                         p.PubKey,
                         k);
-                   
+
                     items.Add(ev);
                     await store.SetEvent(ev);
                 }
@@ -82,6 +81,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 }
             }
 
+            // Check ParticipantEventsCache
             var skipIndex = -1; //do not skip any indexes
             foreach (var p in participants)
             {
@@ -101,6 +101,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 }
             }
 
+            // Check ConsensusEvents
             var expectedKnown = new Dictionary<int, int>();
 
             foreach (var p in participants)
@@ -108,10 +109,11 @@ namespace Dotnatter.Test.HashgraphImpl
                 expectedKnown.Add(p.Id, testSize - 1);
             }
 
-            var known =await  store.Known();
+            var known = await store.KnownEvents();
 
             known.ShouldCompareTo(expectedKnown);
 
+            // Add ConsensusEvents
             foreach (var p in participants)
             {
                 var evs = events[p.Hex];
@@ -134,7 +136,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             foreach (var p in participants)
             {
-                var ev = new Event(new[] {new byte[] { }},
+                var ev = new Event(new[] {new byte[] { }}, new BlockSignature[] { },
                     new[] {"", ""},
                     p.PubKey,
                     0);
@@ -142,18 +144,25 @@ namespace Dotnatter.Test.HashgraphImpl
                 round.AddEvent(ev.Hex(), true);
             }
 
-            await store.SetRound(0, round);
+            // Store Round
+            var err = await store.SetRound(0, round);
+            Assert.Null(err);
 
-            var c = store.LastRound();
-            Assert.Equal(0, c);
-
-            var (storedRound, err) =await  store.GetRound(0);
+            RoundInfo storedRound;
+            (storedRound, err) = await store.GetRound(0);
             Assert.Null(err);
 
             round.ShouldCompareTo(storedRound);
 
+            // Check LastRound
+
+            var c = store.LastRound();
+            Assert.Equal(0, c);
+
+            // Check witnesses
+
             var witnesses = await store.RoundWitnesses(0);
-            var expectedWitnesses =round.Witnesses();
+            var expectedWitnesses = round.Witnesses();
 
             Assert.Equal(expectedWitnesses.Length, witnesses.Length);
 
@@ -161,6 +170,64 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 Assert.Contains(w, witnesses);
             }
+        }
+
+        [Fact]
+        public async Task TestInmemBlocks()
+        {
+            var (store, participants) = InitInmemStore(10);
+
+            var index = 0;
+            var roundReceived = 7;
+            var transactions = new[]
+            {
+                "tx1".StringToBytes(),
+                "tx2".StringToBytes(),
+                "tx3".StringToBytes(),
+                "tx4".StringToBytes(),
+                "tx5".StringToBytes()
+            };
+
+            var block = new Block(index, roundReceived, transactions);
+
+            Exception err;
+            BlockSignature sig1;
+
+            (sig1, err) = block.Sign(participants[0].PrivKey);
+            Assert.Null(err);
+
+            BlockSignature sig2;
+            (sig2, err) = block.Sign(participants[1].PrivKey);
+            Assert.Null(err);
+
+            block.SetSignature(sig1);
+            block.SetSignature(sig2);
+
+            // Store Block
+
+            err = await store.SetBlock(block);
+            Assert.Null(err);
+
+            Block storedBlock;
+            (storedBlock, err) = await store.GetBlock(index);
+            Assert.Null(err);
+
+            storedBlock.ShouldCompareTo(block);
+
+            // Check signatures in stored Block
+
+            (storedBlock, err) = await store.GetBlock(index);
+            Assert.Null(err);
+
+            var ok = storedBlock.Signatures.TryGetValue(participants[0].Hex, out var val1Sig);
+            Assert.True(ok, "Validator1 signature not stored in block");
+
+            Assert.Equal(sig1.Signature, val1Sig);
+
+            ok = storedBlock.Signatures.TryGetValue(participants[1].Hex, out var val2Sig);
+            Assert.True(ok, "Validator2 signature not stored in block");
+
+            Assert.Equal(sig2.Signature, val2Sig);
         }
     }
 }

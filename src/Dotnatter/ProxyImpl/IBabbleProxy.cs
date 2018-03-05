@@ -1,11 +1,12 @@
-﻿using Dotnatter.NodeImpl;
+﻿using Dotnatter.HashgraphImpl.Model;
+using Dotnatter.NodeImpl;
 using Nito.AsyncEx;
 
 namespace Dotnatter.ProxyImpl
 {
     public interface IBabbleProxy
     {
-        AsyncProducerConsumerQueue<byte[]> CommitCh();
+        AsyncProducerConsumerQueue<Block> CommitCh();
         ProxyError SubmitTx(byte[] tx);
     }
 }

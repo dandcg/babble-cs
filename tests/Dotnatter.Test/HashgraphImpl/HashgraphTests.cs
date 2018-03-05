@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Dotnatter.Crypto;
@@ -10,7 +9,6 @@ using Dotnatter.HashgraphImpl.Stores;
 using Dotnatter.Test.Helpers;
 using Dotnatter.Util;
 using Serilog;
-using Serilog.Events;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
@@ -67,7 +65,8 @@ namespace Dotnatter.Test.HashgraphImpl
             public string SelfParent { get; }
             public string OtherParent { get; }
             public string Name { get; }
-            public byte[][] Payload { get; }
+            public byte[][] TxPayload { get; }
+            public BlockSignature[] SigPayload { get; }
 
             public Play(
                 int to,
@@ -75,7 +74,8 @@ namespace Dotnatter.Test.HashgraphImpl
                 string selfParent,
                 string otherParent,
                 string name,
-                byte[][] payload
+                byte[][] txPayload,
+                BlockSignature[] sigPayload
             )
             {
                 To = to;
@@ -83,7 +83,8 @@ namespace Dotnatter.Test.HashgraphImpl
                 SelfParent = selfParent;
                 OtherParent = otherParent;
                 Name = name;
-                Payload = payload;
+                TxPayload = txPayload;
+                SigPayload = sigPayload;
             }
         }
 
@@ -113,7 +114,7 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var node = new Node(key, i);
-                var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
+                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
 
                 node.SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
                 nodes.Add(node);
@@ -129,7 +130,7 @@ namespace Dotnatter.Test.HashgraphImpl
                         "e0",
                         "e1",
                         "e01",
-                        new byte[][] { }
+                        null, null
                     ),
                 new Play
                 (
@@ -138,7 +139,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "e2",
                     "",
                     "s20",
-                    new byte[][] { }
+                    null, null
                 ),
                 new Play
                 (
@@ -147,7 +148,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "e1",
                     "",
                     "s10",
-                    new byte[][] { }
+                    null, null
                 ),
                 new Play
                 (
@@ -156,7 +157,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "e01",
                     "",
                     "s00",
-                    new byte[][] { }
+                    null, null
                 ),
                 new Play
                 (
@@ -165,7 +166,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "s20",
                     "s00",
                     "e20",
-                    new byte[][] { }
+                    null, null
                 ),
                 new Play
                 (
@@ -174,7 +175,7 @@ namespace Dotnatter.Test.HashgraphImpl
                     "s10",
                     "e20",
                     "e12",
-                    new byte[][] { }
+                    null, null
                 )
             };
 
@@ -186,7 +187,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 parents.Add(otherParent ?? "");
 
-                var e = new Event(p.Payload,
+                var e = new Event(p.TxPayload, p.SigPayload,
                     parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
@@ -354,21 +355,19 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var node = new Node(key, 1);
 
-            var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
+            var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
 
             ev.Sign(key);
 
             Console.WriteLine(ev.Hex());
 
-            var ev2 = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
+            var ev2 = new Event(null, null, new[] {"", ""}, node.Pub, 0);
 
             ev2.Body.Timestamp = ev.Body.Timestamp;
 
-           Console.WriteLine(ev2.Hex());
+            Console.WriteLine(ev2.Hex());
 
-           Assert.Equal(ev.Hex(), ev2.Hex());
-
-  
+            Assert.Equal(ev.Hex(), ev2.Hex());
         }
 
         /*
@@ -397,8 +396,12 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var participants = new Dictionary<string, int>();
 
-            foreach (var node in nodes)
+            int i = 0;
+            for (i = 0; i < N; i++)
             {
+                var key = CryptoUtils.GenerateEcdsaKey();
+                var node = new Node(key, i);
+                nodes.Add(node);
                 participants.Add(node.Pub.ToHex(), node.Id);
             }
 
@@ -406,13 +409,10 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var hashgraph = new Hashgraph(participants, store, null, logger);
 
-            for (var i = 0; i < N; i++)
+            i = 0;
+            foreach (var node in nodes)
             {
-                var key = CryptoUtils.GenerateEcdsaKey();
-
-                var node = new Node(key, i);
-
-                var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
+                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
 
                 ev.Sign(node.Key);
 
@@ -421,13 +421,15 @@ namespace Dotnatter.Test.HashgraphImpl
                 await hashgraph.InsertEvent(ev, true);
 
                 nodes.Add(node);
+
+                i++;
             }
 
             // ---
 
             //a and e2 need to have different hashes
 
-            var eventA = new Event(new[] {"yo".StringToBytes()}, new[] {"", ""}, nodes[2].Pub, 0);
+            var eventA = new Event(new[] {"yo".StringToBytes()}, null, new[] {"", ""}, nodes[2].Pub, 0);
             eventA.Sign(nodes[2].Key);
             index["a"] = eventA.Hex();
 
@@ -437,7 +439,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             //// ---
 
-            var event01 = new Event(new byte[][] { }, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
+            var event01 = new Event(null, null, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
             event01.Sign(nodes[0].Key);
             index["e01"] = event01.Hex();
 
@@ -447,7 +449,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
             // ---
 
-            var event20 = new Event(new byte[][] { }, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
+            var event20 = new Event(null, null, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
             event20.Sign(nodes[2].Key);
             index["e20"] = event20.Hex();
 
@@ -488,35 +490,34 @@ namespace Dotnatter.Test.HashgraphImpl
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var node = new Node(key, i);
 
-                var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
+                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
                 node.SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
                 nodes.Add(node);
             }
 
             var plays = new[]
             {
-                new Play(1, 1, "e1", "e0", "e10", new byte[][] { }),
-                new Play(2, 1, "e2", "", "s20", new byte[][] { }),
-                new Play(0, 1, "e0", "", "s00", new byte[][] { }),
-                new Play(2, 2, "s20", "e10", "e21", new byte[][] { }),
-                new Play(0, 2, "s00", "e21", "e02", new byte[][] { }),
-                new Play(1, 2, "e10", "", "s10", new byte[][] { }),
-                new Play(1, 3, "s10", "e02", "f1", new byte[][] { }),
-                new Play(1, 4, "f1", "", "s11", new[] {"abc".StringToBytes()})
+                new Play(1, 1, "e1", "e0", "e10", null, null),
+                new Play(2, 1, "e2", "", "s20", null, null),
+                new Play(0, 1, "e0", "", "s00", null, null),
+                new Play(2, 2, "s20", "e10", "e21", null, null),
+                new Play(0, 2, "s00", "e21", "e02", null, null),
+                new Play(1, 2, "e10", "", "s10", null, null),
+                new Play(1, 3, "s10", "e02", "f1", null, null),
+                new Play(1, 4, "f1", "", "s11", new[] {"abc".StringToBytes()}, null)
             };
 
             foreach (var p in plays)
             {
-                var parents = new List<string>();
-
-                parents.Add(index[p.SelfParent]);
+                var parents = new List<string> {index[p.SelfParent]};
 
                 index.TryGetValue(p.OtherParent, out var otherParent);
 
                 parents.Add(otherParent ?? "");
 
                 var e = new Event(
-                    p.Payload,
+                    p.TxPayload,
+                    p.SigPayload,
                     parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
@@ -711,6 +712,9 @@ namespace Dotnatter.Test.HashgraphImpl
             f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
 
             //Pending loaded Events
+            // 3 Events with index 0,
+            // 1 Event with non-empty Transactions
+            //= 4 Loaded Events
             var ple = h.PendingLoadedEvents;
             Assert.Equal(4, ple);
         }
@@ -979,6 +983,186 @@ namespace Dotnatter.Test.HashgraphImpl
         }
 
         /*
+
+e0  e1  e2    Block (0, 1)
+0   1    2
+*/
+
+        public static async Task<(Hashgraph hashgraph, Node[] nodes, Dictionary<string, string> index)> InitBlockHashgraph(ILogger logger)
+        {
+            var index = new Dictionary<string, string>();
+            var nodes = new List<Node>();
+            var orderedEvents = new List<Event>();
+            int i = 0;
+
+            //create the initial events
+            for (i = 0; i < N; i++)
+            {
+                var key = CryptoUtils.GenerateEcdsaKey();
+                var node = new Node(key, i);
+                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
+                node.SignAndAddEvent(ev, string.Format("e{0}", i), index, orderedEvents);
+                nodes.Add(node);
+            }
+
+            var participants = new Dictionary<string, int>();
+            foreach (var node in nodes)
+            {
+                participants.Add(node.Pub.ToHex(), node.Id);
+            }
+
+            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize, logger), null, logger);
+
+            //create a block and signatures manually
+            Exception err;
+
+            var block = new Block(0, 1, new[] {"block tx".StringToBytes()});
+            err = await hashgraph.Store.SetBlock(block);
+            Assert.Null(err);
+
+            i = 0;
+            foreach (var ev in orderedEvents)
+            {
+                err = await hashgraph.InsertEvent(ev, true);
+
+                if (err != null)
+                {
+                    logger.Warning("ERROR inserting event {0}: {1}", i, err);
+                }
+            }
+
+            return (hashgraph, nodes.ToArray(), index);
+        }
+
+        [Fact]
+        public async Task TestInsertEventsWithBlockSignatures()
+        {
+            BlockSignature sig;
+            Exception err;
+            Block block;
+            Event e;
+
+            var (h, nodes, index) = await InitBlockHashgraph(logger);
+
+            (block, err) = await h.Store.GetBlock(0);
+            Assert.Null(err);
+
+            var blockSigs = new List<BlockSignature>();
+
+            foreach (var n in nodes)
+            {
+                (sig, err) = block.Sign(n.Key);
+                Assert.Null(err);
+
+                blockSigs.Add(sig);
+            }
+
+            //Inserting Events with valid signatures
+
+            /*
+                s00 |   |
+                |   |   |
+                |  e10  s20
+                | / |   |
+                e0  e1  e2
+                0   1    2
+            */
+            var plays = new[]
+            {
+                new Play(1, 1, "e1", "e0", "e10", null, new[] {blockSigs[1]}),
+                new Play(2, 1, "e2", "", "s20", null, new[] {blockSigs[2]}),
+                new Play(0, 1, "e0", "", "s00", null, new[] {blockSigs[0]})
+            };
+
+            foreach (var pl in plays)
+            {
+
+                var sp = index[pl.SelfParent];
+                index.TryGetValue(pl.OtherParent,out var op);
+                op = op ?? "";
+
+                e = new Event(pl.TxPayload,
+                    pl.SigPayload,
+                    new[] {sp, op},
+                    nodes[pl.To].Pub,
+                    pl.Index);
+
+                e.Sign(nodes[pl.To].Key);
+                index[pl.Name] = e.Hex();
+
+                err = await h.InsertEvent(e, true);
+
+                Assert.Null(err);
+            }
+
+            //check that the block contains 3 signatures
+            (block, _) = await h.Store.GetBlock(0);
+            var l = block.Signatures.Count;
+            Assert.Equal(3, l);
+
+            //"Inserting Events with signature of unknown block"
+
+            //The Event should be inserted
+            //The block signature is simply ignored
+
+            var block1 = new Block(1, 2, new byte[][] { });
+            (sig, _) = block1.Sign(nodes[2].Key);
+
+            //unknown block
+            var unknownBlockSig = new BlockSignature
+            {
+                Validator = nodes[2].Pub,
+                Index = 1,
+                Signature = sig.Signature
+            };
+            var p = new Play(2, 2, "s20", "e10", "e21", null, new[] {unknownBlockSig});
+
+            e = new Event(null, p.SigPayload, new[] {index[p.SelfParent], index[p.OtherParent]},
+                nodes[p.To].Pub,
+                p.Index);
+
+            e.Sign(nodes[p.To].Key);
+            index[p.Name] = e.Hex();
+
+            err = await h.InsertEvent(e, true);
+            Assert.Null(err);
+
+            //check that the event was recorded
+            (_, err) = await h.Store.GetEvent(index["e21"]);
+            Assert.Null(err);
+
+//Inserting Events with BlockSignature not from creator
+
+            //The Event should be inserted
+            //The block signature is simply ignored
+
+            //wrong validator
+            //Validator should be same as Event creator (node 0)
+            var key = CryptoUtils.GenerateEcdsaKey();
+            var badNode = new Node(key, 666);
+            var (badNodeSig, _) = block.Sign(badNode.Key);
+
+            p = new Play(0, 2, "s00", "e21", "e02", null, new[] {badNodeSig});
+
+            e = new Event(null,
+                p.SigPayload,
+                new[] {index[p.SelfParent], index[p.OtherParent]},
+                nodes[p.To].Pub,
+                p.Index);
+
+            e.Sign(nodes[p.To].Key);
+            index[p.Name] = e.Hex();
+
+            err = await h.InsertEvent(e, true);
+            Assert.Null(err);
+
+            //check that the signature was not appended to the block
+            (block, _) = await h.Store.GetBlock(0);
+            l = block.Signatures.Count;
+            Assert.Equal(3, l);
+        }
+
+        /*
         		h0  |   h2
         		| \ | / |
         		|   h1  |
@@ -1039,8 +1223,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var node = new Node(key, i);
 
-                var ev = new Event(new byte[]
-                    [] { }, new[] {"", ""}, node.Pub, 0);
+                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
 
                 node.SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
                 nodes.Add(node);
@@ -1048,28 +1231,28 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var plays = new[]
             {
-                new Play(1, 1, "e1", "e0", "e10", new byte[][] { }),
-                new Play(2, 1, "e2", "e10", "e21", new[] {"e21".StringToBytes()}),
-                new Play(2, 2, "e21", "", "e21b", new byte[][] { }),
-                new Play(0, 1, "e0", "e21b", "e02", new byte[][] { }),
-                new Play(1, 2, "e10", "e02", "f1", new byte[][] { }),
-                new Play(1, 3, "f1", "", "f1b", new[] {"f1b".StringToBytes()}),
-                new Play(0, 2, "e02", "f1b", "f0", new byte[][] { }),
-                new Play(2, 3, "e21b", "f1b", "f2", new byte[][] { }),
-                new Play(1, 4, "f1b", "f0", "f10", new byte[][] { }),
-                new Play(2, 4, "f2", "f10", "f21", new byte[][] { }),
-                new Play(0, 3, "f0", "f21", "f02", new byte[][] { }),
-                new Play(0, 4, "f02", "", "f02b", new[] {"e21".StringToBytes()}),
-                new Play(1, 5, "f10", "f02b", "g1", new byte[][] { }),
-                new Play(0, 5, "f02b", "g1", "g0", new byte[][] { }),
-                new Play(2, 5, "f21", "g1", "g2", new byte[][] { }),
-                new Play(1, 6, "g1", "g0", "g10", new byte[][] { }),
-                new Play(0, 6, "g0", "f21", "o02", new byte[][] { }),
-                new Play(2, 6, "g2", "g10", "g21", new byte[][] { }),
-                new Play(0, 7, "o02", "g21", "g02", new byte[][] { }),
-                new Play(1, 7, "g10", "g02", "h1", new byte[][] { }),
-                new Play(0, 8, "g02", "h1", "h0", new byte[][] { }),
-                new Play(2, 7, "g21", "h1", "h2", new byte[][] { })
+                new Play(1, 1, "e1", "e0", "e10", null, null),
+                new Play(2, 1, "e2", "e10", "e21", new[] {"e21".StringToBytes()}, null),
+                new Play(2, 2, "e21", "", "e21b", null, null),
+                new Play(0, 1, "e0", "e21b", "e02", null, null),
+                new Play(1, 2, "e10", "e02", "f1", null, null),
+                new Play(1, 3, "f1", "", "f1b", new[] {"f1b".StringToBytes()}, null),
+                new Play(0, 2, "e02", "f1b", "f0", null, null),
+                new Play(2, 3, "e21b", "f1b", "f2", null, null),
+                new Play(1, 4, "f1b", "f0", "f10", null, null),
+                new Play(2, 4, "f2", "f10", "f21", null, null),
+                new Play(0, 3, "f0", "f21", "f02", null, null),
+                new Play(0, 4, "f02", "", "f02b", new[] {"e21".StringToBytes()}, null),
+                new Play(1, 5, "f10", "f02b", "g1", null, null),
+                new Play(0, 5, "f02b", "g1", "g0", null, null),
+                new Play(2, 5, "f21", "g1", "g2", null, null),
+                new Play(1, 6, "g1", "g0", "g10", null, null),
+                new Play(0, 6, "g0", "f21", "o02", null, null),
+                new Play(2, 6, "g2", "g10", "g21", null, null),
+                new Play(0, 7, "o02", "g21", "g02", null, null),
+                new Play(1, 7, "g10", "g02", "h1", null, null),
+                new Play(0, 8, "g02", "h1", "h0", null, null),
+                new Play(2, 7, "g21", "h1", "h2", null, null)
             };
 
             foreach (var p in plays)
@@ -1080,7 +1263,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 parents.Add(otherParent ?? "");
 
-                var e = new Event(p.Payload,
+                var e = new Event(p.TxPayload, p.SigPayload,
                     parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
@@ -1106,24 +1289,25 @@ namespace Dotnatter.Test.HashgraphImpl
 
             var hashgraph = new Hashgraph(participants, store, null, logger);
 
-            using (var tx = store.BeginTx()) 
+            using (var tx = store.BeginTx())
             {
-            i = 0;
-            foreach (var ev in orderedEvents)
-            {
-                var err = await hashgraph.InsertEvent(ev, true);
-
-                if (err != null)
+                i = 0;
+                foreach (var ev in orderedEvents)
                 {
-                    Console.WriteLine($"ERROR inserting event {i}: {err?.Message}");
+                    var err = await hashgraph.InsertEvent(ev, true);
+
+                    if (err != null)
+                    {
+                        Console.WriteLine($"ERROR inserting event {i}: {err?.Message}");
+                    }
+
+                    i++;
                 }
 
-                i++;
-            }
                 tx.Commit();
-        }
+            }
 
-        return (hashgraph, index);
+            return (hashgraph, index);
         }
 
         [Fact]
@@ -1227,6 +1411,8 @@ namespace Dotnatter.Test.HashgraphImpl
 
             await h.FindOrder();
 
+            // Check Consensus Events
+
             var i = 0;
             foreach (var e in h.ConsensusEvents())
 
@@ -1251,27 +1437,42 @@ namespace Dotnatter.Test.HashgraphImpl
 
             n = GetName(index, consensusEvents[6]);
             Assert.True(n == "e02", $"consensus[6] should be e02, not {n}");
+
+            // Check Blocks
+
+            var (block0, err) = await h.Store.GetBlock(0);
+            Assert.Null(err);
+
+            Assert.Equal(0, block0.Index());
+
+            Assert.Equal(1, block0.RoundReceived());
+
+            Assert.Single(block0.Transactions());
+
+            var tx = block0.Transactions()[0];
+
+            tx.ShouldCompareTo("e21".StringToBytes());
         }
 
-        //[Fact]
-        //public void BenchmarkFindOrder(b* testing.B)
-        //{
-        //    for n = 0; n < b.N; n++ {
-        //        //we do not want to benchmark the initialization code
-        //        b.StopTimer()
+        [Fact]
+        public async Task BenchmarkFindOrder()
+        {
+            for (var n = 0; n < N; n++)
+            {
+                //we do not want to benchmark the initialization code
+                // StopTimer();
 
-        //        h, _ = initConsensusHashgraph(false, common.NewBenchmarkLogger(b))
+                var (h, _) = await InitConsensusHashgraph(false, null, logger);
 
-        //        b.StartTimer()
+                // StartTimer()
 
-        //        h.DivideRounds()
+                await h.DivideRounds();
 
-        //        h.DecideFame()
+                await h.DecideFame();
 
-        //        h.FindOrder()
-
-        //    }
-        //}
+                await h.FindOrder();
+            }
+        }
 
         [Fact]
         public async Task TestKnown()
@@ -1285,13 +1486,13 @@ namespace Dotnatter.Test.HashgraphImpl
                 {2, 7}
             };
 
-            var known = await h.Known();
+            var known = await h.KnownEvents();
 
             foreach (var id in h.Participants)
             {
                 var l = known[id.Value];
 
-                Assert.True(l == expectedKnown[id.Value], $"Known[{id.Value}] should be {expectedKnown[id.Value]}, not {l}");
+                Assert.True(l == expectedKnown[id.Value], $"KnownEvents[{id.Value}] should be {expectedKnown[id.Value]}, not {l}");
             }
         }
 
@@ -1372,13 +1573,13 @@ namespace Dotnatter.Test.HashgraphImpl
                 {2, 7}
             };
 
-            var known = await h.Known();
+            var known = await h.KnownEvents();
 
             foreach (var it in h.Participants)
             {
                 var id = it.Value;
                 var l = known[id];
-                Assert.True(l == expectedKnown[id], $"Known[{id}] should be {expectedKnown[id]}, not {l}");
+                Assert.True(l == expectedKnown[id], $"KnownEvents[{id}] should be {expectedKnown[id]}, not {l}");
             }
         }
 
@@ -1524,14 +1725,14 @@ namespace Dotnatter.Test.HashgraphImpl
                 {2, 7}
             };
 
-            var known = await h.Known();
+            var known = await h.KnownEvents();
 
             foreach (var p in h.Participants)
             {
                 var id = p.Value;
                 var l = known[id];
 
-                Assert.True(l == expectedKnown[id], $"Known[{id}] should be {expectedKnown[id]}, not {l}");
+                Assert.True(l == expectedKnown[id], $"KnownEvents[{id}] should be {expectedKnown[id]}, not {l}");
             }
 
             await h.DivideRounds();
@@ -1561,12 +1762,8 @@ namespace Dotnatter.Test.HashgraphImpl
             //Set events and run consensus methods on it
             var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);
 
-
-
-
             using (var tx = h.Store.BeginTx())
             {
-
                 await h.DivideRounds();
 
                 await h.DecideFame();
@@ -1576,27 +1773,26 @@ namespace Dotnatter.Test.HashgraphImpl
                 tx.Commit();
             }
 
-
             h.Store.Close();
 
             Exception err;
-            
+
             logger.Debug("------- RecycledStore -------");
 
             //Now we want to create a new Hashgraph based on the database of the previous
             //Hashgraph and see if we can boostrap it to the same state.
             IStore recycledStore;
             (recycledStore, err) = await LocalDbStore.Load(CacheSize, dbPath, logger);
-            
+
             Assert.Null(err);
 
             Assert.Equal(h.Store.Participants().participants.Count, recycledStore.Participants().participants.Count);
 
-            foreach (var p in h.Store.Participants().participants )
+            foreach (var p in h.Store.Participants().participants)
             {
                 Assert.Equal(recycledStore.Participants().participants[p.Key], p.Value);
             }
-      
+
             var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
 
             err = await nh.Bootstrap();
@@ -1609,17 +1805,16 @@ namespace Dotnatter.Test.HashgraphImpl
 
             Assert.Equal(hConsensusEvents.Length, nhConsensusEvents.Length);
 
-            var hKnown = await h.Known();
+            var hKnown = await h.KnownEvents();
 
-            var nhKnown = await nh.Known();
+            var nhKnown = await nh.KnownEvents();
 
-            Assert.Equal(hKnown.Count,nhKnown.Count);
+            Assert.Equal(hKnown.Count, nhKnown.Count);
 
-            foreach (var p in hKnown )
+            foreach (var p in hKnown)
             {
                 Assert.Equal(nhKnown[p.Key], p.Value);
             }
-
 
             Assert.Equal(h.LastConsensusRound, nh.LastConsensusRound);
 
@@ -1701,42 +1896,42 @@ namespace Dotnatter.Test.HashgraphImpl
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var node = new Node(key, i);
+                var name = $"w0{i}";
+                var ev = new Event(new [] {name.StringToBytes() }, null, new[] {"", ""}, node.Pub, 0);
 
-                var ev = new Event(new byte[][] { }, new[] {"", ""}, node.Pub, 0);
-
-                node.SignAndAddEvent(ev, $"w0{i}", index, orderedEvents);
+                node.SignAndAddEvent(ev, name, index, orderedEvents);
                 nodes.Add(node);
             }
 
             var plays = new[]
             {
-                new Play(2, 1, "w02", "w03", "a23", new byte[][] { }),
-                new Play(1, 1, "w01", "a23", "a12", new byte[][] { }),
-                new Play(0, 1, "w00", "", "a00", new byte[][] { }),
-                new Play(1, 2, "a12", "a00", "a10", new byte[][] { }),
-                new Play(2, 2, "a23", "a12", "a21", new byte[][] { }),
-                new Play(3, 1, "w03", "a21", "w13", new byte[][] { }),
-                new Play(2, 3, "a21", "w13", "w12", new byte[][] { }),
-                new Play(1, 3, "a10", "w12", "w11", new byte[][] { }),
-                new Play(0, 2, "a00", "w11", "w10", new byte[][] { }),
-                new Play(2, 4, "w12", "w11", "b21", new byte[][] { }),
-                new Play(3, 2, "w13", "b21", "w23", new byte[][] { }),
-                new Play(1, 4, "w11", "w23", "w21", new byte[][] { }),
-                new Play(0, 3, "w10", "", "b00", new byte[][] { }),
-                new Play(1, 5, "w21", "b00", "c10", new byte[][] { }),
-                new Play(2, 5, "b21", "c10", "w22", new byte[][] { }),
-                new Play(0, 4, "b00", "w22", "w20", new byte[][] { }),
-                new Play(1, 6, "c10", "w20", "w31", new byte[][] { }),
-                new Play(2, 6, "w22", "w31", "w32", new byte[][] { }),
-                new Play(0, 5, "w20", "w32", "w30", new byte[][] { }),
-                new Play(3, 3, "w23", "w32", "w33", new byte[][] { }),
-                new Play(1, 7, "w31", "w33", "d13", new byte[][] { }),
-                new Play(0, 6, "w30", "d13", "w40", new byte[][] { }),
-                new Play(1, 8, "d13", "w40", "w41", new byte[][] { }),
-                new Play(2, 7, "w32", "w41", "w42", new byte[][] { }),
-                new Play(3, 4, "w33", "w42", "w43", new byte[][] { }),
-                new Play(2, 8, "w42", "w43", "e23", new byte[][] { }),
-                new Play(1, 9, "w41", "e23", "w51", new byte[][] { })
+                new Play(2, 1, "w02", "w03", "a23", new[] {"a23".StringToBytes()}, null),
+                new Play(1, 1, "w01", "a23", "a12", new[] {"a12".StringToBytes()}, null),
+                new Play(0, 1, "w00", "", "a00", new[] {"a00".StringToBytes()}, null),
+                new Play(1, 2, "a12", "a00", "a10", new[] {"a10".StringToBytes()}, null),
+                new Play(2, 2, "a23", "a12", "a21", new[] {"a21".StringToBytes()}, null),
+                new Play(3, 1, "w03", "a21", "w13", new[] {"w13".StringToBytes()}, null),
+                new Play(2, 3, "a21", "w13", "w12", new[] {"w12".StringToBytes()}, null),
+                new Play(1, 3, "a10", "w12", "w11", new[] {"w11".StringToBytes()}, null),
+                new Play(0, 2, "a00", "w11", "w10", new[] {"w10".StringToBytes()}, null),
+                new Play(2, 4, "w12", "w11", "b21", new[] {"b21".StringToBytes()}, null),
+                new Play(3, 2, "w13", "b21", "w23", new[] {"w32".StringToBytes()}, null),
+                new Play(1, 4, "w11", "w23", "w21", new[] {"w21".StringToBytes()}, null),
+                new Play(0, 3, "w10", "", "b00", new[] {"b00".StringToBytes()}, null),
+                new Play(1, 5, "w21", "b00", "c10", new[] {"c10".StringToBytes()}, null),
+                new Play(2, 5, "b21", "c10", "w22", new[] {"w22".StringToBytes()}, null),
+                new Play(0, 4, "b00", "w22", "w20", new[] {"w20".StringToBytes()}, null),
+                new Play(1, 6, "c10", "w20", "w31", new[] {"w31".StringToBytes()}, null),
+                new Play(2, 6, "w22", "w31", "w32", new[] {"w32".StringToBytes()}, null),
+                new Play(0, 5, "w20", "w32", "w30", new[] {"w30".StringToBytes()}, null),
+                new Play(3, 3, "w23", "w32", "w33", new[] {"w33".StringToBytes()}, null),
+                new Play(1, 7, "w31", "w33", "d13", new[] {"d13".StringToBytes()}, null),
+                new Play(0, 6, "w30", "d13", "w40", new[] {"w40".StringToBytes()}, null),
+                new Play(1, 8, "d13", "w40", "w41", new[] {"w41".StringToBytes()}, null),
+                new Play(2, 7, "w32", "w41", "w42", new[] {"w42".StringToBytes()}, null),
+                new Play(3, 4, "w33", "w42", "w43", new[] {"w43".StringToBytes()}, null),
+                new Play(2, 8, "w42", "w43", "e23", new[] {"e23".StringToBytes()}, null),
+                new Play(1, 9, "w41", "e23", "w51", new[] {"w51".StringToBytes()}, null)
             };
 
             foreach (var p in plays)
@@ -1745,7 +1940,7 @@ namespace Dotnatter.Test.HashgraphImpl
                 index.TryGetValue(p.OtherParent, out var otherParent);
                 parents.Add(otherParent ?? "");
 
-                var e = new Event(p.Payload, parents.ToArray(),
+                var e = new Event(p.TxPayload, p.SigPayload, parents.ToArray(),
                     nodes[p.To].Pub,
                     p.Index);
 
@@ -1767,7 +1962,7 @@ namespace Dotnatter.Test.HashgraphImpl
 
                 if (err != null)
                 {
-                    Console.WriteLine($"ERROR inserting event {i}: {err?.Message} ");
+                    Console.WriteLine($"ERROR inserting event {i}: {err.Message} ");
                 }
             }
 
@@ -1805,6 +2000,37 @@ namespace Dotnatter.Test.HashgraphImpl
             var expectedUndecidedRounds = new List<int> {4, 5};
 
             h.UndecidedRounds.ToArray().ShouldCompareTo(expectedUndecidedRounds.ToArray());
+        }
+
+        [Fact]
+        public async Task TestFunkyHashgraphBlocks()
+        {
+            var (h, _ ) = await InitFunkyHashgraph();
+            await h.DivideRounds();
+            await h.DecideFame();
+            await h.FindOrder();
+
+            var expectedBlockTxCounts = new Dictionary<int, int>
+            {
+                {0, 6},
+                {1, 7},
+                {2, 7}
+            };
+
+            for (var bi = 0; bi < 3; bi++)
+            {
+                var (b, err) = await h.Store.GetBlock(bi);
+                Assert.Null(err);
+
+                var i = 0;
+                foreach (var tx in b.Transactions())
+                {
+                    logger.Debug(string.Format("block {0}, tx {1}: {2}", bi, i, tx.BytesToString()));
+                    i++;
+                }
+
+                Assert.Equal(expectedBlockTxCounts[bi], b.Transactions().Length);
+            }
         }
 
         private static string GetName(Dictionary<string, string> index, string hash)
