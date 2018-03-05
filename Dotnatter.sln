@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2024
+VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter", "src\Dotnatter\Dotnatter.csproj", "{8253FD8F-8B69-40DE-9E5E-B414F5B7B958}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter.Test", "tests\Dotnatter.Test\Dotnatter.Test.csproj", "{C8D66209-80A5-45A1-B3AC-06F81E3F0EC5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dotnatter.Cli", "src\Dotnatter.Cli\Dotnatter.Cli.csproj", "{C6C04BA9-D361-4DF4-9030-49F938ADACDA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter.Cli", "src\Dotnatter.Cli\Dotnatter.Cli.csproj", "{C6C04BA9-D361-4DF4-9030-49F938ADACDA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter", "src\Dotnatter\Dotnatter.csproj", "{5AE8CFEB-15D9-4802-8F79-8E8FE9C18D9F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dotnatter.Core", "src\Dotnatter.Core\Dotnatter.Core.csproj", "{BDE46C5F-070B-48FA-853E-B45063AEBB5C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +17,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8253FD8F-8B69-40DE-9E5E-B414F5B7B958}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8253FD8F-8B69-40DE-9E5E-B414F5B7B958}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8253FD8F-8B69-40DE-9E5E-B414F5B7B958}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8253FD8F-8B69-40DE-9E5E-B414F5B7B958}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C8D66209-80A5-45A1-B3AC-06F81E3F0EC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C8D66209-80A5-45A1-B3AC-06F81E3F0EC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C8D66209-80A5-45A1-B3AC-06F81E3F0EC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -27,6 +25,14 @@ Global
 		{C6C04BA9-D361-4DF4-9030-49F938ADACDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C6C04BA9-D361-4DF4-9030-49F938ADACDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C6C04BA9-D361-4DF4-9030-49F938ADACDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5AE8CFEB-15D9-4802-8F79-8E8FE9C18D9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AE8CFEB-15D9-4802-8F79-8E8FE9C18D9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AE8CFEB-15D9-4802-8F79-8E8FE9C18D9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AE8CFEB-15D9-4802-8F79-8E8FE9C18D9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDE46C5F-070B-48FA-853E-B45063AEBB5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDE46C5F-070B-48FA-853E-B45063AEBB5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDE46C5F-070B-48FA-853E-B45063AEBB5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDE46C5F-070B-48FA-853E-B45063AEBB5C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
