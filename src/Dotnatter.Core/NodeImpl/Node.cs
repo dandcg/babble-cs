@@ -90,39 +90,35 @@ namespace Dotnatter.Core.NodeImpl
             return await Core.Init();
         }
 
-        public  Task RunAsync(bool gossip, CancellationToken ct = default)
+        public Task StartAsync(bool gossip, CancellationToken ct = default)
         {
             var tcsInit = new TaskCompletionSource<bool>();
 
             nodeTask = Task.Run(async () =>
-                {
-                    //The ControlTimer allows the background routines to control the
-                    //heartbeat timer when the node is in the Babbling state. The timer should
-                    //only be running when there are uncommitted transactions in the system.
+            {
+                //The ControlTimer allows the background routines to control the
+                //heartbeat timer when the node is in the Babbling state. The timer should
+                //only be running when there are uncommitted transactions in the system.
 
-                    var controlTimerTask = controlTimer.RunAsync(cts.Token);
+                var controlTimerTask = controlTimer.RunAsync(cts.Token);
 
-                    //Execute some background work regardless of the state of the node.
-                    //Process RPC requests as well as SumbitTx and CommitBlock requests
-                    var tcsBackgroundWork = new TaskCompletionSource<bool>();
-                    var backgroundWorkTask = BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork);
+                //Execute some background work regardless of the state of the node.
+                //Process RPC requests as well as SumbitTx and CommitBlock requests
+                var tcsBackgroundWork = new TaskCompletionSource<bool>();
+                var backgroundWorkTask = BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork);
 
-                    //Execute Node State Machine
+                //Execute Node State Machine
 
-                    var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
+                var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
 
-                    var runTask = Task.WhenAll(controlTimerTask, stateMachineTask, backgroundWorkTask);
+                var runTask = Task.WhenAll(controlTimerTask, stateMachineTask, backgroundWorkTask);
 
-                    await tcsBackgroundWork.Task;
+                await tcsBackgroundWork.Task;
 
-                    tcsInit.SetResult(true);
-               
+                tcsInit.SetResult(true);
 
-                    await runTask;
-                }
-            );
-            
-          
+                await runTask;
+            }, ct);
 
             return tcsInit.Task;
         }
@@ -138,7 +134,7 @@ namespace Dotnatter.Core.NodeImpl
                 switch (state)
                 {
                     case NodeStateEnum.Babbling:
-                        await Babble(gossip, ct);
+                        await BabbleAsync(gossip, ct);
                         break;
 
                     case NodeStateEnum.CatchingUp:
@@ -164,7 +160,7 @@ namespace Dotnatter.Core.NodeImpl
                     await netCh.OutputAvailableAsync(ct);
                     var rpc = await netCh.DequeueAsync(ct);
                     logger.Debug("Processing RPC");
-                    await ProcessRpc(rpc, ct);
+                    await ProcessRpcAsync(rpc, ct);
                 }
             }
 
@@ -213,7 +209,7 @@ namespace Dotnatter.Core.NodeImpl
             await task;
         }
 
-        private async Task Babble(bool gossip, CancellationToken ct)
+        private async Task BabbleAsync(bool gossip, CancellationToken ct)
         {
             while (!ct.IsCancellationRequested)
             {
@@ -250,7 +246,7 @@ namespace Dotnatter.Core.NodeImpl
             }
         }
 
-        public async Task ProcessRpc(Rpc rpc, CancellationToken ct)
+        public async Task ProcessRpcAsync(Rpc rpc, CancellationToken ct)
         {
             var s = nodeState.GetState();
 
@@ -265,7 +261,7 @@ namespace Dotnatter.Core.NodeImpl
                 switch (rpc.Command)
                 {
                     case SyncRequest cmd:
-                        await ProcessSyncRequest(rpc, cmd);
+                        await ProcessSyncRequestAsync(rpc, cmd);
                         break;
 
                     case EagerSyncRequest cmd:
@@ -283,7 +279,7 @@ namespace Dotnatter.Core.NodeImpl
             }
         }
 
-        private async Task ProcessSyncRequest(Rpc rpc, SyncRequest cmd)
+        private async Task ProcessSyncRequestAsync(Rpc rpc, SyncRequest cmd)
         {
             logger.Debug("Process SyncRequest FromId={FromId}; Known={@Known};", cmd.FromId, cmd.Known);
 
@@ -658,6 +654,22 @@ namespace Dotnatter.Core.NodeImpl
 
                 //Stop and wait for concurrent operations
                 cts.Cancel();
+
+                try
+                {
+                    nodeTask.Wait();
+                }
+                catch (AggregateException e) when (e.InnerException is OperationCanceledException)
+                {           
+                }
+                catch (AggregateException e)
+                {
+                    logger.Error(e,"Application termination ");
+                }
+                finally
+                {
+                    cts.Dispose();
+                }
 
                 //transport and store should only be closed once all concurrent operations
                 //are finished otherwise they will panic trying to use close objects
