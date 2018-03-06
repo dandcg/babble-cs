@@ -657,7 +657,7 @@ namespace Dotnatter.Core.NodeImpl
 
                 try
                 {
-                    nodeTask.Wait();
+                    nodeTask?.Wait();
                 }
                 catch (AggregateException e) when (e.InnerException is OperationCanceledException)
                 {           
