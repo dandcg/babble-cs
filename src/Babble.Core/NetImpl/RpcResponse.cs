@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Core.NetImpl
+﻿namespace Babble.Core.NetImpl
 {
     // RPCResponse captures both a response and a potential error.
     public class RpcResponse

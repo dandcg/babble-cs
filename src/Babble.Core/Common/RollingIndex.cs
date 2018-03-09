@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Dotnatter.Core.Common
+namespace Babble.Core.Common
 {
     public class RollingIndex<T>
     {

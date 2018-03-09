@@ -4,18 +4,18 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using Dotnatter.Core.HashgraphImpl.Model;
-using Dotnatter.Core.HashgraphImpl.Stores;
-using Dotnatter.Core.NetImpl;
-using Dotnatter.Core.NetImpl.PeerImpl;
-using Dotnatter.Core.NetImpl.TransportImpl;
-using Dotnatter.Core.NodeImpl.PeerSelector;
-using Dotnatter.Core.ProxyImpl;
-using Dotnatter.Core.Util;
+using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.HashgraphImpl.Stores;
+using Babble.Core.NetImpl;
+using Babble.Core.NetImpl.PeerImpl;
+using Babble.Core.NetImpl.TransportImpl;
+using Babble.Core.NodeImpl.PeerSelector;
+using Babble.Core.ProxyImpl;
+using Babble.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
 
-namespace Dotnatter.Core.NodeImpl
+namespace Babble.Core.NodeImpl
 {
     public class Node
     {

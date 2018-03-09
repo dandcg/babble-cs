@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.Core.NodeImpl
+namespace Babble.Core.NodeImpl
 {
     public class NodeError : ApplicationException
     {

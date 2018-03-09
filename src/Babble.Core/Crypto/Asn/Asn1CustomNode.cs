@@ -2,7 +2,7 @@
 using System.IO;
 using System.Xml.Linq;
 
-namespace Dotnatter.Core.Crypto.Asn {
+namespace Babble.Core.Crypto.Asn {
     public class Asn1CustomNode : Asn1Node {
 
         public const string NODE_NAME = "Custom";

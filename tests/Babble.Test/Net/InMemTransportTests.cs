@@ -1,4 +1,4 @@
-﻿using Dotnatter.Core.NetImpl.TransportImpl;
+﻿using Babble.Core.NetImpl.TransportImpl;
 using Xunit;
 
 namespace Dotnatter.Test.Net

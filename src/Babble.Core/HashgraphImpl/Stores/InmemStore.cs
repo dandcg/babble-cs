@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.HashgraphImpl.Model;
-using Dotnatter.Core.Util;
+using Babble.Core.Common;
+using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.Util;
 using Serilog;
 
-namespace Dotnatter.Core.HashgraphImpl.Stores
+namespace Babble.Core.HashgraphImpl.Stores
 {
     public class InmemStore : IStore
     {

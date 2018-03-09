@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.HashgraphImpl.Model;
-using Dotnatter.Core.HashgraphImpl.Stores;
-using Dotnatter.Core.Util;
+using Babble.Core.Common;
+using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.HashgraphImpl.Stores;
+using Babble.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
 
-namespace Dotnatter.Core.HashgraphImpl
+namespace Babble.Core.HashgraphImpl
 {
     public class Hashgraph
     {

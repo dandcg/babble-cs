@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.Core.NetImpl
+namespace Babble.Core.NetImpl
 {
     public class NetError : ApplicationException
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.Core.HashgraphImpl
+namespace Babble.Core.HashgraphImpl
 {
     public class HashgraphError : ApplicationException
     {

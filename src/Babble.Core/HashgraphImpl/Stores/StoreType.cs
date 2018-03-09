@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Core.HashgraphImpl.Stores
+﻿namespace Babble.Core.HashgraphImpl.Stores
 {
    public enum StoreType
     {

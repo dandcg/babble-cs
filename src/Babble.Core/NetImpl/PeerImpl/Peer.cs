@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Dotnatter.Core.NetImpl.PeerImpl
+namespace Babble.Core.NetImpl.PeerImpl
 {
     public class Peer
     {

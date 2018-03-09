@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Core.Crypto.Asn {
+﻿namespace Babble.Core.Crypto.Asn {
     public enum Asn1UniversalNodeType {
         Boolean = 0x01,
         Integer = 0x02,

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
-namespace Dotnatter.Core.Crypto.Asn {
+namespace Babble.Core.Crypto.Asn {
     public abstract class Asn1Node {
 
         public Asn1TagClass TagClass { get; set; }

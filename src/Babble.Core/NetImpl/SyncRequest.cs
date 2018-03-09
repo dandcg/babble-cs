@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Dotnatter.Core.NetImpl
+namespace Babble.Core.NetImpl
 {
     public class SyncRequest
     {

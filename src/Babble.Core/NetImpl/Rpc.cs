@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.Core.NetImpl
+namespace Babble.Core.NetImpl
 {
     public class Rpc
     {

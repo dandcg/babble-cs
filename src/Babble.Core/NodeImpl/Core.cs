@@ -4,15 +4,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Dotnatter.Core.Crypto;
-using Dotnatter.Core.HashgraphImpl;
-using Dotnatter.Core.HashgraphImpl.Model;
-using Dotnatter.Core.HashgraphImpl.Stores;
-using Dotnatter.Core.Util;
+using Babble.Core.Crypto;
+using Babble.Core.HashgraphImpl;
+using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.HashgraphImpl.Stores;
+using Babble.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
 
-namespace Dotnatter.Core.NodeImpl
+namespace Babble.Core.NodeImpl
 {
     public class Core
     {

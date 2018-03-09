@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Dotnatter.Core.Util
+namespace Babble.Core.Util
 {
     public static class DictionaryExtensions
     {

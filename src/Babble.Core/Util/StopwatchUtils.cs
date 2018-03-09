@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace Dotnatter.Core.Util
+namespace Babble.Core.Util
 {
    public static class StopwatchUtils
    {

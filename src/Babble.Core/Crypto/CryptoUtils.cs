@@ -3,7 +3,7 @@ using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 
-namespace Dotnatter.Core.Crypto
+namespace Babble.Core.Crypto
 {
     public static class CryptoUtils
     {

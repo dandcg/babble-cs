@@ -3,16 +3,16 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Babble.Core.Common;
+using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.Util;
 using DBreeze;
 using DBreeze.Transactions;
 using DBreeze.Utils;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.HashgraphImpl.Model;
-using Dotnatter.Core.Util;
 using Serilog;
 using Serilog.Events;
 
-namespace Dotnatter.Core.HashgraphImpl.Stores
+namespace Babble.Core.HashgraphImpl.Stores
 {
     public class LocalDbStore : IStore
     {

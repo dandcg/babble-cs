@@ -1,6 +1,6 @@
-﻿using Dotnatter.Core.NetImpl.PeerImpl;
+﻿using Babble.Core.NetImpl.PeerImpl;
 
-namespace Dotnatter.Core.NodeImpl.PeerSelector
+namespace Babble.Core.NodeImpl.PeerSelector
 {
     public interface IPeerSelector
 

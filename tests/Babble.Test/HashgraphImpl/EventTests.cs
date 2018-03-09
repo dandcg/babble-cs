@@ -1,7 +1,7 @@
 using System;
-using Dotnatter.Core.Crypto;
-using Dotnatter.Core.HashgraphImpl.Model;
-using Dotnatter.Core.Util;
+using Babble.Core.Crypto;
+using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.Util;
 using Dotnatter.Test.Helpers;
 using Xunit;
 using Xunit.Abstractions;

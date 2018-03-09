@@ -1,7 +1,7 @@
-﻿using Dotnatter.Core.HashgraphImpl.Model;
+﻿using Babble.Core.HashgraphImpl.Model;
 using Nito.AsyncEx;
 
-namespace Dotnatter.Core.ProxyImpl
+namespace Babble.Core.ProxyImpl
 {
     public interface IBabbleProxy
     {

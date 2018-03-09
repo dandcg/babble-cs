@@ -2,7 +2,7 @@
 using System.Text;
 using System.Xml.Linq;
 
-namespace Dotnatter.Core.Crypto.Asn {
+namespace Babble.Core.Crypto.Asn {
     public class Asn1PrintableString : Asn1Node {
 
         public const string NODE_NAME = "PrintableString";

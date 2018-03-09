@@ -2,7 +2,7 @@
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Dotnatter.Core.Util
+namespace Babble.Core.Util
 {
     public static class StringUtils
     {

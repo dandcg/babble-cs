@@ -1,10 +1,9 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.Util;
+using Babble.Core.Common;
+using Babble.Core.Util;
 using Serilog;
 
-namespace Dotnatter.Core.HashgraphImpl
+namespace Babble.Core.HashgraphImpl
 {
     public class ParticipantEventsCache
     {

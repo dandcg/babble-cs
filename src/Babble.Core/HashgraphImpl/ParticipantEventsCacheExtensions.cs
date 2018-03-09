@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Dotnatter.Core.HashgraphImpl
+namespace Babble.Core.HashgraphImpl
 {
     public static class ParticipantEventsCacheExtensions
     {

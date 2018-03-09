@@ -3,9 +3,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
-using Dotnatter.Core.Util;
+using Babble.Core.Util;
 
-namespace Dotnatter.Core.Crypto.Asn {
+namespace Babble.Core.Crypto.Asn {
     public class Asn1Integer : Asn1Node {
 
         public const string NODE_NAME = "Integer";

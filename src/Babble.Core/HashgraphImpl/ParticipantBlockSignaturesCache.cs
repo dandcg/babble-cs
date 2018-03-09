@@ -1,9 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.HashgraphImpl.Model;
+using Babble.Core.Common;
+using Babble.Core.HashgraphImpl.Model;
 
-namespace Dotnatter.Core.HashgraphImpl
+namespace Babble.Core.HashgraphImpl
 {
     public class ParticipantBlockSignaturesCache
     {

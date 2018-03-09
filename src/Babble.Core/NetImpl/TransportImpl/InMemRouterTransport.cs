@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.Core.NetImpl.TransportImpl
+namespace Babble.Core.NetImpl.TransportImpl
 {
     public class InMemRouterTransport : ITransport
     {

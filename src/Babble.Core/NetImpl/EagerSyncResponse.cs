@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Core.NetImpl
+﻿namespace Babble.Core.NetImpl
 {
     public class EagerSyncResponse
     {

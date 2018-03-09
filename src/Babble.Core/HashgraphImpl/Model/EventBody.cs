@@ -1,8 +1,8 @@
 ﻿using System;
-using Dotnatter.Core.Crypto;
-using Dotnatter.Core.Util;
+using Babble.Core.Crypto;
+using Babble.Core.Util;
 
-namespace Dotnatter.Core.HashgraphImpl.Model
+namespace Babble.Core.HashgraphImpl.Model
 {
     public class EventBody
     {

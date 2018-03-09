@@ -1,6 +1,6 @@
 ﻿using Serilog;
 
-namespace Dotnatter.Core.Util
+namespace Babble.Core.Util
 {
     public static class LoggingExtensions
     {

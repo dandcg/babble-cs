@@ -1,4 +1,4 @@
-﻿namespace Dotnatter.Core.Common
+﻿namespace Babble.Core.Common
 {
     public enum StoreErrorType
     {

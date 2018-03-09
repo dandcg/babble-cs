@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.Core.Common
+namespace Babble.Core.Common
 {
     public class StoreError : ApplicationException
     {

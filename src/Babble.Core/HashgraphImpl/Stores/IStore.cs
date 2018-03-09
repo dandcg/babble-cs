@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.HashgraphImpl.Model;
+using Babble.Core.Common;
+using Babble.Core.HashgraphImpl.Model;
 
-namespace Dotnatter.Core.HashgraphImpl.Stores
+namespace Babble.Core.HashgraphImpl.Stores
 {
     public interface IStore
     {

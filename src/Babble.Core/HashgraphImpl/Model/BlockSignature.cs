@@ -1,6 +1,6 @@
-﻿using Dotnatter.Core.Util;
+﻿using Babble.Core.Util;
 
-namespace Dotnatter.Core.HashgraphImpl.Model
+namespace Babble.Core.HashgraphImpl.Model
 {
     public class BlockSignature
     {

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Dotnatter.Core.Common;
-using Dotnatter.Core.HashgraphImpl;
+using Babble.Core.Common;
+using Babble.Core.HashgraphImpl;
 using Dotnatter.Test.Helpers;
 using Serilog;
 using Xunit;

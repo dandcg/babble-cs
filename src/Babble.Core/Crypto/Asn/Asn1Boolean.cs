@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Xml.Linq;
 
-namespace Dotnatter.Core.Crypto.Asn {
+namespace Babble.Core.Crypto.Asn {
     public class Asn1Boolean : Asn1Node {
 
         public const string NODE_NAME = "Boolean";

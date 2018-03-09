@@ -1,6 +1,6 @@
-﻿using Dotnatter.Core.HashgraphImpl.Model;
+﻿using Babble.Core.HashgraphImpl.Model;
 
-namespace Dotnatter.Core.NetImpl
+namespace Babble.Core.NetImpl
 {
     public class EagerSyncRequest
     {

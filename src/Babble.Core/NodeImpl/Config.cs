@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dotnatter.Core.NodeImpl
+namespace Babble.Core.NodeImpl
 {
     public class Config
     {

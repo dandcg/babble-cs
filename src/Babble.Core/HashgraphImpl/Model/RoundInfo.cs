@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Dotnatter.Core.Util;
+using Babble.Core.Util;
 
-namespace Dotnatter.Core.HashgraphImpl.Model
+namespace Babble.Core.HashgraphImpl.Model
 {
     public class RoundInfo
     {

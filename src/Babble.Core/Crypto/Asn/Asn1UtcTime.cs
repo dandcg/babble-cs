@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using System.Xml.Linq;
 
-namespace Dotnatter.Core.Crypto.Asn {
+namespace Babble.Core.Crypto.Asn {
     public class Asn1UtcTime : Asn1Node {
 
         public override Asn1UniversalNodeType NodeType => Asn1UniversalNodeType.UtcTime;

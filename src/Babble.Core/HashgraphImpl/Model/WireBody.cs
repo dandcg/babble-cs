@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dotnatter.Core.HashgraphImpl.Model
+namespace Babble.Core.HashgraphImpl.Model
 {
     public class WireBody
     {

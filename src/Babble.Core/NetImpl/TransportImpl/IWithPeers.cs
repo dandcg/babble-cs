@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Dotnatter.Core.NetImpl.TransportImpl
+namespace Babble.Core.NetImpl.TransportImpl
 {
     public interface IWithPeers
     {

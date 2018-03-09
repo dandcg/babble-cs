@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Dotnatter.Core.Crypto;
-using Dotnatter.Core.HashgraphImpl.Model;
+using Babble.Core.Crypto;
+using Babble.Core.HashgraphImpl.Model;
 using Nito.AsyncEx;
 using Serilog;
 
-namespace Dotnatter.Core.ProxyImpl
+namespace Babble.Core.ProxyImpl
 {
     public class InMemAppProxy : IAppProxy
     {

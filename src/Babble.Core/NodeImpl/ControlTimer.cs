@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Dotnatter.Core.NodeImpl
+namespace Babble.Core.NodeImpl
 {
     public class ControlTimer
     {

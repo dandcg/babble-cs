@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Dotnatter.Core.Common
+namespace Babble.Core.Common
 {
     public class RollingIndexMap<T>
     {

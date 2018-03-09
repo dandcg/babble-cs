@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace Dotnatter.Core.ProxyImpl
+namespace Babble.Core.ProxyImpl
 {
     public class ProxyError : ApplicationException
     {
