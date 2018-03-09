@@ -14,12 +14,12 @@ using Xunit.Abstractions;
 
 namespace Babble.Test.NodeImpl
 {
-    public class CoreTests
+    public class ControllerTests
     {
         private readonly ITestOutputHelper output;
         private readonly ILogger logger;
 
-        public CoreTests(ITestOutputHelper output)
+        public ControllerTests(ITestOutputHelper output)
         {
             this.output = output;
             logger = output.SetupLogging().ForContext("SourceContext", "HashGraphTests");
@@ -31,18 +31,18 @@ namespace Babble.Test.NodeImpl
             var key = CryptoUtils.GenerateEcdsaKey();
 
             var participants = new Dictionary<string, int> {{CryptoUtils.FromEcdsaPub(key).ToHex(), 0}};
-            var core = new Core(0, key, participants, new InmemStore(participants, 10, logger), null, logger);
+            var core = new Controller(0, key, participants, new InmemStore(participants, 10, logger), null, logger);
 
             var err = await core.Init();
 
             Assert.Null(err);
         }
 
-        private async Task<(Core[] cores, CngKey[] privateKey, Dictionary<string, string> index)> InitCores(int n)
+        private async Task<(Controller[] cores, CngKey[] privateKey, Dictionary<string, string> index)> InitCores(int n)
         {
             var cacheSize = 1000;
 
-            var cores = new List<Core>();
+            var cores = new List<Controller>();
             var index = new Dictionary<string, string>();
 
             var participantKeys = new List<CngKey>();
@@ -56,7 +56,7 @@ namespace Babble.Test.NodeImpl
 
             for (var i = 0; i < n; i++)
             {
-                var core = new Core(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
+                var core = new Controller(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
                 var err=await core.Init();
                 Assert.Null(err);
 
@@ -89,19 +89,19 @@ namespace Babble.Test.NodeImpl
         e0  e1  e2
         0   1   2
         */
-        private async Task InitHashgraph(Core[] cores, CngKey[] keys, Dictionary<string, string> index, int participant)
+        private async Task InitHashgraph(Controller[] controllers, CngKey[] keys, Dictionary<string, string> index, int participant)
 
         {
             Exception err;
-            for (var i = 0; i < cores.Length; i++)
+            for (var i = 0; i < controllers.Length; i++)
             {
                 if (i != participant)
                 {
                     var evh = index[$"e{i}"];
                     
-                    var ( ev, _) = await cores[i].GetEvent(evh);
+                    var ( ev, _) = await controllers[i].GetEvent(evh);
 
-                    err = await cores[participant].InsertEvent(ev, true);
+                    err = await controllers[participant].InsertEvent(ev, true);
 
                     if (err != null)
                     {
@@ -112,9 +112,9 @@ namespace Babble.Test.NodeImpl
 
             var event01 = new Event(new byte[][] { },null,
                 new[] {index["e0"], index["e1"]}, //e0 and e1
-                cores[0].PubKey(), 1);
+                controllers[0].PubKey(), 1);
 
-            err =await  InsertEvent(cores, keys, index, event01, "e01", participant, 0);
+            err =await  InsertEvent(controllers, keys, index, event01, "e01", participant, 0);
             if (err != null)
             {
                 output.WriteLine("error inserting e01: {0}", err);
@@ -122,9 +122,9 @@ namespace Babble.Test.NodeImpl
 
             var event20 = new Event(new byte[][] { },null,
                 new[] {index["e2"], index["e01"]}, //e2 and e01
-                cores[2].PubKey(), 1);
+                controllers[2].PubKey(), 1);
 
-            err =await  InsertEvent(cores, keys, index, event20, "e20", participant, 2);
+            err =await  InsertEvent(controllers, keys, index, event20, "e20", participant, 2);
             if (err != null)
             {
                 output.WriteLine("error inserting e20: {0}", err);
@@ -132,9 +132,9 @@ namespace Babble.Test.NodeImpl
 
             var event12 = new Event(new byte[][] { },null,
                 new[] {index["e1"], index["e20"]}, //e1 and e20
-                cores[1].PubKey(), 1);
+                controllers[1].PubKey(), 1);
 
-            err =await  InsertEvent(cores, keys, index, event12, "e12", participant, 1);
+            err =await  InsertEvent(controllers, keys, index, event12, "e12", participant, 1);
 
             if (err != null)
             {
@@ -142,12 +142,12 @@ namespace Babble.Test.NodeImpl
             }
         }
 
-        public async Task<Exception> InsertEvent(Core[] cores, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
+        public async Task<Exception> InsertEvent(Controller[] controllers, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
         {
             Exception err;
             if (particant == creator)
             {
-                err = await cores[particant].SignAndInsertSelfEvent(ev);
+                err = await controllers[particant].SignAndInsertSelfEvent(ev);
 
                 if (err != null)
                 {
@@ -155,13 +155,13 @@ namespace Babble.Test.NodeImpl
                 }
 
                 //event is not signed because passed by value
-                index[name] = cores[particant].Head;
+                index[name] = controllers[particant].Head;
             }
             else
             {
                 ev.Sign(keys[creator]);
 
-                err = await cores[particant].InsertEvent(ev, true);
+                err = await controllers[particant].InsertEvent(ev, true);
 
                 if (err != null)
                 {
@@ -396,7 +396,7 @@ e0  e1  e2
             }
         }
 
-        private async Task<Core[]> InitConsensusHashgraph()
+        private async Task<Controller[]> InitConsensusHashgraph()
         {
             var (cores, _, _) =await  InitCores(3);
             var playbook = new[]
@@ -537,7 +537,7 @@ e0  e1  e2
    e0   e1  e2  e3
     0	1	2	3
 */
-        private async Task InitFFHashgraph(Core[] cores)
+        private async Task InitFfHashgraph(Controller[] controllers)
         {
             var playbook = new[]
             {
@@ -559,17 +559,17 @@ e0  e1  e2
 
             foreach (var play in playbook)
             {
-                var err =await  SyncAndRunConsensus(cores, play.From, play.To, play.Payload);
+                var err =await  SyncAndRunConsensus(controllers, play.From, play.To, play.Payload);
 
                 Assert.Null(err);
             }
         }
 
         [Fact]
-        public async Task TestConsensusFF()
+        public async Task TestConsensusFf()
         {
             var (cores, _, _ ) =await  InitCores(4);
-            await InitFFHashgraph(cores);
+            await InitFfHashgraph(cores);
 
             var r = cores[0].GetLastConsensusRoundIndex();
 
@@ -607,40 +607,40 @@ e0  e1  e2
             }
         }
 
-        private async Task<Exception> SynchronizeCores(Core[] cores, int from, int to, byte[][] payload)
+        private async Task<Exception> SynchronizeCores(Controller[] controllers, int from, int to, byte[][] payload)
         {
-            var knownByTo = await cores[to].KnownEvents();
-            var ( unknownByTo, err) = await cores[from].EventDiff(knownByTo);
+            var knownByTo = await controllers[to].KnownEvents();
+            var ( unknownByTo, err) = await controllers[from].EventDiff(knownByTo);
             if (err != null)
             {
                 return err;
             }
 
             WireEvent[] unknownWire;
-            ( unknownWire, err) = cores[from].ToWire(unknownByTo);
+            ( unknownWire, err) = controllers[from].ToWire(unknownByTo);
             if (err != null)
             {
                 return err;
             }
 
-            cores[to].AddTransactions(payload);
+            controllers[to].AddTransactions(payload);
 
             //output.WriteLine($"FromId: {from}; To: {to}");
             //output.WriteLine(unknownWire.DumpToString());
 
-            return await  cores[to].Sync(unknownWire);
+            return await  controllers[to].Sync(unknownWire);
         }
 
-        private async Task<Exception> SyncAndRunConsensus(Core[] cores, int from, int to, byte[][] payload)
+        private async Task<Exception> SyncAndRunConsensus(Controller[] controllers, int from, int to, byte[][] payload)
         {
-            var err = await SynchronizeCores(cores, from, to, payload);
+            var err = await SynchronizeCores(controllers, from, to, payload);
 
             if (err != null)
             {
                 return err;
             }
 
-            await cores[to].RunConsensus();
+            await controllers[to].RunConsensus();
             return null;
         }
 

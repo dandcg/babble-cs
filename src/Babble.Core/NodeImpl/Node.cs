@@ -27,7 +27,7 @@ namespace Babble.Core.NodeImpl
         public ITransport Trans { get; }
         private readonly AsyncProducerConsumerQueue<Rpc> netCh;
         public IAppProxy Proxy { get; }
-        public Core Core { get; }
+        public Controller Controller { get; }
         private readonly AsyncLock coreLock;
         public string LocalAddr { get; }
         private readonly ILogger logger;
@@ -48,7 +48,7 @@ namespace Babble.Core.NodeImpl
 
             commitCh = new AsyncProducerConsumerQueue<Block>(400);
 
-            Core = new Core(id, key, pmap, store, commitCh, logger);
+            Controller = new Controller(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
             PeerSelector = new RandomPeerSelector(participants, LocalAddr);
             selectorLock = new AsyncLock();
@@ -84,10 +84,10 @@ namespace Babble.Core.NodeImpl
 
             if (bootstrap)
             {
-                return await Core.Bootstrap();
+                return await Controller.Bootstrap();
             }
 
-            return await Core.Init();
+            return await Controller.Init();
         }
 
         public Task StartAsync(bool gossip, CancellationToken ct = default)
@@ -228,7 +228,7 @@ namespace Babble.Core.NodeImpl
                         await Gossip(peer.NetAddr);
                     }
 
-                    if (!Core.NeedGossip())
+                    if (!Controller.NeedGossip())
                     {
                         await controlTimer.StopCh.EnqueueAsync(true, ct);
                     }
@@ -294,7 +294,7 @@ namespace Babble.Core.NodeImpl
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = await Core.OverSyncLimit(cmd.Known, Conf.SyncLimit);
+                overSyncLimit = await Controller.OverSyncLimit(cmd.Known, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -310,7 +310,7 @@ namespace Babble.Core.NodeImpl
                 Exception err;
                 using (await coreLock.LockAsync())
                 {
-                    (diff, err) = await Core.EventDiff(cmd.Known);
+                    (diff, err) = await Controller.EventDiff(cmd.Known);
                 }
 
                 logger.Debug("EventDiff() duration={duration}", start.Nanoseconds());
@@ -322,7 +322,7 @@ namespace Babble.Core.NodeImpl
 
                 //Convert to WireEvents
                 WireEvent[] wireEvents;
-                (wireEvents, err) = Core.ToWire(diff);
+                (wireEvents, err) = Controller.ToWire(diff);
                 if (err != null)
                 {
                     logger.Debug("Converting to WireEvent {err}", err);
@@ -338,7 +338,7 @@ namespace Babble.Core.NodeImpl
             Dictionary<int, int> known;
             using (await coreLock.LockAsync())
             {
-                known = (await Core.KnownEvents()).Clone();
+                known = (await Controller.KnownEvents()).Clone();
             }
 
             resp.Known = known;
@@ -390,7 +390,7 @@ namespace Babble.Core.NodeImpl
             using (await coreLock.LockAsync())
             {
                 //Check if it is necessary to gossip
-                var needGossip = Core.NeedGossip() || nodeState.IsStarting();
+                var needGossip = Controller.NeedGossip() || nodeState.IsStarting();
                 if (!needGossip)
                 {
                     logger.Debug("Nothing to gossip");
@@ -399,7 +399,7 @@ namespace Babble.Core.NodeImpl
 
                 //If the transaction pool is not empty, create a new self-event and empty the
                 //transaction pool in its payload
-                var err = await Core.AddSelfEvent();
+                var err = await Controller.AddSelfEvent();
                 if (err != null)
                 {
                     logger.Error("Adding SelfEvent", err);
@@ -453,7 +453,7 @@ namespace Babble.Core.NodeImpl
             Dictionary<int, int> knownEvents;
             using (await coreLock.LockAsync())
             {
-                knownEvents = await Core.KnownEvents();
+                knownEvents = await Controller.KnownEvents();
             }
 
             //Send SyncRequest
@@ -496,7 +496,7 @@ namespace Babble.Core.NodeImpl
             bool overSyncLimit;
             using (await coreLock.LockAsync())
             {
-                overSyncLimit = await Core.OverSyncLimit(knownEvents, Conf.SyncLimit);
+                overSyncLimit = await Controller.OverSyncLimit(knownEvents, Conf.SyncLimit);
             }
 
             if (overSyncLimit)
@@ -512,7 +512,7 @@ namespace Babble.Core.NodeImpl
             Exception err;
             using (await coreLock.LockAsync())
             {
-                (diff, err) = await Core.EventDiff(knownEvents);
+                (diff, err) = await Controller.EventDiff(knownEvents);
             }
 
             var elapsed = start.Nanoseconds();
@@ -525,7 +525,7 @@ namespace Babble.Core.NodeImpl
 
             //Convert to WireEvents
             WireEvent[] wireEvents;
-            (wireEvents, err) = Core.ToWire(diff);
+            (wireEvents, err) = Controller.ToWire(diff);
             if (err != null)
             {
                 logger.Debug("Converting to WireEvent", err);
@@ -590,7 +590,7 @@ namespace Babble.Core.NodeImpl
         {
             //Insert Events in Hashgraph and create new Head if necessary
             var start = new Stopwatch();
-            var err = await Core.Sync(events);
+            var err = await Controller.Sync(events);
 
             var elapsed = start.Nanoseconds();
 
@@ -602,7 +602,7 @@ namespace Babble.Core.NodeImpl
 
             //Run consensus methods
             start = Stopwatch.StartNew();
-            err = await Core.RunConsensus();
+            err = await Controller.RunConsensus();
 
             elapsed = start.Nanoseconds();
             logger.Debug("Processed RunConsensus() {duration}", elapsed);
@@ -622,13 +622,13 @@ namespace Babble.Core.NodeImpl
             using (await coreLock.LockAsync())
             {
                 BlockSignature sig;
-                (sig, err) = await Core.SignBlock(block);
+                (sig, err) = await Controller.SignBlock(block);
                 if (err != null)
                 {
                     return err;
                 }
 
-                Core.AddBlockSignature(sig);
+                Controller.AddBlockSignature(sig);
 
                 return null;
             }
@@ -638,7 +638,7 @@ namespace Babble.Core.NodeImpl
         {
             using (await coreLock.LockAsync())
             {
-                Core.AddTransactions(new[] {tx});
+                Controller.AddTransactions(new[] {tx});
             }
         }
 
@@ -674,7 +674,7 @@ namespace Babble.Core.NodeImpl
                 //transport and store should only be closed once all concurrent operations
                 //are finished otherwise they will panic trying to use close objects
                 Trans.Close();
-                Core.hg.Store.Close();
+                Controller.Hg.Store.Close();
             }
         }
 

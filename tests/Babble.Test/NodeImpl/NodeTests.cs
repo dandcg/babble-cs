@@ -95,18 +95,18 @@ namespace Babble.Test.NodeImpl
 
             //Manually prepare SyncRequest and expected SyncResponse
 
-            var node0Known = await node0.Core.KnownEvents();
+            var node0Known = await node0.Controller.KnownEvents();
 
-            var node1Known = await node1.Core.KnownEvents();
+            var node1Known = await node1.Controller.KnownEvents();
 
             Exception err;
 
             Event[] unknown;
-            (unknown, err) = await node1.Core.EventDiff(node0Known);
+            (unknown, err) = await node1.Controller.EventDiff(node0Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
-            (unknownWire, err) = node1.Core.ToWire(unknown);
+            (unknownWire, err) = node1.Controller.ToWire(unknown);
             Assert.Null(err);
 
             var args = new SyncRequest
@@ -177,15 +177,15 @@ namespace Babble.Test.NodeImpl
 
             //Manually prepare EagerSyncRequest and expected EagerSyncResponse
 
-            var node1Known = await node1.Core.KnownEvents();
+            var node1Known = await node1.Controller.KnownEvents();
 
             Event[] unknown;
             Exception err;
-            (unknown, err) = await node0.Core.EventDiff(node1Known);
+            (unknown, err) = await node0.Controller.EventDiff(node1Known);
             Assert.Null(err);
 
             WireEvent[] unknownWire;
-            (unknownWire, err) = node0.Core.ToWire(unknown);
+            (unknownWire, err) = node0.Controller.ToWire(unknown);
             Assert.Null(err);
 
             var args = new EagerSyncRequest
@@ -248,7 +248,7 @@ namespace Babble.Test.NodeImpl
 
             //simulate a SyncRequest from node0 to node1
 
-            var node0Known = await node0.Core.KnownEvents();
+            var node0Known = await node0.Controller.KnownEvents();
             var args = new SyncRequest
             {
                 FromId = node0.Id,
@@ -265,9 +265,9 @@ namespace Babble.Test.NodeImpl
             Assert.Null(err);
 
             ////check the Tx was removed from the transactionPool and added to the new Head
-            Assert.Empty(node0.Core.TransactionPool);
+            Assert.Empty(node0.Controller.TransactionPool);
 
-            var (node0Head, _) = await node0.Core.GetHead();
+            var (node0Head, _) = await node0.Controller.GetHead();
             Assert.Single(node0Head.Transactions());
 
             Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
@@ -339,7 +339,7 @@ namespace Babble.Test.NodeImpl
         {
             var conf = oldNode.Conf;
             var id = oldNode.Id;
-            var key = oldNode.Core.Key;
+            var key = oldNode.Controller.Key;
             var peers = oldNode.PeerSelector.Peers();
 
             IStore store = null;
@@ -450,7 +450,7 @@ namespace Babble.Test.NodeImpl
             try
             {
                 //create fake node[0] known to artificially reach SyncLimit
-                var node0Known = await nodes[0].Core.KnownEvents();
+                var node0Known = await nodes[0].Controller.KnownEvents();
                 int k = 0;
                 foreach (var kn in node0Known.ToList())
                 {
@@ -563,7 +563,7 @@ namespace Babble.Test.NodeImpl
                     {
                         foreach (var n in nodes)
                         {
-                            var ce = n.Core.GetLastConsensusRoundIndex();
+                            var ce = n.Controller.GetLastConsensusRoundIndex();
                             if (ce == null || ce < target) 
                             {
                                 done = false;
@@ -592,7 +592,7 @@ namespace Babble.Test.NodeImpl
             {
                 logger.Debug(n.Id.ToString());
 
-                consEvents[n.Id] = n.Core.GetConsensusEvents();
+                consEvents[n.Id] = n.Controller.GetConsensusEvents();
 
                 var (nodeTxs, err) = await GetCommittedTransactions(n);
 
@@ -630,13 +630,13 @@ namespace Babble.Test.NodeImpl
                     var f = consEvents[j][i];
                     if (f != e)
                     {
-                        var er = nodes[0].Core.hg.Round(e);
+                        var er = nodes[0].Controller.Hg.Round(e);
 
-                        var err = nodes[0].Core.hg.RoundReceived(e);
+                        var err = nodes[0].Controller.Hg.RoundReceived(e);
 
-                        var fr = nodes[j].Core.hg.Round(f);
+                        var fr = nodes[j].Controller.Hg.Round(f);
 
-                        var frr = nodes[j].Core.hg.RoundReceived(f);
+                        var frr = nodes[j].Controller.Hg.RoundReceived(f);
 
                         logger.Debug($"nodes[{j}].Consensus[{i}] ({e.Take(6)}, Round {er}, Received {err}) and nodes[0].Consensus[{i}] ({f.Take(6)}, Round {fr}, Received {frr}) are not equal");
 
