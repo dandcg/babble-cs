@@ -20,6 +20,13 @@ namespace Babble.Cli
         {
             logger.LogInformation("Running application.");
             System.Console.ReadKey();
+
+            var app = new CommandLineApplication();
+            app.Name = "ninja";
+            app.HelpOption("-?|-h|--help");
+
+
+
         }
 
     }
