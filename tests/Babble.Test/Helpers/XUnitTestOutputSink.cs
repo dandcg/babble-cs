@@ -5,7 +5,7 @@ using Serilog.Events;
 using Serilog.Formatting;
 using Xunit.Abstractions;
 
-namespace Dotnatter.Test.Helpers
+namespace Babble.Test.Helpers
 {
     public class XUnitTestOutputSink: ILogEventSink
     {

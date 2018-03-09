@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Dotnatter.Test.Helpers
+namespace Babble.Test.Helpers
 {
     public static class DebugExtensions
     {

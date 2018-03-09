@@ -6,7 +6,7 @@ using Serilog.Formatting.Display;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
-namespace Dotnatter.Test.Helpers
+namespace Babble.Test.Helpers
 {
     /// <summary>
     /// Adds the WriteTo.XunitTestOutput(output) extension method to <see cref="LoggerConfiguration"/>.

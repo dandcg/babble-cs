@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace Dotnatter.Test.HashgraphImpl
+namespace Babble.Test.HashgraphImpl
 {
     public class Pub
     {

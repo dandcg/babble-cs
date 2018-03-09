@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl;
-using Dotnatter.Test.Helpers;
+using Babble.Test.Helpers;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Dotnatter.Test.HashgraphImpl
+namespace Babble.Test.HashgraphImpl
 {
     public class CachesTests
     {

@@ -15,12 +15,12 @@ using Babble.Core.NetImpl.TransportImpl;
 using Babble.Core.NodeImpl;
 using Babble.Core.ProxyImpl;
 using Babble.Core.Util;
-using Dotnatter.Test.Helpers;
+using Babble.Test.Helpers;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Dotnatter.Test.NodeImpl
+namespace Babble.Test.NodeImpl
 {
     public class NodeTests
     {

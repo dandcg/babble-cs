@@ -1,7 +1,7 @@
 ﻿using Babble.Core.NetImpl.TransportImpl;
 using Xunit;
 
-namespace Dotnatter.Test.Net
+namespace Babble.Test.Net
 {
     public class InMemTransportTests
     {

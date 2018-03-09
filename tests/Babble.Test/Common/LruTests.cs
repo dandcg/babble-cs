@@ -1,11 +1,11 @@
 ﻿using System;
 using Babble.Core.Common;
-using Dotnatter.Test.Helpers;
+using Babble.Test.Helpers;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Dotnatter.Test.Common
+namespace Babble.Test.Common
 {
     public class LruTests
     {

@@ -2,7 +2,7 @@
 using Serilog.Events;
 using Xunit.Abstractions;
 
-namespace Dotnatter.Test.Helpers
+namespace Babble.Test.Helpers
 {
     public static class TestLoggingExtensions
     {

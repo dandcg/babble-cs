@@ -1,7 +1,7 @@
 ﻿using KellermanSoftware.CompareNetObjects;
 using Xunit;
 
-namespace Dotnatter.Test.Helpers
+namespace Babble.Test.Helpers
 {
     public static class CompareExtensions
     {

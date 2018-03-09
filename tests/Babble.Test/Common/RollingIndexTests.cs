@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Babble.Core.Common;
-using Dotnatter.Test.Helpers;
+using Babble.Test.Helpers;
 using Xunit;
 
-namespace Dotnatter.Test.Common
+namespace Babble.Test.Common
 {
     public class RollingIndexTests
     {

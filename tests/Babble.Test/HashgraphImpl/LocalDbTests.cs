@@ -8,12 +8,12 @@ using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.Util;
-using Dotnatter.Test.Helpers;
+using Babble.Test.Helpers;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Dotnatter.Test.HashgraphImpl
+namespace Babble.Test.HashgraphImpl
 {
     public class LocalDbTests
     {

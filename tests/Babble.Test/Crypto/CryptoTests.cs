@@ -10,7 +10,7 @@ using Babble.Core.Crypto.Asn;
 using Babble.Core.Util;
 using Xunit;
 
-namespace Dotnatter.Test.Crypto
+namespace Babble.Test.Crypto
 {
     public class CryptoTests
     {
