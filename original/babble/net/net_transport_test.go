@@ -29,7 +29,7 @@ func TestNetworkTransport_Sync(t *testing.T) {
 
 	// Make the RPC request
 	args := SyncRequest{
-		From: "A",
+		FromID: 0,
 		Known: map[int]int{
 			0: 1,
 			1: 2,
@@ -37,7 +37,7 @@ func TestNetworkTransport_Sync(t *testing.T) {
 		},
 	}
 	resp := SyncResponse{
-		From: "B",
+		FromID: 1,
 		Events: []hashgraph.WireEvent{
 			hashgraph.WireEvent{
 				Body: hashgraph.WireBody{
@@ -102,7 +102,7 @@ func TestNetworkTransport_EagerSync(t *testing.T) {
 
 	// Make the RPC request
 	args := EagerSyncRequest{
-		From: "A",
+		FromID: 0,
 		Events: []hashgraph.WireEvent{
 			hashgraph.WireEvent{
 				Body: hashgraph.WireBody{
@@ -116,6 +116,7 @@ func TestNetworkTransport_EagerSync(t *testing.T) {
 		},
 	}
 	resp := EagerSyncResponse{
+		FromID:  1,
 		Success: true,
 	}
 
@@ -153,6 +154,7 @@ func TestNetworkTransport_EagerSync(t *testing.T) {
 		t.Fatalf("command mismatch: %#v %#v", resp, out)
 	}
 }
+
 func TestNetworkTransport_PooledConn(t *testing.T) {
 	// Transport 1 is consumer
 	trans1, err := NewTCPTransport("127.0.0.1:0", nil, 2, time.Second, common.NewTestLogger(t))
@@ -164,7 +166,7 @@ func TestNetworkTransport_PooledConn(t *testing.T) {
 
 	// Make the RPC request
 	args := SyncRequest{
-		From: "A",
+		FromID: 0,
 		Known: map[int]int{
 			0: 1,
 			1: 2,
@@ -172,7 +174,7 @@ func TestNetworkTransport_PooledConn(t *testing.T) {
 		},
 	}
 	resp := SyncResponse{
-		From: "B",
+		FromID: 1,
 		Events: []hashgraph.WireEvent{
 			hashgraph.WireEvent{
 				Body: hashgraph.WireBody{
@@ -183,6 +185,11 @@ func TestNetworkTransport_PooledConn(t *testing.T) {
 					CreatorID:            9,
 				},
 			},
+		},
+		Known: map[int]int{
+			0: 5,
+			1: 5,
+			2: 6,
 		},
 	}
 

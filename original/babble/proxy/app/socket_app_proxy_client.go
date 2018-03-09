@@ -6,6 +6,8 @@ import (
 	"net/rpc/jsonrpc"
 	"time"
 
+	"github.com/babbleio/babble/hashgraph"
+	bp "github.com/babbleio/babble/proxy/babble"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,15 +33,19 @@ func (p *SocketAppProxyClient) getConnection() (*rpc.Client, error) {
 	return jsonrpc.NewClient(conn), nil
 }
 
-func (p *SocketAppProxyClient) CommitTx(tx []byte) (*bool, error) {
+func (p *SocketAppProxyClient) CommitBlock(block hashgraph.Block) ([]byte, error) {
 	rpcConn, err := p.getConnection()
 	if err != nil {
 		return nil, err
 	}
-	var ack bool
-	err = rpcConn.Call("State.CommitTx", tx, &ack)
-	if err != nil {
-		return nil, err
-	}
-	return &ack, nil
+
+	var stateHash bp.StateHash
+	err = rpcConn.Call("State.CommitBlock", block, &stateHash)
+
+	p.logger.WithFields(logrus.Fields{
+		"block":      block.Index(),
+		"state_hash": stateHash.Hash,
+	}).Debug("AppProxyClient.CommitBlock")
+
+	return stateHash.Hash, err
 }

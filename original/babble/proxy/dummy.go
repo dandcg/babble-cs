@@ -6,17 +6,54 @@ import (
 
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/babbleio/babble/crypto"
+	"github.com/babbleio/babble/hashgraph"
 	bproxy "github.com/babbleio/babble/proxy/babble"
+	"github.com/sirupsen/logrus"
 )
 
 type State struct {
-	logger *logrus.Logger
+	stateHash []byte
+	logger    *logrus.Logger
 }
 
-func (a *State) CommitTx(tx []byte) error {
-	a.logger.WithField("Tx", string(tx)).Debug("CommitTx")
-	a.writeMessage(tx)
+func (a *State) CommitBlock(block hashgraph.Block) ([]byte, error) {
+	a.logger.WithField("block", block).Debug("CommitBlock")
+	err := a.writeBlock(block)
+	if err != nil {
+		return a.stateHash, err
+	}
+	return a.stateHash, nil
+}
+
+func (a *State) writeBlock(block hashgraph.Block) error {
+	file, err := a.getFile()
+	if err != nil {
+		a.logger.Error(err)
+		return err
+	}
+	defer file.Close()
+
+	// write some text to file
+	//and update state hash
+	hash := a.stateHash
+	for _, tx := range block.Transactions() {
+		_, err = file.WriteString(fmt.Sprintf("%s\n", string(tx)))
+		if err != nil {
+			a.logger.Error(err)
+			return err
+		}
+		hash = crypto.SimpleHashFromTwoHashes(hash, crypto.SHA256(tx))
+	}
+
+	err = file.Sync()
+	if err != nil {
+		a.logger.Error(err)
+		return err
+	}
+
+	a.stateHash = hash
+
 	return nil
 }
 
@@ -54,12 +91,15 @@ type DummySocketClient struct {
 
 func NewDummySocketClient(clientAddr string, nodeAddr string, logger *logrus.Logger) (*DummySocketClient, error) {
 
-	babbleProxy, err := bproxy.NewSocketBabbleProxy(nodeAddr, clientAddr, 1*time.Second)
+	babbleProxy, err := bproxy.NewSocketBabbleProxy(nodeAddr, clientAddr, 1*time.Second, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	state := State{logger: logger}
+	state := State{
+		stateHash: []byte{},
+		logger:    logger,
+	}
 	state.writeMessage([]byte(clientAddr))
 
 	client := &DummySocketClient{
@@ -76,9 +116,10 @@ func NewDummySocketClient(clientAddr string, nodeAddr string, logger *logrus.Log
 func (c *DummySocketClient) Run() {
 	for {
 		select {
-		case tx := <-c.babbleProxy.CommitCh():
-			c.logger.Debug("CommitTx")
-			c.state.CommitTx(tx)
+		case commit := <-c.babbleProxy.CommitCh():
+			c.logger.Debug("CommitBlock")
+			stateHash, err := c.state.CommitBlock(commit.Block)
+			commit.Respond(stateHash, err)
 		}
 	}
 }
