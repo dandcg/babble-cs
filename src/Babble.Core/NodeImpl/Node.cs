@@ -86,7 +86,7 @@ namespace Babble.Core.NodeImpl
                 peerAddresses.Add(p.NetAddr);
             }
 
-            logger.ForContext("peers", peerAddresses).Debug("Init Node");
+            logger.Debug("Init Node Peers={@peerAddresses}", peerAddresses);
 
             if (bootstrap)
             {
@@ -351,10 +351,10 @@ namespace Babble.Core.NodeImpl
 
             resp.Known = known;
 
-            logger.Debug("Responding to SyncRequest {SyncRequest}", new
+            logger.Debug("Responding to SyncRequest {@SyncRequest}", new
             {
                 Events = resp.Events.Length,
-                Known= resp.Known.Count,
+                Known= resp.Known,
                 resp.SyncLimit,
                 Error = respErr
             });
@@ -597,7 +597,7 @@ namespace Babble.Core.NodeImpl
         public async Task<Exception> Sync(WireEvent[] events)
         {
             //Insert Events in Hashgraph and create new Head if necessary
-            var start = new Stopwatch();
+            var start = Stopwatch.StartNew();
             var err = await Controller.Sync(events);
 
             var elapsed = start.Nanoseconds();

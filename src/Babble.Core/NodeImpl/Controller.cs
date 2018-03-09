@@ -278,7 +278,7 @@ namespace Babble.Core.NodeImpl
 
         public async Task<Exception> Sync(WireEvent[] unknownEvents)
         {
-            logger.Debug("Sync unknownEvents={@unknownEvents}; transactionPool={transactionPoolCount}; blockSignaturePool={blockSignaturePoolCount}", unknownEvents.Select(s => s.Body.Index), TransactionPool.Count, BlockSignaturePool.Count);
+            logger.Debug("Sync unknownEvents={@unknownEvents}; transactionPool={transactionPoolCount}; blockSignaturePool={blockSignaturePoolCount}", unknownEvents.Length, TransactionPool.Count, BlockSignaturePool.Count);
 
             string otherHead = "";
 
