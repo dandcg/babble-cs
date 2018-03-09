@@ -23,7 +23,6 @@ namespace Babble.Core.NodeImpl
 
         public AsyncProducerConsumerQueue<bool> StopCh { get; }
 
-  
         public bool Set { get; private set; }
 
         public static ControlTimer NewRandomControlTimer(TimeSpan baseDuration)
@@ -68,7 +67,6 @@ namespace Babble.Core.NodeImpl
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    await ResetCh.OutputAvailableAsync(ct);
                     await ResetCh.DequeueAsync(ct);
                     Set = true;
                 }
@@ -77,7 +75,6 @@ namespace Babble.Core.NodeImpl
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    await StopCh.OutputAvailableAsync(ct);
                     await StopCh.DequeueAsync(ct);
                     Set = false;
                 }
@@ -85,7 +82,5 @@ namespace Babble.Core.NodeImpl
 
             await Task.WhenAny(Task.WhenAll(timerTask, resetTask, stopTask), Task.Delay(Timeout.Infinite, ct));
         }
-
-    
     }
 }

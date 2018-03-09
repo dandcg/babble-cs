@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -212,8 +211,6 @@ namespace Babble.Test.NodeImpl
             // shutdown nodes
             node0.Shutdown();
             node1.Shutdown();
-
-
         }
 
         [Fact]
@@ -264,13 +261,15 @@ namespace Babble.Test.NodeImpl
             err = await node0.Sync(resp.Events);
             Assert.Null(err);
 
-            ////check the Tx was removed from the transactionPool and added to the new Head
-            Assert.Empty(node0.Controller.TransactionPool);
+    
+                ////check the Tx was removed from the transactionPool and added to the new Head
+                Assert.Empty(node0.Controller.TransactionPool);
 
-            var (node0Head, _) = await node0.Controller.GetHead();
-            Assert.Single(node0Head.Transactions());
+                var (node0Head, _) = await node0.Controller.GetHead();
+                Assert.Single(node0Head.Transactions());
 
-            Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
+                Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
+   
 
             node0.Shutdown();
             node1.Shutdown();
@@ -288,7 +287,6 @@ namespace Babble.Test.NodeImpl
 
             for (var i = 0; i < peers.Length; i++)
             {
-          
                 var conf = new Config(TimeSpan.FromMilliseconds(5), TimeSpan.FromSeconds(1), cacheSize, syncLimit, storeType, $"{dbPath}/db_{i}");
 
                 var trans = await router.Register(peers[i].NetAddr);
@@ -297,7 +295,7 @@ namespace Babble.Test.NodeImpl
                 switch (storeType)
                 {
                     case "badger":
-                        (store,_) = await LocalDbStore.New(pmap, conf.CacheSize, conf.StorePath, logger);
+                        (store, _) = await LocalDbStore.New(pmap, conf.CacheSize, conf.StorePath, logger);
                         break;
                     case "inmem":
                         store = new InmemStore(pmap, conf.CacheSize, logger);
@@ -312,7 +310,7 @@ namespace Babble.Test.NodeImpl
                     trans,
                     proxy, logger);
 
-                var err = await  node.Init(false);
+                var err = await node.Init(false);
 
                 Assert.Null(err);
 
@@ -323,7 +321,7 @@ namespace Babble.Test.NodeImpl
             return (keys.ToArray(), nodes.ToArray());
         }
 
-        private static  async Task<Node[]> RecycleNodes(Node[] oldNodes, ILogger logger)
+        private static async Task<Node[]> RecycleNodes(Node[] oldNodes, ILogger logger)
         {
             var newNodes = new List<Node>();
             foreach (var oldNode in oldNodes)
@@ -350,7 +348,7 @@ namespace Babble.Test.NodeImpl
 
             if (oldNode.Store is LocalDbStore)
             {
-                (store,_) =  await LocalDbStore.Load(conf.CacheSize, conf.StorePath,logger);
+                (store, _) = await LocalDbStore.Load(conf.CacheSize, conf.StorePath, logger);
             }
 
             Assert.NotNull(store);
@@ -409,8 +407,7 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestGossip()
         {
-      
-            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem",dbPath,logger);
+            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", dbPath, logger);
 
             var err = await Gossip(nodes, 50, true, TimeSpan.FromSeconds(3));
             Assert.Null(err);
@@ -421,31 +418,26 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestMissingNodeGossip()
         {
-
-            var (keys,nodes) = await InitNodes(4, 1000, 1000, "inmem",dbPath, logger);
+            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", dbPath, logger);
             try
             {
                 var err = await Gossip(nodes.Skip(1).ToArray(), 10, true, TimeSpan.FromSeconds(3));
                 Assert.Null(err);
-                await CheckGossip(nodes.Skip(1).ToArray(),logger);
+                await CheckGossip(nodes.Skip(1).ToArray(), logger);
             }
             finally
             {
                 ShutdownNodes(nodes);
             }
-            
         }
 
-
         [Fact]
-        public async Task  TestSyncLimit()
+        public async Task TestSyncLimit()
         {
-
-            var ( _, nodes) = await InitNodes(4, 1000, 300, "inmem",dbPath, logger);
+            var ( _, nodes) = await InitNodes(4, 1000, 300, "inmem", dbPath, logger);
 
             var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
             Assert.Null(err);
-
 
             try
             {
@@ -461,36 +453,34 @@ namespace Babble.Test.NodeImpl
                 var args = new SyncRequest
                 {
                     FromId = nodes[0].Id,
-                    Known = node0Known,
+                    Known = node0Known
                 };
 
                 var expectedResp = new SyncResponse
                 {
                     FromId = nodes[1].Id,
-                    SyncLimit = true,
+                    SyncLimit = true
                 };
 
                 SyncResponse resp;
-                (resp,err) =await nodes[0].Trans.Sync(nodes[1].LocalAddr, args);
+                (resp, err) = await nodes[0].Trans.Sync(nodes[1].LocalAddr, args);
                 Assert.Null(err);
 
                 // Verify the response
 
                 Assert.Equal(expectedResp.FromId, resp.FromId);
                 Assert.True(expectedResp.SyncLimit);
-                
             }
             finally
             {
                 ShutdownNodes(nodes);
             }
-            
         }
 
         [Fact]
-        public async Task  TestShutdown()
+        public async Task TestShutdown()
         {
-            var (_, nodes) = await InitNodes(2, 1000, 1000, "inmem",dbPath, logger);
+            var (_, nodes) = await InitNodes(2, 1000, 1000, "inmem", dbPath, logger);
 
             RunNodes(nodes, false);
 
@@ -503,12 +493,11 @@ namespace Babble.Test.NodeImpl
         }
 
         [Fact]
-        public async Task TestBootstrapAllNodes() 
+        public async Task TestBootstrapAllNodes()
         {
-            
             //create a first network with BadgerStore and wait till it reaches 10 consensus
             //rounds before shutting it down
-            var (_, nodes) =await InitNodes(4, 10000, 1000, "badger",dbPath, logger);
+            var (_, nodes) = await InitNodes(4, 10000, 1000, "badger", dbPath, logger);
             var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
             Assert.Null(err);
 
@@ -527,7 +516,6 @@ namespace Babble.Test.NodeImpl
             ////Check that both networks did not have completely different consensus events
             //await CheckGossip(new[] {nodes[0], newNodes[0]}, logger);
         }
-
 
         private static async Task<Exception> Gossip(Node[] nodes, int target, bool shutdown, TimeSpan timeout)
         {
@@ -564,7 +552,7 @@ namespace Babble.Test.NodeImpl
                         foreach (var n in nodes)
                         {
                             var ce = n.Controller.GetLastConsensusRoundIndex();
-                            if (ce == null || ce < target) 
+                            if (ce == null || ce < target)
                             {
                                 done = false;
                                 break;
@@ -599,10 +587,9 @@ namespace Babble.Test.NodeImpl
                 consTransactions[n.Id] = nodeTxs;
             }
 
+            var minE = consEvents.ContainsKey(0) ? consEvents[0].Length : 0;
 
-            var minE = consEvents.ContainsKey(0)?consEvents[0].Length:0;
-
-            var minT = consTransactions.ContainsKey(0)?consTransactions[0].Length:0;
+            var minT = consTransactions.ContainsKey(0) ? consTransactions[0].Length : 0;
 
             for (var k = 1; k < nodes.Length; k++)
             {
@@ -622,7 +609,7 @@ namespace Babble.Test.NodeImpl
             logger.Debug($"min consensus events: {minE}");
 
             int i = 0;
-            foreach (var e in consEvents.ContainsKey(0)?consEvents[0]:new string[]{}.Take(minE))
+            foreach (var e in consEvents.ContainsKey(0) ? consEvents[0] : new string[] { }.Take(minE))
             {
                 int j = 0;
                 foreach (var jn in nodes.Skip(1))
@@ -654,7 +641,7 @@ namespace Babble.Test.NodeImpl
             logger.Debug($"min consensus transactions: {minT}");
 
             i = 0;
-            foreach (var tx in consTransactions.ContainsKey(0)?consTransactions[0]:new byte[][]{}.Take(minT))
+            foreach (var tx in consTransactions.ContainsKey(0) ? consTransactions[0] : new byte[][] { }.Take(minT))
             {
                 foreach (var k in nodes.Skip(1))
                 {
@@ -681,7 +668,7 @@ namespace Babble.Test.NodeImpl
             }
         }
 
-       private static async Task SubmitTransaction(Node n, byte[] tx)
+        private static async Task SubmitTransaction(Node n, byte[] tx)
         {
             var prox = n.Proxy as InMemAppProxy;
             Assert.NotNull(prox);
@@ -689,16 +676,16 @@ namespace Babble.Test.NodeImpl
             await prox.SubmitTx(tx);
         }
 
-    //    func BenchmarkGossip(b* testing.B)
-    //    {
-    //        logger:= common.NewBenchmarkLogger(b)
-        
-    //for n := 0; n < b.N; n++ {
-    //            _, nodes:= initNodes(3, 1000, 1000, "inmem", logger, b)
+        //    func BenchmarkGossip(b* testing.B)
+        //    {
+        //        logger:= common.NewBenchmarkLogger(b)
 
-    //    gossip(nodes, 5, true, 3 * time.Second)
+        //for n := 0; n < b.N; n++ {
+        //            _, nodes:= initNodes(3, 1000, 1000, "inmem", logger, b)
 
-    //}
-    //    }
+        //    gossip(nodes, 5, true, 3 * time.Second)
+
+        //}
+        //    }
     }
 }

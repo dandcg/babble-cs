@@ -63,11 +63,16 @@ namespace Babble.Core.NetImpl.TransportImpl
         {
             var (peer, err) = await Router.GetPeer(target);
 
+            if (err != null)
+            {
+                return (null, err);
+            }
+
             var rpc = new Rpc {Command = args, RespChan = new AsyncProducerConsumerQueue<RpcResponse>()};
 
             await peer.Consumer.EnqueueAsync(rpc);
 
-            var responseTask = rpc.RespChan.OutputAvailableAsync();
+            var responseTask=  rpc.RespChan.DequeueAsync();
 
             var timeoutTask = Task.Delay(tmout);
 
@@ -78,7 +83,7 @@ namespace Babble.Core.NetImpl.TransportImpl
                 return (null, new NetError("command timed out"));
             }
 
-            var rpcResp = await rpc.RespChan.DequeueAsync();
+            var rpcResp = responseTask.Result;
 
             return (rpcResp, rpcResp.Error);
         }

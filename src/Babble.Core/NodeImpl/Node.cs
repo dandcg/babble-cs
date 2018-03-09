@@ -32,6 +32,12 @@ namespace Babble.Core.NodeImpl
         public string LocalAddr { get; }
         private readonly ILogger logger;
         public IPeerSelector PeerSelector { get; }
+
+        public AsyncLock CoreLock
+        {
+            get { return coreLock; }
+        }
+
         private readonly AsyncLock selectorLock;
         private readonly ControlTimer controlTimer;
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
@@ -157,7 +163,7 @@ namespace Babble.Core.NodeImpl
 
                 while (!ct.IsCancellationRequested)
                 {
-                    await netCh.OutputAvailableAsync(ct);
+ 
                     var rpc = await netCh.DequeueAsync(ct);
                     logger.Debug("Processing RPC");
                     await ProcessRpcAsync(rpc, ct);
@@ -173,10 +179,12 @@ namespace Babble.Core.NodeImpl
 
                 while (!ct.IsCancellationRequested)
                 {
-                    await submitCh.OutputAvailableAsync(ct);
+               
                     var tx = await submitCh.DequeueAsync(ct);
+  
+             
                     logger.Debug("Adding Transaction");
-                    await AddTransaction(tx, ct);
+                    await AddTransaction(tx,ct);
                 }
             }
 
@@ -189,10 +197,10 @@ namespace Babble.Core.NodeImpl
 
                 while (!ct.IsCancellationRequested)
                 {
-                    await commitCh.OutputAvailableAsync(ct);
+ 
                     var block = await commitCh.DequeueAsync(ct);
                     logger.Debug("Committing Block Index={Index}; RoundReceived={RoundReceived}; TxCount={TxCount}", block.Index(), block.RoundReceived(), block.Transactions().Length);
-                    var err = await Commit(block, ct);
+                    var err = await Commit(block);
                     if (err != null)
                     {
                         logger.Error("Committing Block", err);
@@ -215,7 +223,7 @@ namespace Babble.Core.NodeImpl
             {
                 var oldState = nodeState.GetState();
 
-                await controlTimer.TickCh.OutputAvailableAsync(ct);
+
                 await controlTimer.TickCh.DequeueAsync(ct);
 
                 if (gossip)
@@ -292,7 +300,7 @@ namespace Babble.Core.NodeImpl
 
             //Check sync limit
             bool overSyncLimit;
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 overSyncLimit = await Controller.OverSyncLimit(cmd.Known, Conf.SyncLimit);
             }
@@ -308,7 +316,7 @@ namespace Babble.Core.NodeImpl
                 var start = Stopwatch.StartNew();
                 Event[] diff;
                 Exception err;
-                using (await coreLock.LockAsync())
+                using (await CoreLock.LockAsync())
                 {
                     (diff, err) = await Controller.EventDiff(cmd.Known);
                 }
@@ -336,7 +344,7 @@ namespace Babble.Core.NodeImpl
 
             //Get Self KnownEvents
             Dictionary<int, int> known;
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 known = (await Controller.KnownEvents()).Clone();
             }
@@ -346,7 +354,7 @@ namespace Babble.Core.NodeImpl
             logger.Debug("Responding to SyncRequest {SyncRequest}", new
             {
                 Events = resp.Events.Length,
-                resp.Known,
+                Known= resp.Known.Count,
                 resp.SyncLimit,
                 Error = respErr
             });
@@ -365,7 +373,7 @@ namespace Babble.Core.NodeImpl
             var success = true;
 
             Exception respErr;
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 respErr = await Sync(cmd.Events);
             }
@@ -387,7 +395,7 @@ namespace Babble.Core.NodeImpl
 
         private async Task<(bool proceed, Exception error)> PreGossip()
         {
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 //Check if it is necessary to gossip
                 var needGossip = Controller.NeedGossip() || nodeState.IsStarting();
@@ -451,7 +459,7 @@ namespace Babble.Core.NodeImpl
         {
             //Compute KnownEvents
             Dictionary<int, int> knownEvents;
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 knownEvents = await Controller.KnownEvents();
             }
@@ -476,7 +484,7 @@ namespace Babble.Core.NodeImpl
             }
 
             //Set Events to Hashgraph and create new Head if necessary
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 err = await Sync(resp.Events);
             }
@@ -494,7 +502,7 @@ namespace Babble.Core.NodeImpl
         {
             //Check SyncLimit
             bool overSyncLimit;
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 overSyncLimit = await Controller.OverSyncLimit(knownEvents, Conf.SyncLimit);
             }
@@ -510,7 +518,7 @@ namespace Babble.Core.NodeImpl
 
             Event[] diff;
             Exception err;
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 (diff, err) = await Controller.EventDiff(knownEvents);
             }
@@ -609,7 +617,7 @@ namespace Babble.Core.NodeImpl
             return err;
         }
 
-        private async Task<Exception> Commit(Block block, CancellationToken ct)
+        private async Task<Exception> Commit(Block block)
         {
             Exception err;
             byte[] stateHash;
@@ -619,7 +627,7 @@ namespace Babble.Core.NodeImpl
 
             block.Body.StateHash = stateHash;
 
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 BlockSignature sig;
                 (sig, err) = await Controller.SignBlock(block);
@@ -636,11 +644,12 @@ namespace Babble.Core.NodeImpl
 
         private async Task AddTransaction(byte[] tx, CancellationToken ct)
         {
-            using (await coreLock.LockAsync())
+            using (await CoreLock.LockAsync())
             {
                 Controller.AddTransactions(new[] {tx});
             }
         }
+
 
         public void Shutdown()
 
