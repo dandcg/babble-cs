@@ -78,7 +78,7 @@ namespace Babble.Core.NodeImpl
             nodeState.SetState(NodeStateEnum.Babbling);
         }
 
-        public async Task<Exception> Init(bool bootstrap)
+        public Task<Exception> Init(bool bootstrap)
         {
             var peerAddresses = new List<string>();
             foreach (var p in PeerSelector.Peers())
@@ -90,10 +90,10 @@ namespace Babble.Core.NodeImpl
 
             if (bootstrap)
             {
-                return await Controller.Bootstrap();
+                return Controller.Bootstrap();
             }
 
-            return await Controller.Init();
+            return Controller.Init();
         }
 
         public Task StartAsync(bool gossip, CancellationToken ct = default)
@@ -443,7 +443,7 @@ namespace Babble.Core.NodeImpl
             }
 
             //update peer selector
-            using (selectorLock.Lock())
+            using (await selectorLock.LockAsync())
             {
                 PeerSelector.UpdateLast(peerAddr);
             }

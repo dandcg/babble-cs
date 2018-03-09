@@ -8,9 +8,9 @@ namespace Babble.Core.NetImpl
         public object Command { get; set; }
         public AsyncProducerConsumerQueue<RpcResponse> RespChan { get; set; }
 
-        public async Task RespondAsync(object resp , NetError err)
+        public Task RespondAsync(object resp , NetError err)
         {
-          await  RespChan.EnqueueAsync(new RpcResponse() {Response = resp, Error = err});
+            return RespChan.EnqueueAsync(new RpcResponse() { Response = resp, Error = err });
         }
     }
 }

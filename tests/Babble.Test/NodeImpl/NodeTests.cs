@@ -668,12 +668,12 @@ namespace Babble.Test.NodeImpl
             }
         }
 
-        private static async Task SubmitTransaction(Node n, byte[] tx)
+        private static Task SubmitTransaction(Node n, byte[] tx)
         {
             var prox = n.Proxy as InMemAppProxy;
             Assert.NotNull(prox);
 
-            await prox.SubmitTx(tx);
+            return prox.SubmitTx(tx);
         }
 
         //    func BenchmarkGossip(b* testing.B)

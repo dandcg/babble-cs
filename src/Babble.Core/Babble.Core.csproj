@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AsyncFixer" Version="1.1.6" />
     <PackageReference Include="DBreeze" Version="1.90.0" />
     <PackageReference Include="NetJSON" Version="1.2.2" />
     <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />

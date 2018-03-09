@@ -89,9 +89,9 @@ namespace Babble.Core.NetImpl.TransportImpl
         }
 
         // Disconnect is used to remove the ability to route to a given peer.
-        public async Task DisconnectAsync()
+        public Task DisconnectAsync()
         {
-            await Router.DisconnectAsync(LocalAddr);
+            return Router.DisconnectAsync(LocalAddr);
         }
 
         public NetError Close()

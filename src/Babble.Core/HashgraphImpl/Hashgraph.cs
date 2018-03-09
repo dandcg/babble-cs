@@ -1212,7 +1212,10 @@ namespace Babble.Core.HashgraphImpl
                         return err;
                     }
 
-                    CommitChannel?.Enqueue(block);
+                    if (CommitChannel != null)
+                    {
+                        await CommitChannel.EnqueueAsync(block);
+                    }
                 }
             }
 
