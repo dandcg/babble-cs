@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Dotnatter.Core\Dotnatter.Core.csproj" />
+    <ProjectReference Include="..\..\src\Babble.Core\Babble.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

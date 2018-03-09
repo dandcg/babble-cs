@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace Dotnatter.Cli
+namespace Babble.Cli
 {
     public class App
     {
