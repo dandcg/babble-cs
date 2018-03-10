@@ -366,12 +366,14 @@ namespace Babble.Test.NodeImpl
             return newNode;
         }
 
-        private static void RunNodes(Node[] nodes, bool gossip)
+        private static async Task RunNodes(Node[] nodes, bool gossip)
         {
             foreach (var n in nodes)
             {
-                var task = n.StartAsync(gossip);
+                await n.StartAsync(gossip);
             }
+
+
         }
 
         private static void ShutdownNodes(Node[] nodes)
@@ -481,7 +483,7 @@ namespace Babble.Test.NodeImpl
         {
             var (_, nodes) = await InitNodes(2, 1000, 1000, "inmem", dbPath, logger);
 
-            RunNodes(nodes, false);
+            await RunNodes(nodes, false);
 
             nodes[0].Shutdown();
 
@@ -518,7 +520,7 @@ namespace Babble.Test.NodeImpl
 
         private static async Task<Exception> Gossip(Node[] nodes, int target, bool shutdown, TimeSpan timeout)
         {
-            RunNodes(nodes, true);
+            await RunNodes(nodes, true);
 
             var err = await BombardAndWait(nodes, target, timeout);
             Assert.Null(err);
@@ -534,6 +536,7 @@ namespace Babble.Test.NodeImpl
         private static async Task<Exception> BombardAndWait(Node[] nodes, int target, TimeSpan timeout)
         {
             var cts = new CancellationTokenSource();
+            
             var mrtTask = MakeRandomTransactions(nodes, cts.Token);
 
             //wait until all nodes have at least 'target' rounds
@@ -673,6 +676,7 @@ namespace Babble.Test.NodeImpl
             Assert.NotNull(prox);
 
             return prox.SubmitTx(tx);
+
         }
 
         //    func BenchmarkGossip(b* testing.B)
