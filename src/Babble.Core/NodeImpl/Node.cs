@@ -28,15 +28,13 @@ namespace Babble.Core.NodeImpl
         private readonly AsyncProducerConsumerQueue<Rpc> netCh;
         public IAppProxy Proxy { get; }
         public Controller Controller { get; }
-        private readonly AsyncLock coreLock;
+
         public string LocalAddr { get; }
         private readonly ILogger logger;
         public IPeerSelector PeerSelector { get; }
 
-        public AsyncLock CoreLock
-        {
-            get { return coreLock; }
-        }
+        private readonly AsyncLock coreLock;
+      
 
         private readonly AsyncLock selectorLock;
         private readonly ControlTimer controlTimer;
@@ -44,6 +42,9 @@ namespace Babble.Core.NodeImpl
         private readonly AsyncProducerConsumerQueue<Block> commitCh;
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
         private Task nodeTask;
+        public AsyncMonitor SubmitChMonitor { get; }
+        public AsyncMonitor NetChMonitor{ get; }
+        public AsyncMonitor CommitChMonitor{ get; }
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
@@ -53,6 +54,7 @@ namespace Babble.Core.NodeImpl
             var (pmap, _) = store.Participants();
 
             commitCh = new AsyncProducerConsumerQueue<Block>(400);
+            CommitChMonitor = new AsyncMonitor();
 
             Controller = new Controller(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
@@ -65,10 +67,17 @@ namespace Babble.Core.NodeImpl
             this.logger = logger.AddNamedContext("Node", Id.ToString());
 
             Trans = trans;
+
             netCh = trans.Consumer;
+            NetChMonitor = new AsyncMonitor();
+
             Proxy = proxy;
+
             this.participants = participants;
+            
             submitCh = proxy.SubmitCh();
+            SubmitChMonitor = new AsyncMonitor();
+
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
             nodeState = new NodeState();
@@ -110,17 +119,19 @@ namespace Babble.Core.NodeImpl
 
                 //Execute some background work regardless of the state of the node.
                 //Process RPC requests as well as SumbitTx and CommitBlock requests
-                var tcsBackgroundWork = new TaskCompletionSource<bool>();
-                var backgroundWorkTask = BackgroundWorkRunAsync(cts.Token, tcsBackgroundWork);
 
+                var processingRpcTask = ProcessingRpc(cts.Token);
+                var addingTransactions = AddingTransactions(cts.Token);
+                var commitBlocks = CommitBlocks(cts.Token);
+     
                 //Execute Node State Machine
 
                 var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
+                
+                // await all
 
-                var runTask = Task.WhenAll(controlTimerTask, stateMachineTask, backgroundWorkTask);
-
-                await tcsBackgroundWork.Task;
-
+                var runTask = Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
+                
                 tcsInit.SetResult(true);
 
                 await runTask;
@@ -153,13 +164,11 @@ namespace Babble.Core.NodeImpl
             }
         }
 
-        public async Task BackgroundWorkRunAsync(CancellationToken ct, TaskCompletionSource<bool> tcs)
-        {
-            var tcsProcessingRpc = new TaskCompletionSource<bool>();
-
-            async Task ProcessingRpc()
+    // Background work
+      
+         private   async Task ProcessingRpc(CancellationToken ct)
             {
-                tcsProcessingRpc.SetResult(true);
+          
 
                 while (!ct.IsCancellationRequested)
                 {
@@ -167,55 +176,68 @@ namespace Babble.Core.NodeImpl
                     var rpc = await netCh.DequeueAsync(ct);
                     logger.Debug("Processing RPC");
                     await ProcessRpcAsync(rpc, ct);
+
+                    using (await NetChMonitor.EnterAsync())
+                    {
+                    NetChMonitor.Pulse();
+                    }
                 }
             }
 
-            var tcsAddingTransactions = new TaskCompletionSource<bool>();
+           
 
-            async Task AddingTransactions()
+        private    async Task AddingTransactions(CancellationToken ct)
 
             {
-                tcsAddingTransactions.SetResult(true);
+   
 
                 while (!ct.IsCancellationRequested)
                 {
                
                     var tx = await submitCh.DequeueAsync(ct);
   
-             
                     logger.Debug("Adding Transaction");
                     await AddTransaction(tx,ct);
+
+                    using (await SubmitChMonitor.EnterAsync())
+                    {
+                        SubmitChMonitor.Pulse();
+                    }
+                    
                 }
             }
 
-            ;
-            var tcsCommitBlocks = new TaskCompletionSource<bool>();
+        
 
-            async Task CommitBlocks()
+            private async Task CommitBlocks(CancellationToken ct)
             {
-                tcsCommitBlocks.SetResult(true);
+
 
                 while (!ct.IsCancellationRequested)
                 {
  
                     var block = await commitCh.DequeueAsync(ct);
                     logger.Debug("Committing Block Index={Index}; RoundReceived={RoundReceived}; TxCount={TxCount}", block.Index(), block.RoundReceived(), block.Transactions().Length);
+                    
                     var err = await Commit(block);
                     if (err != null)
                     {
                         logger.Error("Committing Block", err);
                     }
+
+                    using (await CommitChMonitor.EnterAsync())
+                    {
+                        CommitChMonitor.Pulse();
+                    }
+
+
+               
+
                 }
             }
 
-            var task = Task.WhenAll(ProcessingRpc(), AddingTransactions(), CommitBlocks());
 
-            await Task.WhenAll(tcsProcessingRpc.Task, tcsAddingTransactions.Task, tcsCommitBlocks.Task);
 
-            tcs.SetResult(true);
-
-            await task;
-        }
 
         private async Task BabbleAsync(bool gossip, CancellationToken ct)
         {
@@ -300,7 +322,7 @@ namespace Babble.Core.NodeImpl
 
             //Check sync limit
             bool overSyncLimit;
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 overSyncLimit = await Controller.OverSyncLimit(cmd.Known, Conf.SyncLimit);
             }
@@ -316,7 +338,7 @@ namespace Babble.Core.NodeImpl
                 var start = Stopwatch.StartNew();
                 Event[] diff;
                 Exception err;
-                using (await CoreLock.LockAsync())
+                using (await coreLock.LockAsync())
                 {
                     (diff, err) = await Controller.EventDiff(cmd.Known);
                 }
@@ -344,7 +366,7 @@ namespace Babble.Core.NodeImpl
 
             //Get Self KnownEvents
             Dictionary<int, int> known;
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 known = (await Controller.KnownEvents()).Clone();
             }
@@ -373,7 +395,7 @@ namespace Babble.Core.NodeImpl
             var success = true;
 
             Exception respErr;
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 respErr = await Sync(cmd.Events);
             }
@@ -395,7 +417,7 @@ namespace Babble.Core.NodeImpl
 
         private async Task<(bool proceed, Exception error)> PreGossip()
         {
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 //Check if it is necessary to gossip
                 var needGossip = Controller.NeedGossip() || nodeState.IsStarting();
@@ -459,7 +481,7 @@ namespace Babble.Core.NodeImpl
         {
             //Compute KnownEvents
             Dictionary<int, int> knownEvents;
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 knownEvents = await Controller.KnownEvents();
             }
@@ -484,7 +506,7 @@ namespace Babble.Core.NodeImpl
             }
 
             //Set Events to Hashgraph and create new Head if necessary
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 err = await Sync(resp.Events);
             }
@@ -502,7 +524,7 @@ namespace Babble.Core.NodeImpl
         {
             //Check SyncLimit
             bool overSyncLimit;
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 overSyncLimit = await Controller.OverSyncLimit(knownEvents, Conf.SyncLimit);
             }
@@ -518,7 +540,7 @@ namespace Babble.Core.NodeImpl
 
             Event[] diff;
             Exception err;
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 (diff, err) = await Controller.EventDiff(knownEvents);
             }
@@ -621,13 +643,13 @@ namespace Babble.Core.NodeImpl
         {
             Exception err;
             byte[] stateHash;
-            (stateHash, err) = Proxy.CommitBlock(block);
+            (stateHash, err) = await Proxy.CommitBlock(block);
 
             logger.Debug("CommitBlockResponse {@CommitBlockResponse}", new {Index = block.Index(), StateHash = stateHash.ToHex(), Err = err});
 
             block.Body.StateHash = stateHash;
 
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 BlockSignature sig;
                 (sig, err) = await Controller.SignBlock(block);
@@ -644,7 +666,7 @@ namespace Babble.Core.NodeImpl
 
         private async Task AddTransaction(byte[] tx, CancellationToken ct)
         {
-            using (await CoreLock.LockAsync())
+            using (await coreLock.LockAsync())
             {
                 Controller.AddTransactions(new[] {tx});
             }

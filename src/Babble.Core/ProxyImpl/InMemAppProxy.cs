@@ -44,10 +44,10 @@ namespace Babble.Core.ProxyImpl
             return (stateHash, null);
         }
 
-        public (byte[] stateHash, ProxyError err) CommitBlock(Block block)
+        public Task<(byte[] stateHash, ProxyError err)> CommitBlock(Block block)
         {
             logger.Debug("InmemProxy CommitBlock RoundReceived={RoundReceived}; TxCount={TxCount}", block.RoundReceived());
-            return Commit(block);
+            return Task.FromResult(Commit(block));
         }
 
 //-------------------------------------------------------

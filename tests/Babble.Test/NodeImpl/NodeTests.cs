@@ -243,6 +243,8 @@ namespace Babble.Test.NodeImpl
             var message = "Hello World!";
             await peer0Proxy.SubmitTx(message.StringToBytes());
 
+            await node0.SubmitChMonitor.WaitAsync();
+
             //simulate a SyncRequest from node0 to node1
 
             var node0Known = await node0.Controller.KnownEvents();
@@ -260,6 +262,7 @@ namespace Babble.Test.NodeImpl
 
             err = await node0.Sync(resp.Events);
             Assert.Null(err);
+
 
     
                 ////check the Tx was removed from the transactionPool and added to the new Head

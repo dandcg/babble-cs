@@ -369,7 +369,7 @@ namespace Babble.Test.HashgraphImpl
 
         [Fact]
 
-        public async Task TestDBBlockMethods()
+        public async Task TestDbBlockMethods()
         {
             var cacheSize = 0;
             var (store, participants) = await InitBadgerStore(cacheSize, dbPath,logger);
