@@ -280,6 +280,9 @@ namespace Babble.Core.NodeImpl
         {
             logger.Debug("Sync unknownEvents={@unknownEvents}; transactionPool={transactionPoolCount}; blockSignaturePool={blockSignaturePoolCount}", unknownEvents.Length, TransactionPool.Count, BlockSignaturePool.Count);
 
+
+
+
             string otherHead = "";
 
             //add unknownEvents events
@@ -400,6 +403,8 @@ namespace Babble.Core.NodeImpl
 
         public async Task<Exception> RunConsensus()
         {
+
+
             // DivideRounds
 
             var watch = Stopwatch.StartNew();

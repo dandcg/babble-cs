@@ -25,7 +25,7 @@ namespace Babble.Core.NodeImpl
         public IStore Store { get; }
         private readonly Peer[] participants;
         public ITransport Trans { get; }
-        private readonly AsyncProducerConsumerQueue<Rpc> netCh;
+   
         public IAppProxy Proxy { get; }
         public Controller Controller { get; }
 
@@ -34,17 +34,20 @@ namespace Babble.Core.NodeImpl
         public IPeerSelector PeerSelector { get; }
 
         private readonly AsyncLock coreLock;
-      
-
         private readonly AsyncLock selectorLock;
         private readonly ControlTimer controlTimer;
-        private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
-        private readonly AsyncProducerConsumerQueue<Block> commitCh;
+ 
+
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
         private Task nodeTask;
-        public AsyncMonitor SubmitChMonitor { get; }
-        public AsyncMonitor NetChMonitor{ get; }
-        public AsyncMonitor CommitChMonitor{ get; }
+        
+        
+        private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
+        private readonly AsyncMonitor submitChMonitor;
+        private readonly AsyncProducerConsumerQueue<Rpc> netCh;
+        private readonly AsyncMonitor netChMonitor;
+        private readonly AsyncProducerConsumerQueue<Block> commitCh;
+        private readonly AsyncMonitor commitChMonitor;
 
         public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
 
@@ -54,7 +57,7 @@ namespace Babble.Core.NodeImpl
             var (pmap, _) = store.Participants();
 
             commitCh = new AsyncProducerConsumerQueue<Block>(400);
-            CommitChMonitor = new AsyncMonitor();
+            commitChMonitor = new AsyncMonitor();
 
             Controller = new Controller(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
@@ -69,14 +72,14 @@ namespace Babble.Core.NodeImpl
             Trans = trans;
 
             netCh = trans.Consumer;
-            NetChMonitor = new AsyncMonitor();
+            netChMonitor = new AsyncMonitor();
 
             Proxy = proxy;
 
             this.participants = participants;
-            
+
             submitCh = proxy.SubmitCh();
-            SubmitChMonitor = new AsyncMonitor();
+            submitChMonitor = new AsyncMonitor();
 
             controlTimer = ControlTimer.NewRandomControlTimer(conf.HeartbeatTimeout);
 
@@ -109,33 +112,33 @@ namespace Babble.Core.NodeImpl
         {
             var tcsInit = new TaskCompletionSource<bool>();
 
-            nodeTask = Task.Run(async () =>
-            {
-                //The ControlTimer allows the background routines to control the
-                //heartbeat timer when the node is in the Babbling state. The timer should
-                //only be running when there are uncommitted transactions in the system.
+            //nodeTask = Task.Run(async () =>
+            //{
+            //The ControlTimer allows the background routines to control the
+            //heartbeat timer when the node is in the Babbling state. The timer should
+            //only be running when there are uncommitted transactions in the system.
 
-                var controlTimerTask = controlTimer.RunAsync(cts.Token);
+            var controlTimerTask = controlTimer.RunAsync(cts.Token);
 
-                //Execute some background work regardless of the state of the node.
-                //Process RPC requests as well as SumbitTx and CommitBlock requests
+            //Execute some background work regardless of the state of the node.
+            //Process RPC requests as well as SumbitTx and CommitBlock requests
 
-                var processingRpcTask = ProcessingRpc(cts.Token);
-                var addingTransactions = AddingTransactions(cts.Token);
-                var commitBlocks = CommitBlocks(cts.Token);
-     
-                //Execute Node State Machine
+            var processingRpcTask = ProcessingRpc(cts.Token);
+            var addingTransactions = AddingTransactions(cts.Token);
+            var commitBlocks = CommitBlocks(cts.Token);
 
-                var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
-                
-                // await all
+            //Execute Node State Machine
 
-                var runTask = Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
-                
-                tcsInit.SetResult(true);
+            var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
 
-                await runTask;
-            }, ct);
+            // await all
+
+            nodeTask = Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
+
+            tcsInit.SetResult(true);
+
+            //await runTask;
+            //}, ct);
 
             return tcsInit.Task;
         }
@@ -164,87 +167,92 @@ namespace Babble.Core.NodeImpl
             }
         }
 
-    // Background work
-      
-         private   async Task ProcessingRpc(CancellationToken ct)
+        // Background work
+
+        private async Task ProcessingRpc(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
             {
-          
+                var rpc = await netCh.DequeueAsync(ct);
+                logger.Debug("Processing RPC");
+                await ProcessRpcAsync(rpc, ct);
 
-                while (!ct.IsCancellationRequested)
+                using (await netChMonitor.EnterAsync())
                 {
- 
-                    var rpc = await netCh.DequeueAsync(ct);
-                    logger.Debug("Processing RPC");
-                    await ProcessRpcAsync(rpc, ct);
-
-                    using (await NetChMonitor.EnterAsync())
-                    {
-                    NetChMonitor.Pulse();
-                    }
+                    netChMonitor.Pulse();
                 }
             }
+        }
 
-           
-
-        private    async Task AddingTransactions(CancellationToken ct)
-
+        public async Task ProcessingRpcCompleted()
+        {
+            using (await       netChMonitor.EnterAsync())
             {
-   
+                await       netChMonitor.WaitAsync();
+            }
+        }
 
-                while (!ct.IsCancellationRequested)
+
+        private async Task AddingTransactions(CancellationToken ct)
+
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var tx = await submitCh.DequeueAsync(ct);
+
+                logger.Debug("Adding Transaction");
+                await AddTransaction(tx, ct);
+
+                using (await submitChMonitor.EnterAsync())
                 {
-               
-                    var tx = await submitCh.DequeueAsync(ct);
-  
-                    logger.Debug("Adding Transaction");
-                    await AddTransaction(tx,ct);
-
-                    using (await SubmitChMonitor.EnterAsync())
-                    {
-                        SubmitChMonitor.Pulse();
-                    }
-                    
+                    submitChMonitor.Pulse();
                 }
             }
+        }
+
+
+        public async Task AddingTransactionsCompleted()
+        {
+            using (await submitChMonitor.EnterAsync())
+            {
+                await submitChMonitor.WaitAsync();
+            }
+        }
+
+        private async Task CommitBlocks(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var block = await commitCh.DequeueAsync(ct);
+                logger.Debug("Committing Block Index={Index}; RoundReceived={RoundReceived}; TxCount={TxCount}", block.Index(), block.RoundReceived(), block.Transactions().Length);
+
+                var err = await Commit(block);
+                if (err != null)
+                {
+                    logger.Error("Committing Block", err);
+                }
+
+                using (await commitChMonitor.EnterAsync())
+                {
+                    commitChMonitor.Pulse();
+                }
+            }
+        }
 
         
-
-            private async Task CommitBlocks(CancellationToken ct)
+        public async Task CommitBlocksCompleted()
+        {
+            using (await  commitChMonitor.EnterAsync())
             {
-
-
-                while (!ct.IsCancellationRequested)
-                {
- 
-                    var block = await commitCh.DequeueAsync(ct);
-                    logger.Debug("Committing Block Index={Index}; RoundReceived={RoundReceived}; TxCount={TxCount}", block.Index(), block.RoundReceived(), block.Transactions().Length);
-                    
-                    var err = await Commit(block);
-                    if (err != null)
-                    {
-                        logger.Error("Committing Block", err);
-                    }
-
-                    using (await CommitChMonitor.EnterAsync())
-                    {
-                        CommitChMonitor.Pulse();
-                    }
-
-
-               
-
-                }
+                await  commitChMonitor.WaitAsync();
             }
-
-
-
+        }
 
         private async Task BabbleAsync(bool gossip, CancellationToken ct)
         {
             while (!ct.IsCancellationRequested)
             {
                 var oldState = nodeState.GetState();
-
 
                 await controlTimer.TickCh.DequeueAsync(ct);
 
@@ -376,7 +384,7 @@ namespace Babble.Core.NodeImpl
             logger.Debug("Responding to SyncRequest {@SyncRequest}", new
             {
                 Events = resp.Events.Length,
-                Known= resp.Known,
+                resp.Known,
                 resp.SyncLimit,
                 Error = respErr
             });
@@ -672,7 +680,6 @@ namespace Babble.Core.NodeImpl
             }
         }
 
-
         public void Shutdown()
 
         {
@@ -691,11 +698,11 @@ namespace Babble.Core.NodeImpl
                     nodeTask?.Wait();
                 }
                 catch (AggregateException e) when (e.InnerException is OperationCanceledException)
-                {           
+                {
                 }
                 catch (AggregateException e)
                 {
-                    logger.Error(e,"Application termination ");
+                    logger.Error(e, "Application termination ");
                 }
                 finally
                 {

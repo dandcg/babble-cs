@@ -242,9 +242,8 @@ namespace Babble.Test.NodeImpl
 
             var message = "Hello World!";
             await peer0Proxy.SubmitTx(message.StringToBytes());
-
-            await node0.SubmitChMonitor.WaitAsync();
-
+            await node0.AddingTransactionsCompleted();
+            
             //simulate a SyncRequest from node0 to node1
 
             var node0Known = await node0.Controller.KnownEvents();
@@ -263,16 +262,13 @@ namespace Babble.Test.NodeImpl
             err = await node0.Sync(resp.Events);
             Assert.Null(err);
 
+            ////check the Tx was removed from the transactionPool and added to the new Head
+            Assert.Empty(node0.Controller.TransactionPool);
 
-    
-                ////check the Tx was removed from the transactionPool and added to the new Head
-                Assert.Empty(node0.Controller.TransactionPool);
+            var (node0Head, _) = await node0.Controller.GetHead();
+            Assert.Single(node0Head.Transactions());
 
-                var (node0Head, _) = await node0.Controller.GetHead();
-                Assert.Single(node0Head.Transactions());
-
-                Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
-   
+            Assert.Equal(message, node0Head.Transactions()[0].BytesToString());
 
             node0.Shutdown();
             node1.Shutdown();
