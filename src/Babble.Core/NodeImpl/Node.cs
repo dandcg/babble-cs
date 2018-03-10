@@ -112,8 +112,8 @@ namespace Babble.Core.NodeImpl
         {
             var tcsInit = new TaskCompletionSource<bool>();
 
-            //nodeTask = Task.Run(async () =>
-            //{
+          nodeTask = Task.Run(async () =>
+            {
             //The ControlTimer allows the background routines to control the
             //heartbeat timer when the node is in the Babbling state. The timer should
             //only be running when there are uncommitted transactions in the system.
@@ -133,12 +133,12 @@ namespace Babble.Core.NodeImpl
 
             // await all
 
-            nodeTask = Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
+               var runTask= Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
 
             tcsInit.SetResult(true);
 
-            //await runTask;
-            //}, ct);
+            await runTask;
+            }, ct);
 
             return tcsInit.Task;
         }

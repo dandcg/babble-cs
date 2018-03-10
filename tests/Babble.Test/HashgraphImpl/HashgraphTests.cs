@@ -22,7 +22,7 @@ namespace Babble.Test.HashgraphImpl
         {
             this.output = output;
             logger = output.SetupLogging().ForContext("SourceContext", "HashGraphTests");
-            dbPath = $"localdb/{Guid.NewGuid():D}";
+         
         }
 
         private const int CacheSize = 100;
@@ -31,7 +31,8 @@ namespace Babble.Test.HashgraphImpl
 
         private readonly ILogger logger;
         private ITestOutputHelper output;
-        private readonly string dbPath;
+
+        private string GetPath() => $"localdb/{Guid.NewGuid():D}";
 
         public class Node
         {
@@ -1309,7 +1310,8 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestDecideFame()
         {
-            var (h, index) = await InitConsensusHashgraph(false, dbPath, logger);
+
+            var (h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             await h.DivideRounds();
 
@@ -1341,7 +1343,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestOldestSelfAncestorToSee()
         {
-            var (h, index) = await InitConsensusHashgraph(false, dbPath, logger);
+            var (h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             var a = await h.OldestSelfAncestorToSee(index["f0"], index["e1"]);
 
@@ -1366,7 +1368,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestDecideRoundReceived()
         {
-            var (h, index) = await InitConsensusHashgraph(false, dbPath, logger);
+            var (h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             await h.DivideRounds();
 
@@ -1399,7 +1401,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestFindOrder()
         {
-            var ( h, index) = await InitConsensusHashgraph(false, dbPath, logger);
+            var ( h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             await h.DivideRounds();
 
@@ -1473,7 +1475,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestKnown()
         {
-            var (h, _ ) = await InitConsensusHashgraph(false, dbPath, logger);
+            var (h, _ ) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             var expectedKnown = new Dictionary<int, int>
             {
@@ -1495,7 +1497,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestReset()
         {
-            var (h, index) = await InitConsensusHashgraph(false, dbPath, logger);
+            var (h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             var evs = new[] {"g1", "g0", "g2", "g10", "g21", "o02", "g02", "h1", "h0", "h2"};
 
@@ -1582,7 +1584,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestGetFrame()
         {
-            var (h, index) = await InitConsensusHashgraph(false, dbPath, logger);
+            var (h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             await h.DivideRounds();
 
@@ -1687,7 +1689,7 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestResetFromFrame()
         {
-            var (h, _) = await InitConsensusHashgraph(false, dbPath, logger);
+            var (h, _) = await InitConsensusHashgraph(false, GetPath(), logger);
 
             await h.DivideRounds();
 
@@ -1754,6 +1756,8 @@ e0  e1  e2    Block (0, 1)
         [Fact]
         public async Task TestBootstrap()
         {
+            var dbPath = GetPath();
+
             //Initialize a first Hashgraph with a DB backend
             //Set events and run consensus methods on it
             var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);

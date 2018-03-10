@@ -25,14 +25,15 @@ namespace Babble.Test.NodeImpl
     {
         private readonly ITestOutputHelper output;
         private readonly ILogger logger;
-        private readonly string dbPath;
-
+   
         public NodeTests(ITestOutputHelper output)
         {
             this.output = output;
             logger = output.SetupLogging().ForContext("SourceContext", "NodeTests");
-            dbPath = $"localdb/{Guid.NewGuid():D}";
+            
         }
+
+        private string GetPath() => $"localdb/{Guid.NewGuid():D}";
 
         private const int PortStart = 9990;
 
@@ -291,10 +292,12 @@ namespace Babble.Test.NodeImpl
                 var trans = await router.Register(peers[i].NetAddr);
 
                 IStore store = null;
+                Exception err;
                 switch (storeType)
                 {
                     case "badger":
-                        (store, _) = await LocalDbStore.New(pmap, conf.CacheSize, conf.StorePath, logger);
+                        (store, err) = await LocalDbStore.New(pmap, conf.CacheSize, conf.StorePath, logger);
+                        Assert.Null(err);
                         break;
                     case "inmem":
                         store = new InmemStore(pmap, conf.CacheSize, logger);
@@ -309,7 +312,7 @@ namespace Babble.Test.NodeImpl
                     trans,
                     proxy, logger);
 
-                var err = await node.Init(false);
+                err = await node.Init(false);
 
                 Assert.Null(err);
 
@@ -408,7 +411,7 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestGossip()
         {
-            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", dbPath, logger);
+            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", GetPath(), logger);
 
             var err = await Gossip(nodes, 50, true, TimeSpan.FromSeconds(3));
             Assert.Null(err);
@@ -419,7 +422,7 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestMissingNodeGossip()
         {
-            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", dbPath, logger);
+            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", GetPath(), logger);
             try
             {
                 var err = await Gossip(nodes.Skip(1).ToArray(), 10, true, TimeSpan.FromSeconds(3));
@@ -435,7 +438,7 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestSyncLimit()
         {
-            var ( _, nodes) = await InitNodes(4, 1000, 300, "inmem", dbPath, logger);
+            var ( _, nodes) = await InitNodes(4, 1000, 300, "inmem", GetPath(), logger);
 
             var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
             Assert.Null(err);
@@ -481,13 +484,13 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestShutdown()
         {
-            var (_, nodes) = await InitNodes(2, 1000, 1000, "inmem", dbPath, logger);
+            var (_, nodes) = await InitNodes(2, 1000, 1000, "inmem",GetPath(), logger);
 
             await RunNodes(nodes, false);
 
             nodes[0].Shutdown();
 
-            var err = nodes[1].Gossip(nodes[0].LocalAddr);
+            var err = await nodes[1].Gossip(nodes[0].LocalAddr);
             Assert.NotNull(err);
 
             nodes[1].Shutdown();
@@ -498,7 +501,7 @@ namespace Babble.Test.NodeImpl
         {
             //create a first network with BadgerStore and wait till it reaches 10 consensus
             //rounds before shutting it down
-            var (_, nodes) = await InitNodes(4, 10000, 1000, "badger", dbPath, logger);
+            var (_, nodes) = await InitNodes(4, 10000, 1000, "badger", GetPath(), logger);
             var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
             Assert.Null(err);
 
@@ -619,13 +622,13 @@ namespace Babble.Test.NodeImpl
                     var f = consEvents[j][i];
                     if (f != e)
                     {
-                        var er = nodes[0].Controller.Hg.Round(e);
+                        var er = await nodes[0].Controller.Hg.Round(e);
 
-                        var err = nodes[0].Controller.Hg.RoundReceived(e);
+                        var err = await nodes[0].Controller.Hg.RoundReceived(e);
 
-                        var fr = nodes[j].Controller.Hg.Round(f);
+                        var fr = await nodes[j].Controller.Hg.Round(f);
 
-                        var frr = nodes[j].Controller.Hg.RoundReceived(f);
+                        var frr = await nodes[j].Controller.Hg.RoundReceived(f);
 
                         logger.Debug($"nodes[{j}].Consensus[{i}] ({e.Take(6)}, Round {er}, Received {err}) and nodes[0].Consensus[{i}] ({f.Take(6)}, Round {fr}, Received {frr}) are not equal");
 
