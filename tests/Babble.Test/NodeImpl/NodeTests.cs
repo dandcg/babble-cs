@@ -229,14 +229,14 @@ namespace Babble.Test.NodeImpl
             var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, peer0Proxy, logger);
             await node0.Init(false);
 
-            await node0.StartAsync(false);
+            await Task.Run(()=>node0.StartAsync(false));
 
             var peer1Trans = await router.Register(peers[1].NetAddr);
             var peer1Proxy = new InMemAppProxy(logger);
             var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, peer1Proxy, logger);
             await node1.Init(false);
 
-            await node1.StartAsync(false);
+            await Task.Run(()=>node1.StartAsync(false));
 
             //Submit a Tx to node0
 

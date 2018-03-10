@@ -279,68 +279,69 @@ namespace Babble.Core.NodeImpl
         public async Task<Exception> Sync(WireEvent[] unknownEvents)
         {
             logger.Debug("Sync unknownEvents={@unknownEvents}; transactionPool={transactionPoolCount}; blockSignaturePool={blockSignaturePoolCount}", unknownEvents.Length, TransactionPool.Count, BlockSignaturePool.Count);
-
-
-
-
-            string otherHead = "";
-
-            //add unknownEvents events
-            int k = 0;
-            Exception err;
-            foreach (var we in unknownEvents)
-
+            
+            using (var tx = Hg.Store.BeginTx())
             {
-                //logger.Debug("wev={wev}",we.Body.CreatorId);
 
-                Event ev;
-                (ev, err) = await Hg.ReadWireInfo(we);
+                string otherHead = "";
 
-                if (err != null)
+                //add unknownEvents events
+                int k = 0;
+                Exception err;
+                foreach (var we in unknownEvents)
+
                 {
-                    return err;
+                    //logger.Debug("wev={wev}",we.Body.CreatorId);
+
+                    Event ev;
+                    (ev, err) = await Hg.ReadWireInfo(we);
+
+                    if (err != null)
+                    {
+                        return err;
+                    }
+
+                    //logger.Debug("ev={ev}",ev.Creator());
+
+                    err = await InsertEvent(ev, false);
+
+                    if (err != null)
+                    {
+                        return err;
+                    }
+
+                    //assume last event corresponds to other-head
+                    if (k == unknownEvents.Length - 1)
+                    {
+                        otherHead = ev.Hex();
+                    }
+
+                    k++;
                 }
 
-                //logger.Debug("ev={ev}",ev.Creator());
-
-                err = await InsertEvent(ev, false);
-
-                if (err != null)
+                //create new event with self head and other head
+                //only if there are pending loaded events or the transaction pool is not empty
+                if (unknownEvents.Length > 0 || TransactionPool.Count > 0 || BlockSignaturePool.Count > 0)
                 {
-                    return err;
+                    var newHead = new Event(TransactionPool.ToArray(), BlockSignaturePool.ToArray(),
+                        new[] {Head, otherHead},
+                        PubKey(),
+                        Seq + 1);
+
+                    err = await SignAndInsertSelfEvent(newHead);
+
+                    if (err != null)
+                    {
+                        return new CoreError($"Error inserting new head: {err.Message}", err);
+                    }
+
+                    //empty the  pool
+                    TransactionPool.Clear();
+                    BlockSignaturePool.Clear();
                 }
 
-                //assume last event corresponds to other-head
-                if (k == unknownEvents.Length - 1)
-                {
-                    otherHead = ev.Hex();
-                }
-
-                k++;
+                return null;
             }
-
-            //create new event with self head and other head
-            //only if there are pending loaded events or the transaction pool is not empty
-            if (unknownEvents.Length > 0 || TransactionPool.Count > 0 || BlockSignaturePool.Count > 0)
-            {
-                var newHead = new Event(TransactionPool.ToArray(), BlockSignaturePool.ToArray(),
-                    new[] {Head, otherHead},
-                    PubKey(),
-                    Seq + 1);
-
-                err = await SignAndInsertSelfEvent(newHead);
-
-                if (err != null)
-                {
-                    return new CoreError($"Error inserting new head: {err.Message}", err);
-                }
-
-                //empty the  pool
-                TransactionPool.Clear();
-                BlockSignaturePool.Clear();
-            }
-
-            return null;
         }
 
         public async Task<Exception> AddSelfEvent()
@@ -403,51 +404,53 @@ namespace Babble.Core.NodeImpl
 
         public async Task<Exception> RunConsensus()
         {
-
-
-            // DivideRounds
-
-            var watch = Stopwatch.StartNew();
-            var err = await Hg.DivideRounds();
-            watch.Stop();
-
-            logger.Debug("DivideRounds() Duration={DivideRoundsDuration}", watch.Nanoseconds());
-
-            if (err != null)
+            using (var tx = Hg.Store.BeginTx())
             {
-                logger.Error("DivideRounds Error={@err}", err);
-                return err;
+
+                // DivideRounds
+
+                var watch = Stopwatch.StartNew();
+                var err = await Hg.DivideRounds();
+                watch.Stop();
+
+                logger.Debug("DivideRounds() Duration={DivideRoundsDuration}", watch.Nanoseconds());
+
+                if (err != null)
+                {
+                    logger.Error("DivideRounds Error={@err}", err);
+                    return err;
+                }
+
+                // DecideFrame
+
+                watch = Stopwatch.StartNew();
+                err = await Hg.DecideFame();
+                watch.Stop();
+
+                logger.Debug("DecideFame() Duration={DecideFameDuration}", watch.Nanoseconds());
+
+                if (err != null)
+                {
+                    logger.Error("DecideFame Error={@err}", err);
+                    return err;
+                }
+
+                // FindOrder
+
+                watch = Stopwatch.StartNew();
+                err = await Hg.FindOrder();
+                watch.Stop();
+
+                logger.Debug("FindOrder() Duration={FindOrderDuration}", watch.Nanoseconds());
+
+                if (err != null)
+                {
+                    logger.Error("FindOrder Error={@err}", err);
+                    return err;
+                }
+
+                return null;
             }
-
-            // DecideFrame
-
-            watch = Stopwatch.StartNew();
-            err = await Hg.DecideFame();
-            watch.Stop();
-
-            logger.Debug("DecideFame() Duration={DecideFameDuration}", watch.Nanoseconds());
-
-            if (err != null)
-            {
-                logger.Error("DecideFame Error={@err}", err);
-                return err;
-            }
-
-            // FindOrder
-
-            watch = Stopwatch.StartNew();
-            err = await Hg.FindOrder();
-            watch.Stop();
-
-            logger.Debug("FindOrder() Duration={FindOrderDuration}", watch.Nanoseconds());
-
-            if (err != null)
-            {
-                logger.Error("FindOrder Error={@err}", err);
-                return err;
-            }
-
-            return null;
         }
 
         public void AddTransactions(byte[][] txs)
