@@ -417,9 +417,26 @@ namespace Babble.Test.NodeImpl
         }
 
         [Fact]
-        public async Task TestGossip()
+        public async Task TestGossipInitialState()
         {
             var (keys, nodes) = await InitNodes(2, 1000, 1000, "inmem", GetPath(), logger);
+            await RunNodes(nodes, true);
+
+            var n0Task= nodes[0].CommitBlocksCompleted();
+            var n1Task= nodes[1].CommitBlocksCompleted();
+
+            var td = Task.Delay(TimeSpan.FromSeconds(5));
+
+            var result = await Task.WhenAny(n0Task, n1Task, td);
+
+            Assert.NotEqual(td,result);
+
+        }
+
+        [Fact]
+        public async Task TestGossip()
+        {
+            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", GetPath(), logger);
 
             var err = await Gossip(nodes, 2, true, TimeSpan.FromSeconds(2),logger);
             Assert.Null(err);
@@ -552,7 +569,7 @@ namespace Babble.Test.NodeImpl
         {
             var cts = new CancellationTokenSource();
             
-            var mrtTask = MakeRandomTransactions(nodes, cts.Token);
+            //var mrtTask = MakeRandomTransactions(nodes, cts.Token);
 
 
             //wait until all nodes have at least 'target' rounds
@@ -587,7 +604,7 @@ namespace Babble.Test.NodeImpl
                 }
             }
 
-          var resultTask= await Task.WhenAny( mrtTask,stopper, Bombard());
+          var resultTask= await Task.WhenAny( stopper, Bombard());
 
             if (resultTask == stopper)
             {
@@ -702,11 +719,7 @@ namespace Babble.Test.NodeImpl
             }
         }
 
-        private static async Task SubmitTransaction(Node n, byte[] tx)
-        {
-          
-        }
-
+ 
         //    func BenchmarkGossip(b* testing.B)
         //    {
         //        logger:= common.NewBenchmarkLogger(b)

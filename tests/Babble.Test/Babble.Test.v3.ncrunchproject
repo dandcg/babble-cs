@@ -188,6 +188,24 @@
         <TestName>Babble.Test.Net.InMemTransportTests.TestInmemTransportImpl</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestBootstrapAllNodes</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestShutdown</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestConsensus</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -209,25 +227,10 @@
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestBootstrapAllNodes</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestShutdown</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestGossip</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

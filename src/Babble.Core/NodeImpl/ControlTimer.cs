@@ -57,8 +57,8 @@ namespace Babble.Core.NodeImpl
                     {
                         break;
                     }
-
-                    await Task.Delay(dur, ct);
+                    await Task.Delay(100, ct);
+                    //await Task.Delay(dur, ct);
                     await TickCh.EnqueueAsync(true, ct);
                     Set = false;
                 }

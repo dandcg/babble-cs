@@ -70,6 +70,7 @@ namespace Babble.Core.NodeImpl
             Controller = new Controller(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
             PeerSelector = new RandomPeerSelector(participants, LocalAddr);
+
             selectorLock = new AsyncLock();
             Id = id;
             Store = store;
@@ -106,7 +107,7 @@ namespace Babble.Core.NodeImpl
                 peerAddresses.Add(p.NetAddr);
             }
 
-            logger.Debug("Init Node Peers={@peerAddresses}", peerAddresses);
+            logger.Debug("Init Node LocalAddr={LocalAddress}; Peers={@PeerAddresses}",LocalAddr, peerAddresses);
 
             if (bootstrap)
             {
@@ -273,7 +274,10 @@ namespace Babble.Core.NodeImpl
                     {
                         logger.Debug("Time to gossip!");
                         var peer = PeerSelector.Next();
+                        logger.Debug("gossip from {localAddr} to peer {peer}",LocalAddr, peer.NetAddr);
                         await Gossip(peer.NetAddr);
+
+
                     }
 
                     if (!Controller.NeedGossip())
@@ -386,7 +390,7 @@ namespace Babble.Core.NodeImpl
             Dictionary<int, int> known;
             using (await coreLock.LockAsync())
             {
-                known = (await Controller.KnownEvents()).Clone();
+                known = await Controller.KnownEvents();
             }
 
             resp.Known = known;
@@ -420,7 +424,7 @@ namespace Babble.Core.NodeImpl
 
             if (respErr != null)
             {
-                logger.ForContext("error", respErr).Error("sync()");
+                logger.Error("Sync() {error}", respErr);
                 success = false;
             }
 
@@ -505,14 +509,14 @@ namespace Babble.Core.NodeImpl
             }
 
             //Send SyncRequest
-            var start = new Stopwatch();
+            var start = Stopwatch.StartNew();
 
             var (resp, err) = await RequestSync(peerAddr, knownEvents);
             var elapsed = start.Nanoseconds();
-            logger.Debug("requestSync() Duration = {duration}", elapsed);
+            logger.Debug("RequestSync() Duration = {duration}", elapsed);
             if (err != null)
             {
-                logger.Error("requestSync()", err);
+                logger.Error("RequestSync() {error}", err);
                 return (false, null, err);
             }
 
@@ -531,7 +535,7 @@ namespace Babble.Core.NodeImpl
 
             if (err != null)
             {
-                logger.Error("sync()", err);
+                logger.Error("Sync() {error}", err);
                 return (false, null, err);
             }
 
@@ -554,7 +558,7 @@ namespace Babble.Core.NodeImpl
             }
 
             //Compute EventDiff
-            var start = new Stopwatch();
+            var start = Stopwatch.StartNew();
 
             Event[] diff;
             Exception err;
@@ -567,7 +571,7 @@ namespace Babble.Core.NodeImpl
             logger.Debug("EventDiff() {duration}", elapsed);
             if (err != null)
             {
-                logger.Error("Calculating EventDiff", err);
+                logger.Error("Calculating EventDiff {error}", err);
                 return err;
             }
 
@@ -581,15 +585,15 @@ namespace Babble.Core.NodeImpl
             }
 
             //Create and Send EagerSyncRequest
-            start = new Stopwatch();
+            start = Stopwatch.StartNew();
 
             EagerSyncResponse resp2;
             (resp2, err) = await RequestEagerSync(peerAddr, wireEvents);
             elapsed = start.Nanoseconds();
-            logger.Debug("requestEagerSync() {duration}", elapsed);
+            logger.Debug("RequestEagerSync() {duration}", elapsed);
             if (err != null)
             {
-                logger.Error("requestEagerSync()", err);
+                logger.Error("RequestEagerSync() {error}", err);
                 return err;
             }
 
@@ -636,17 +640,20 @@ namespace Babble.Core.NodeImpl
 
         public async Task<Exception> Sync(WireEvent[] events)
         {
+            logger.Debug("Unknown events {@events}",events);
+
             //Insert Events in Hashgraph and create new Head if necessary
             var start = Stopwatch.StartNew();
             var err = await Controller.Sync(events);
 
             var elapsed = start.Nanoseconds();
-
-            logger.Debug("Processed Sync() {duration}", elapsed);
+            
             if (err != null)
             {
                 return err;
             }
+
+            logger.Debug("Processed Sync() {duration}", elapsed);
 
             //Run consensus methods
             start = Stopwatch.StartNew();

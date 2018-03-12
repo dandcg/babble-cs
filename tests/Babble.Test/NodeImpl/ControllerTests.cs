@@ -324,20 +324,20 @@ namespace Babble.Test.NodeImpl
             var knownBy1 = await cores[1].KnownEvents();
             k = knownBy1[cores[0].Id()];
 
-            Assert.False(k != 1, "core 1 should have last-index 1 for core 0, not {k}");
+            Assert.True(k == 1, "core 1 should have last-index 1 for core 0, not {k}");
 
             k = knownBy1[cores[1].Id()];
 
-            Assert.False(k != 1, "core 1 should have last-index 1 for core 1, not {k}");
+            Assert.True(k == 1, "core 1 should have last-index 1 for core 1, not {k}");
 
             k = knownBy1[cores[2].Id()];
 
-            Assert.False(k != 1, "core 1 should have last-index 1 for core 2, not {k}");
+            Assert.True(k == 1, "core 1 should have last-index 1 for core 2, not {k}");
 
             var (core1Head, _) = await cores[1].GetHead();
-            Assert.False(core1Head.SelfParent != index["e1"], "core 1 head self-parent should be e1");
+            Assert.True(core1Head.SelfParent == index["e1"], "core 1 head self-parent should be e1");
 
-            Assert.False(core1Head.OtherParent != index["e20"], "core 1 head other-parent should be e20");
+            Assert.True(core1Head.OtherParent == index["e20"], "core 1 head other-parent should be e20");
 
             index["e12"] = core1Head.Hex();
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Babble.Core.Common;
@@ -575,9 +576,9 @@ namespace Babble.Core.HashgraphImpl
             {
                 return err;
             }
-
+    
             var selfParentLegit = selfParent == creatorLastKnown;
-
+            
             return !selfParentLegit ? new HashgraphError($"Self-parent not last known ev by creator") : null;
         }
 
