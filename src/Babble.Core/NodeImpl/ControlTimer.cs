@@ -48,7 +48,7 @@ namespace Babble.Core.NodeImpl
 
         public async Task RunAsync(CancellationToken ct)
         {
-            var timerTask = new Task(async () =>
+            async Task TimerTask  () 
             {
                 while (!ct.IsCancellationRequested)
                 {
@@ -62,25 +62,28 @@ namespace Babble.Core.NodeImpl
                     await TickCh.EnqueueAsync(true, ct);
                     Set = false;
                 }
-            });
-            var resetTask = new Task(async () =>
+            }
+
+            async Task ResetTask()
             {
                 while (!ct.IsCancellationRequested)
                 {
                     await ResetCh.DequeueAsync(ct);
                     Set = true;
                 }
-            });
-            var stopTask = new Task(async () =>
+            }
+
+            
+            async Task StopTask()
             {
                 while (!ct.IsCancellationRequested)
                 {
                     await StopCh.DequeueAsync(ct);
                     Set = false;
                 }
-            });
+            };
 
-            await Task.WhenAny(Task.WhenAll(timerTask, resetTask, stopTask), Task.Delay(Timeout.Infinite, ct));
+            await Task.WhenAny(Task.WhenAll(TimerTask(), ResetTask(), StopTask()), Task.Delay(Timeout.Infinite, ct));
         }
     }
 }

@@ -39,14 +39,16 @@ namespace Babble.Core.NodeImpl
 
         public Controller(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger logger)
         {
+
+            this.logger = logger.ForContext("SourceContext", "Controller");
+
             this.id = id;
             Key = key;
             this.participants = participants;
             this.store = store;
             this.commitCh = commitCh;
-            this.logger = logger.ForContext("SourceContext", "Controller");
-
             reverseParticipants = new Dictionary<int, string>();
+            
             foreach (var p in participants)
             {
                 reverseParticipants.Add(p.Value, p.Key);
@@ -93,7 +95,7 @@ namespace Babble.Core.NodeImpl
             
             var err = await SignAndInsertSelfEvent(initialEvent);
             
-            logger.Debug("Initial {@Event}", new {Index = initialEvent.Index(), Hex = initialEvent.Hex()});
+            logger.Debug("Initial Event {@Event}", new {Index = initialEvent.Index(), Hex = initialEvent.Hex()});
 
             return err;
         }

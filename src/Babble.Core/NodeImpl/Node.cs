@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.NetImpl;
@@ -25,7 +27,7 @@ namespace Babble.Core.NodeImpl
         public IStore Store { get; }
         private readonly Peer[] participants;
         public ITransport Trans { get; }
-   
+
         public IAppProxy Proxy { get; }
         public Controller Controller { get; }
 
@@ -36,12 +38,12 @@ namespace Babble.Core.NodeImpl
         private readonly AsyncLock coreLock;
         private readonly AsyncLock selectorLock;
         private readonly ControlTimer controlTimer;
- 
+
 
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
         private Task nodeTask;
-        
-        
+
+
         private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
         private readonly AsyncMonitor submitChMonitor;
         private readonly AsyncProducerConsumerQueue<Rpc> netCh;
@@ -49,9 +51,15 @@ namespace Babble.Core.NodeImpl
         private readonly AsyncProducerConsumerQueue<Block> commitCh;
         private readonly AsyncMonitor commitChMonitor;
 
-        public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger logger)
+        private Stopwatch nodeStart;
+        private int syncRequests;
+        private int syncErrors;
+
+        public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger loggerIn)
 
         {
+            logger = loggerIn.AddNamedContext("Node", id.ToString());
+
             LocalAddr = trans.LocalAddr;
 
             var (pmap, _) = store.Participants();
@@ -67,7 +75,7 @@ namespace Babble.Core.NodeImpl
             Store = store;
             Conf = conf;
 
-            this.logger = logger.AddNamedContext("Node", Id.ToString());
+
 
             Trans = trans;
 
@@ -112,32 +120,34 @@ namespace Babble.Core.NodeImpl
         {
             var tcsInit = new TaskCompletionSource<bool>();
 
-          nodeTask = Task.Run(async () =>
+            nodeStart = Stopwatch.StartNew();
+
+            nodeTask = Task.Run(async () =>
             {
-            //The ControlTimer allows the background routines to control the
-            //heartbeat timer when the node is in the Babbling state. The timer should
-            //only be running when there are uncommitted transactions in the system.
+                //The ControlTimer allows the background routines to control the
+                //heartbeat timer when the node is in the Babbling state. The timer should
+                //only be running when there are uncommitted transactions in the system.
 
-            var controlTimerTask = controlTimer.RunAsync(cts.Token);
+                var controlTimerTask = controlTimer.RunAsync(cts.Token);
 
-            //Execute some background work regardless of the state of the node.
-            //Process RPC requests as well as SumbitTx and CommitBlock requests
+                //Execute some background work regardless of the state of the node.
+                //Process RPC requests as well as SumbitTx and CommitBlock requests
 
-            var processingRpcTask = ProcessingRpc(cts.Token);
-            var addingTransactions = AddingTransactions(cts.Token);
-            var commitBlocks = CommitBlocks(cts.Token);
+                var processingRpcTask = ProcessingRpc(cts.Token);
+                var addingTransactions = AddingTransactions(cts.Token);
+                var commitBlocks = CommitBlocks(cts.Token);
 
-            //Execute Node State Machine
+                //Execute Node State Machine
 
-            var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
+                var stateMachineTask = StateMachineRunAsync(gossip, cts.Token);
 
-            // await all
+                // await all
 
-               var runTask= Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
+                var runTask = Task.WhenAll(controlTimerTask, stateMachineTask, processingRpcTask, addingTransactions, commitBlocks);
 
-            tcsInit.SetResult(true);
+                tcsInit.SetResult(true);
 
-            await runTask;
+                await runTask;
             }, ct);
 
             return tcsInit.Task;
@@ -186,9 +196,9 @@ namespace Babble.Core.NodeImpl
 
         public async Task ProcessingRpcCompleted()
         {
-            using (await       netChMonitor.EnterAsync())
+            using (await netChMonitor.EnterAsync())
             {
-                await       netChMonitor.WaitAsync();
+                await netChMonitor.WaitAsync();
             }
         }
 
@@ -239,12 +249,12 @@ namespace Babble.Core.NodeImpl
             }
         }
 
-        
+
         public async Task CommitBlocksCompleted()
         {
-            using (await  commitChMonitor.EnterAsync())
+            using (await commitChMonitor.EnterAsync())
             {
-                await  commitChMonitor.WaitAsync();
+                await commitChMonitor.WaitAsync();
             }
         }
 
@@ -718,72 +728,68 @@ namespace Babble.Core.NodeImpl
 
         public Dictionary<string, string> GetStats()
         {
-//	toString := func(i*int) string {
-//		if i == nil {
-//			return "nil"
-//		}
-//		return strconv.Itoa(* i)
-//}
 
-//timeElapsed := time.Since(n.start)
+            var timeElapsed = nodeStart.Elapsed;
 
-//consensusEvents := n.core.GetConsensusEventsCount()
-//consensusEventsPerSecond := float64(consensusEvents) / timeElapsed.Seconds()
+            var consensusEvents = Controller.GetConsensusEventsCount();
 
-//lastConsensusRound := n.core.GetLastConsensusRoundIndex()
-//var consensusRoundsPerSecond float64
-//	if lastConsensusRound != nil {
-//		consensusRoundsPerSecond = float64(*lastConsensusRound) / timeElapsed.Seconds()
-//	}
+            var consensusEventsPerSecond = (decimal) (consensusEvents) / timeElapsed.Seconds;
 
-//	s := map[string] string{
-//		"last_consensus_round":   toString(lastConsensusRound),
-//		"consensus_events":       strconv.Itoa(consensusEvents),
-//		"consensus_transactions": strconv.Itoa(n.core.GetConsensusTransactionsCount()),
-//		"undetermined_events":    strconv.Itoa(len(n.core.GetUndeterminedEvents())),
-//		"transaction_pool":       strconv.Itoa(len(n.core.transactionPool)),
-//		"num_peers":              strconv.Itoa(len(n.peerSelector.Peers())),
-//		"sync_rate":              strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
-//		"events_per_second":      strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
-//		"rounds_per_second":      strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
-//		"round_events":           strconv.Itoa(n.core.GetLastCommitedRoundEventsCount()),
-//		"id":                     strconv.Itoa(n.id),
-//		"state":                  n.getState().String(),
-//	}
-//	return s
-            throw new NotImplementedException();
+            var lastConsensusRound = Controller.GetLastConsensusRoundIndex();
+            decimal consensusRoundsPerSecond = 0;
+
+
+            if (lastConsensusRound != null)
+            {
+                consensusRoundsPerSecond = (decimal) (lastConsensusRound) / timeElapsed.Seconds;
+
+            }
+
+            var s = new Dictionary<string, string>
+            {
+
+                {"last_consensus_round", lastConsensusRound.ToString()},
+                {"consensus_events", consensusEvents.ToString()},
+                {"consensus_transactions", Controller.GetConsensusTransactionsCount().ToString()},
+                {"undetermined_events", Controller.GetUndeterminedEvents().Length.ToString()},
+                {"transaction_pool", Controller.TransactionPool.Count.ToString()},
+                {"num_peers", PeerSelector.Peers().Length.ToString()},
+                {"sync_rate", SyncRate().ToString("0.00")},
+                {"events_per_second", consensusEventsPerSecond.ToString("0.00")},
+                {"rounds_per_second", consensusRoundsPerSecond.ToString("0.00")},
+                {"round_events", Controller.GetLastCommitedRoundEventsCount().ToString()},
+                {"id", Id.ToString()},
+                {"state", nodeState.GetState().ToString()},
+            };
+            return s;
         }
 
         private void LogStats()
         {
-            //stats := n.GetStats()
-            //n.logger.WithFields(logrus.Fields{
-            //	"last_consensus_round":   stats["last_consensus_round"],
-            //	"consensus_events":       stats["consensus_events"],
-            //	"consensus_transactions": stats["consensus_transactions"],
-            //	"undetermined_events":    stats["undetermined_events"],
-            //	"transaction_pool":       stats["transaction_pool"],
-            //	"num_peers":              stats["num_peers"],
-            //	"sync_rate":              stats["sync_rate"],
-            //	"events/s":               stats["events_per_second"],
-            //	"rounds/s":               stats["rounds_per_second"],
-            //	"round_events":           stats["round_events"],
-            //	"id":                     stats["id"],
-            //	"state":                  stats["state"],
-            //}).Debug("Stats")
-
-            throw new NotImplementedException();
+            var stats = GetStats();
+            logger.Debug("Stats {@stats}", stats);
         }
 
         public decimal SyncRate()
         {
-            //if (syncRequests != 0) {
-            //	syncErrorRate = float64(n.syncErrors) / float64(n.syncRequests)
-            //}
+            decimal syncErrorRate = 0;
+            if (syncRequests != 0)
+            {
+                syncErrorRate = (decimal) syncErrors / (decimal) syncRequests;
+            }
 
-            //   return (1 - syncErrorRate);
+            return (1 - syncErrorRate);
 
-            throw new NotImplementedException();
+
         }
+
+
+        public Task<(Block block, StoreError err )> GetBlock(int blockIndex)
+        {
+            return Controller.Hg.Store.GetBlock(blockIndex);
+
+
+        }
+
     }
 }

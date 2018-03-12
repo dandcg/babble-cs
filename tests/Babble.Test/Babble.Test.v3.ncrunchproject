@@ -71,6 +71,9 @@
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestDecideFame</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -206,10 +209,7 @@
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestGossip</TestName>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestBootstrapAllNodes</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.NodeTests.TestMissingNodeGossip</TestName>
@@ -225,6 +225,9 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

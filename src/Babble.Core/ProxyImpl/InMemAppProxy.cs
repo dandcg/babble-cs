@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
 
@@ -15,11 +16,11 @@ namespace Babble.Core.ProxyImpl
         private readonly ILogger logger;
         private byte[] stateHash;
 
-        public InMemAppProxy(ILogger logger)
+        public InMemAppProxy(int id, ILogger logger)
         {
             submitCh = new AsyncProducerConsumerQueue<byte[]>();
             committedTransactions = new List<byte[]>();
-            this.logger = logger;
+            this.logger = logger.AddNamedContext(nameof(InMemAppProxy) ,id.ToString());
         }
 
         public AsyncProducerConsumerQueue<byte[]> SubmitCh()
@@ -46,17 +47,18 @@ namespace Babble.Core.ProxyImpl
 
         public Task<(byte[] stateHash, ProxyError err)> CommitBlock(Block block)
         {
-            logger.Debug("InmemProxy CommitBlock RoundReceived={RoundReceived}; TxCount={TxCount}", block.RoundReceived());
+            logger.Debug("CommitBlock RoundReceived={RoundReceived}; TxCount={TxCount}", block.RoundReceived());
             return Task.FromResult(Commit(block));
         }
 
 //-------------------------------------------------------
 //Implement AppProxy Interface
 
-        public Task SubmitTx(byte[] tx)
+        public async Task SubmitTx(byte[] tx)
         {
-            return submitCh.EnqueueAsync(tx);
-        }
+            logger.Debug("SubmitTx -> {Tx}", tx.BytesToString());
+            await submitCh.EnqueueAsync(tx);
+            }
 
         public byte[][] GetCommittedTransactions()
         {

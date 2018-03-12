@@ -19,13 +19,13 @@ namespace Babble.Test.HashgraphImpl
     {
         private readonly ILogger logger;
         private ITestOutputHelper output;
-        private readonly string dbPath;
+        private string GetPath() => $"localdb/{Guid.NewGuid():D}";
 
         public LocalDbTests(ITestOutputHelper output)
         {
             this.output = output;
             logger = output.SetupLogging().ForContext("SourceContext", "LocalDbTests");
-            dbPath = $"localdb/{Guid.NewGuid():D}";
+
         }
 
         private static async Task<(LocalDbStore store, Pub[] pubs)> InitBadgerStore(int cacheSize, string dbPath, ILogger logger)
@@ -90,6 +90,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestNewStore()
         {
+            var dbPath = GetPath();
             logger.Information(Directory.GetCurrentDirectory());
 
             var store = await CreateTestDb(dbPath, logger);
@@ -126,6 +127,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestLoadStore()
         {
+            var dbPath = GetPath();
             //Create the test db
             var tempStore = await CreateTestDb(dbPath, logger);
 
@@ -166,6 +168,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestDbEventMethods()
         {
+            var dbPath = GetPath();
             Exception err;
             var cacheSize = 0;
             var testSize = 100;
@@ -287,6 +290,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestDbRoundMethods()
         {
+            var dbPath = GetPath();
             var cacheSize = 0;
             var (store, participants) = await InitBadgerStore(cacheSize, dbPath, logger);
 
@@ -332,6 +336,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestDbParticipantMethods()
         {
+            var dbPath = GetPath();
             var cacheSize = 0;
             var (store, _ ) = await InitBadgerStore(cacheSize, dbPath, logger);
 
@@ -371,6 +376,7 @@ namespace Babble.Test.HashgraphImpl
 
         public async Task TestDbBlockMethods()
         {
+            var dbPath = GetPath();
             var cacheSize = 0;
             var (store, participants) = await InitBadgerStore(cacheSize, dbPath,logger);
      
@@ -445,6 +451,8 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestBadgerEvents()
         {
+            var dbPath = GetPath();
+
             //Insert more events than can fit in cache to test retrieving from db.
             var cacheSize = 10;
             var testSize = 10;
@@ -559,6 +567,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestBadgerRounds()
         {
+            var dbPath = GetPath();
             var cacheSize = 0;
             var ( store, participants ) = await InitBadgerStore(cacheSize, dbPath, logger);
 
@@ -607,6 +616,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestBadgerBlocks()
         {
+            var dbPath = GetPath();
             var cacheSize = 0;
             var (store, participants) = await InitBadgerStore(cacheSize, dbPath, logger);
 

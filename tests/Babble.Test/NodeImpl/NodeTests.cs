@@ -80,15 +80,18 @@ namespace Babble.Test.NodeImpl
 
             var router = new InMemRouter();
 
+            var id0 = pmap[peers[0].PubKeyHex];
             var peer0Trans = await router.Register(peers[0].NetAddr);
-            var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
+      
+
+            var node0 = new Node(config,id0 , keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(id0,logger), logger);
             await node0.Init(false);
 
             await node0.StartAsync(false);
 
+            var id1 = pmap[peers[1].PubKeyHex];
             var peer1Trans = await router.Register(peers[1].NetAddr);
-
-            var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
+            var node1 = new Node(config,id1 , keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(id1,logger), logger);
             await node1.Init(false);
 
             await node1.StartAsync(false);
@@ -161,16 +164,18 @@ namespace Babble.Test.NodeImpl
             //Start two nodes
 
             var router = new InMemRouter();
-
+            
+            var id0 = pmap[peers[0].PubKeyHex];
             var peer0Trans = await router.Register(peers[0].NetAddr);
-            var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(logger), logger);
+            var node0 = new Node(config,id0, keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(id0,logger), logger);
             await node0.Init(false);
 
             await node0.StartAsync(false);
 
             var peer1Trans = await router.Register(peers[1].NetAddr);
 
-            var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(logger), logger);
+            var id1 = pmap[peers[1].PubKeyHex];
+            var node1 = new Node(config, id1, keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, new InMemAppProxy(id1,logger), logger);
             await node1.Init(false);
 
             await node1.StartAsync(false);
@@ -225,19 +230,21 @@ namespace Babble.Test.NodeImpl
 
             var router = new InMemRouter();
 
+            var id0 = pmap[peers[0].PubKeyHex];
             var peer0Trans = await router.Register(peers[0].NetAddr);
-            var peer0Proxy = new InMemAppProxy(logger);
-            var node0 = new Node(config, pmap[peers[0].PubKeyHex], keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, peer0Proxy, logger);
+            var peer0Proxy = new InMemAppProxy(id0,logger);
+            var node0 = new Node(config, id0, keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, peer0Proxy, logger);
             await node0.Init(false);
 
-            await Task.Run(()=>node0.StartAsync(false));
+            await node0.StartAsync(false);
 
+            var id1 = pmap[peers[1].PubKeyHex];
             var peer1Trans = await router.Register(peers[1].NetAddr);
-            var peer1Proxy = new InMemAppProxy(logger);
-            var node1 = new Node(config, pmap[peers[1].PubKeyHex], keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, peer1Proxy, logger);
+            var peer1Proxy = new InMemAppProxy(id1,logger);
+            var node1 = new Node(config, id1, keys[1], peers, new InmemStore(pmap, config.CacheSize, logger), peer1Trans, peer1Proxy, logger);
             await node1.Init(false);
 
-            await Task.Run(()=>node1.StartAsync(false));
+            await node1.StartAsync(false);
 
             //Submit a Tx to node0
 
@@ -306,8 +313,9 @@ namespace Babble.Test.NodeImpl
                         throw new NotImplementedException();
                 }
 
-                var proxy = new InMemAppProxy(logger);
-                var node = new Node(conf, pmap[peers[i].PubKeyHex], keys[i], peers,
+                var id = pmap[peers[i].PubKeyHex];
+                var proxy = new InMemAppProxy(id, logger);
+                var node = new Node(conf,id, keys[i], peers,
                     store,
                     trans,
                     proxy, logger);
@@ -359,7 +367,7 @@ namespace Babble.Test.NodeImpl
 
             var trans = await ((InMemRouterTransport) oldNode.Trans).Router.Register(oldNode.LocalAddr);
 
-            var prox = new InMemAppProxy(logger);
+            var prox = new InMemAppProxy(id, logger);
 
             var newNode = new Node(conf, id, key, peers, store, trans, prox, logger);
 
@@ -411,12 +419,16 @@ namespace Babble.Test.NodeImpl
         [Fact]
         public async Task TestGossip()
         {
-            var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", GetPath(), logger);
+            var (keys, nodes) = await InitNodes(2, 1000, 1000, "inmem", GetPath(), logger);
 
-            var err = await Gossip(nodes, 50, true, TimeSpan.FromSeconds(3));
+            var err = await Gossip(nodes, 2, true, TimeSpan.FromSeconds(2),logger);
             Assert.Null(err);
 
             await CheckGossip(nodes, logger);
+
+            ShutdownNodes(nodes);
+
+
         }
 
         [Fact]
@@ -425,7 +437,7 @@ namespace Babble.Test.NodeImpl
             var (keys, nodes) = await InitNodes(4, 1000, 1000, "inmem", GetPath(), logger);
             try
             {
-                var err = await Gossip(nodes.Skip(1).ToArray(), 10, true, TimeSpan.FromSeconds(3));
+                var err = await Gossip(nodes.Skip(1).ToArray(), 10, true, TimeSpan.FromSeconds(3),logger);
                 Assert.Null(err);
                 await CheckGossip(nodes.Skip(1).ToArray(), logger);
             }
@@ -440,7 +452,7 @@ namespace Babble.Test.NodeImpl
         {
             var ( _, nodes) = await InitNodes(4, 1000, 300, "inmem", GetPath(), logger);
 
-            var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
+            var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3),logger);
             Assert.Null(err);
 
             try
@@ -502,7 +514,7 @@ namespace Babble.Test.NodeImpl
             //create a first network with BadgerStore and wait till it reaches 10 consensus
             //rounds before shutting it down
             var (_, nodes) = await InitNodes(4, 10000, 1000, "badger", GetPath(), logger);
-            var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3));
+            var err = await Gossip(nodes, 10, false, TimeSpan.FromSeconds(3),logger);
             Assert.Null(err);
 
             await CheckGossip(nodes, logger);
@@ -521,11 +533,11 @@ namespace Babble.Test.NodeImpl
             //await CheckGossip(new[] {nodes[0], newNodes[0]}, logger);
         }
 
-        private static async Task<Exception> Gossip(Node[] nodes, int target, bool shutdown, TimeSpan timeout)
+        private static async Task<Exception> Gossip(Node[] nodes, int target, bool shutdown, TimeSpan timeout,ILogger logger)
         {
             await RunNodes(nodes, true);
 
-            var err = await BombardAndWait(nodes, target, timeout);
+            var err = await BombardAndWait(nodes, target, timeout, logger);
             Assert.Null(err);
 
             if (shutdown)
@@ -536,14 +548,15 @@ namespace Babble.Test.NodeImpl
             return null;
         }
 
-        private static async Task<Exception> BombardAndWait(Node[] nodes, int target, TimeSpan timeout)
+        private static async Task<Exception> BombardAndWait(Node[] nodes, int target, TimeSpan timeout, ILogger logger)
         {
             var cts = new CancellationTokenSource();
             
             var mrtTask = MakeRandomTransactions(nodes, cts.Token);
 
+
             //wait until all nodes have at least 'target' rounds
-            var stopper = Task.Delay(timeout, cts.Token);
+           var stopper= Task.Delay(timeout, cts.Token);
 
             async Task Bombard()
             {
@@ -557,11 +570,13 @@ namespace Babble.Test.NodeImpl
                         foreach (var n in nodes)
                         {
                             var ce = n.Controller.GetLastConsensusRoundIndex();
+
                             if (ce == null || ce < target)
                             {
                                 done = false;
                                 break;
                             }
+
                         }
 
                         if (done)
@@ -572,8 +587,17 @@ namespace Babble.Test.NodeImpl
                 }
             }
 
-            await Task.WhenAny(stopper, Bombard(), mrtTask);
-            //cts.Cancel();
+          var resultTask= await Task.WhenAny( mrtTask,stopper, Bombard());
+
+            if (resultTask == stopper)
+            {
+                return new Exception("timeout");
+            }
+
+            await resultTask;
+
+
+
             return null;
         }
 
@@ -583,17 +607,17 @@ namespace Babble.Test.NodeImpl
             var consTransactions = new Dictionary<int, byte[][]>();
             foreach (var n in nodes)
             {
-                logger.Debug(n.Id.ToString());
+                //logger.Debug(n.Id.ToString());
 
                 consEvents[n.Id] = n.Controller.GetConsensusEvents();
 
                 var (nodeTxs, err) = await GetCommittedTransactions(n);
-
+                Assert.Null(err);
+                
                 consTransactions[n.Id] = nodeTxs;
             }
 
             var minE = consEvents.ContainsKey(0) ? consEvents[0].Length : 0;
-
             var minT = consTransactions.ContainsKey(0) ? consTransactions[0].Length : 0;
 
             for (var k = 1; k < nodes.Length; k++)
@@ -659,27 +683,28 @@ namespace Babble.Test.NodeImpl
 
         private static async Task MakeRandomTransactions(Node[] nodes, CancellationToken ct)
         {
-            var seq = new Dictionary<int, int>();
+            var seq = new int[nodes.Length];
             while (!ct.IsCancellationRequested)
             {
                 var rnd = new Random();
                 var n = rnd.Next(0, nodes.Length);
 
                 var node = nodes[n];
-                await SubmitTransaction(node, $"node{n} transaction {seq[n]}".StringToBytes());
+
+                var prox = node.Proxy as InMemAppProxy;
+                Assert.NotNull(prox);
+
+                await prox.SubmitTx( $"node{n} transaction {seq[n]}".StringToBytes());
+                
                 seq[n] = seq[n] + 1;
 
                 await Task.Delay(3, ct);
             }
         }
 
-        private static Task SubmitTransaction(Node n, byte[] tx)
+        private static async Task SubmitTransaction(Node n, byte[] tx)
         {
-            var prox = n.Proxy as InMemAppProxy;
-            Assert.NotNull(prox);
-
-            return prox.SubmitTx(tx);
-
+          
         }
 
         //    func BenchmarkGossip(b* testing.B)

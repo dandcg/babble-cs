@@ -38,7 +38,6 @@ namespace Babble.Core.HashgraphImpl
         public Hashgraph(Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger logger)
         {
             this.logger = logger.AddNamedContext("Hashgraph");
-            this.logger.Debug("Instantiate Hashgraph");
 
             var reverseParticipants = participants.ToDictionary(p => p.Value, p => p.Key);
             var cacheSize = store.CacheSize();
@@ -863,7 +862,7 @@ namespace Babble.Core.HashgraphImpl
             foreach (var hash in UndeterminedEvents)
 
             {
-                logger.Debug("Undetermined Event {hex}", hash);
+                
 
                 var roundNumber = await Round(hash);
 
@@ -887,6 +886,8 @@ namespace Babble.Core.HashgraphImpl
                 //to false
                 if (!roundInfo.Queued())
                 {
+                    logger.Debug("Undetermined Event Queued {hex}", hash);
+
                     UndecidedRounds.Enqueue(roundNumber);
 
                     roundInfo.SetQueued();
@@ -1029,6 +1030,7 @@ namespace Babble.Core.HashgraphImpl
                         if (LastConsensusRound == null || i > LastConsensusRound)
                         {
                             await SetLastConsensusRound(i);
+
                         }
                     }
 
