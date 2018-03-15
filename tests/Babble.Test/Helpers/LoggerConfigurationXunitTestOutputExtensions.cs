@@ -13,7 +13,7 @@ namespace Babble.Test.Helpers
     /// </summary>
     public static class LoggerConfigurationXunitTestOutputExtensions
     {
-        const string DefaultOutputTemplate = "[{Timestamp:HH:mm:ss.ffff} {Level:u3}] ({InstanceName}) {SourceContext} {Message:lj}{Exception}";
+        const string DefaultOutputTemplate = "[{Timestamp:HH:mm:ss.ffff} {Level:u3}] {SourceContext}({InstanceName}) {Message:lj}{Exception}";
 
         /// <summary>
         /// Adds a sink that writes log events to the output of an xUnit test.

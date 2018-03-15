@@ -35,9 +35,6 @@
         <TestName>Babble.Test.Crypto.CryptoTests.TryWithRaw</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.BlockTests.TestAppendSignature</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.BlockTests.TestSignBlock</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -206,10 +203,13 @@
         <TestName>Babble.Test.NodeImpl.NodeTests.TestSyncLimit</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.ControllerTests.TestConsensus</TestName>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.ControllerTests.TestConsensusFf</TestName>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestGossip</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.BlockTests.TestAppendSignature</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestEventDiff</TestName>
@@ -227,10 +227,10 @@
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestAddTransaction</TestName>
+        <TestName>Babble.Test.NodeImpl.ControllerTests.TestConsensus</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestGossip</TestName>
+        <TestName>Babble.Test.NodeImpl.ControllerTests.TestConsensusFf</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>

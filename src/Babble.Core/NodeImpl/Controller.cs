@@ -37,10 +37,10 @@ namespace Babble.Core.NodeImpl
 
         private readonly ILogger logger;
 
-        public Controller(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger logger)
+        public Controller(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger loggerIn)
         {
 
-            this.logger = logger.ForContext("SourceContext", "Controller");
+            logger = loggerIn.AddNamedContext( "Controller", id.ToString());
 
             this.id = id;
             Key = key;

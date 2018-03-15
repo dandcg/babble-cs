@@ -56,7 +56,7 @@ namespace Babble.Core.ProxyImpl
 
         public async Task SubmitTx(byte[] tx)
         {
-            logger.Debug("SubmitTx -> {Tx}", tx.BytesToString());
+            logger.Debug("SubmitTx -> {TxString}", tx.BytesToString());
             await submitCh.EnqueueAsync(tx);
             }
 

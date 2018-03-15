@@ -25,7 +25,7 @@ namespace Babble.Core.HashgraphImpl
         public int LastCommitedRoundEvents { get; set; } //number of evs in round before LastConsensusRound
         public int ConsensusTransactions { get; set; } //number of consensus transactions
         public int PendingLoadedEvents { get; set; } //number of loaded evs that are not yet committed
-        public AsyncProducerConsumerQueue<Block> CommitChannel { get; set; } //channel for committing evs
+        public AsyncProducerConsumerQueue<Block> CommitCh { get; set; } //channel for committing evs
         public int TopologicalIndex { get; set; } //counter used to order evs in topological order
         public int SuperMajority { get; set; }
 
@@ -46,7 +46,7 @@ namespace Babble.Core.HashgraphImpl
             Participants = participants;
             ReverseParticipants = reverseParticipants;
             Store = store;
-            CommitChannel = commitCh;
+            CommitCh = commitCh;
             AncestorCache = new LruCache<string, bool>(cacheSize, null, logger, "AncestorCache");
             SelfAncestorCache = new LruCache<string, bool>(cacheSize, null, logger, "SelfAncestorCache");
             OldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null, logger, "OldestAncestorCache");
@@ -1215,9 +1215,12 @@ namespace Babble.Core.HashgraphImpl
                         return err;
                     }
 
-                    if (CommitChannel != null)
+                    logger.Debug("Block created! Index={Index}",block.Index());
+
+
+                    if (CommitCh != null)
                     {
-                        await CommitChannel.EnqueueAsync(block);
+                        await CommitCh.EnqueueAsync(block);
                     }
                 }
             }
@@ -1235,6 +1238,8 @@ namespace Babble.Core.HashgraphImpl
             {
                 return (new Block(), new HashgraphError(err.Message, err));
             }
+
+    
 
             LastBlockIndex++;
             return (block, null);

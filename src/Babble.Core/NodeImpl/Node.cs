@@ -210,8 +210,8 @@ namespace Babble.Core.NodeImpl
             while (!ct.IsCancellationRequested)
             {
                 var tx = await submitCh.DequeueAsync(ct);
-
-                logger.Debug("Adding Transaction");
+           
+                logger.Debug("Adding Transaction {TxString}", tx.BytesToString());
                 await AddTransaction(tx, ct);
 
                 using (await submitChMonitor.EnterAsync())
