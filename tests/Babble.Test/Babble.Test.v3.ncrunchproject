@@ -194,9 +194,6 @@
         <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessEagerSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.NodeTests.TestShutdown</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -221,9 +218,6 @@
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestInitCores</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.NodeImpl.ControllerTests.TestOverSyncLimit</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestSync</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -231,6 +225,12 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestConsensusFf</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestGossipInitialState</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
       </NamedTestSelector>
     </IgnoredTests>
   </Settings>
