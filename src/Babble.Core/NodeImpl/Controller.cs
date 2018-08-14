@@ -348,7 +348,7 @@ namespace Babble.Core.NodeImpl
 
         public async Task<Exception> AddSelfEvent()
         {
-            if (TransactionPool.Count == 0)
+            if (TransactionPool.Count == 0 && BlockSignaturePool.Count == 0)
             {
                 logger.Debug("Empty TxPool");
                 return null;
