@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
+using Babble.Core.Common;
+using Babble.Core.Util;
 
 namespace Babble.Core.Crypto
 {
@@ -89,5 +91,31 @@ namespace Babble.Core.Crypto
                 return ecdsa.VerifyHash(hash, sig);
             }
         }
+
+        public static string EncodeSignature(BigInteger r, BigInteger s)
+        {
+            return $"{r.ToBase36String()}|{r.ToBase36String()}"; //"%s|%s", r.Text(36), s.Text(36))
+        }
+
+        public static (BigInteger r, BigInteger s) DecodeSignature(string sig)
+        {
+            var values = sig.Split('|');
+            if (values.Length != 2)
+            {
+               throw new Exception($"wrong number of values in signature: got {values.Length}, want 2");
+            }
+
+            var r = values[0].FromBase36String();
+
+            var s= values[1].FromBase36String();
+            return (r, s);
+        }
+
+
+
+
+
+
+
     }
 }

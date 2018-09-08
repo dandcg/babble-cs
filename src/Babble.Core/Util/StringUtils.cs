@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -61,5 +62,8 @@ namespace Babble.Core.Util
             if (ch >= 'A' && ch <= 'F') return (byte) (ch - 'A' + 10);
             throw new FormatException();
         }
+
+ 
+
     }
 }

@@ -14,11 +14,12 @@ namespace Babble.Core.HashgraphImpl.Stores
         Task<(string[] evts, StoreError err)> ParticipantEvents(string str, int i);
         Task<(string ev, StoreError err)> ParticipantEvent(string str, int i);
         (string last, bool isRoot, StoreError err) LastEventFrom(string str);
+        (string last, bool isRoot, StoreError err) LastConsensusEventFrom(string str); 
         Task<Dictionary<int, int>> KnownEvents();
         string[] ConsensusEvents();
 
         int ConsensusEventsCount();
-        StoreError AddConsensusEvent(string str);
+        StoreError AddConsensusEvent(Event ev);
         Task<(RoundInfo roundInfo, StoreError err)> GetRound(int i);
        Task<StoreError> SetRound(int i , RoundInfo ri);
         int LastRound();
@@ -29,7 +30,11 @@ namespace Babble.Core.HashgraphImpl.Stores
         
         Task<(Block block, StoreError err)> GetBlock(int index);
         Task<StoreError> SetBlock(Block block);
+
+        Task<int> LastBlockIndex();
+        Task<(Frame frame, StoreError err)> GetFrame(int index);
         
+        Task<StoreError> SetFrame(Frame frame);
         StoreError Reset(Dictionary<string, Root> d);
         StoreError Close();
 

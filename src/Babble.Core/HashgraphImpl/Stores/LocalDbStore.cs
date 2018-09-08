@@ -149,7 +149,7 @@ namespace Babble.Core.HashgraphImpl.Stores
         private const string RoundPrefix = "round";
         private const string BlockPrefix = "block";
         private const string TopoPrefix = "topo";
-
+        private const string FramePrefix = "frame";
         private const string EventStore = "event";
 
         //==============================================================================
@@ -184,6 +184,15 @@ namespace Babble.Core.HashgraphImpl.Stores
         {
             return $"{BlockPrefix}_{index}";
         }
+
+
+        public string FrameKey(int index)
+        {
+            return $"{FramePrefix}_{index}";
+        }
+
+        //==============================================================================
+        //Implement the Store interface
 
         public int CacheSize()
         {
@@ -256,6 +265,15 @@ namespace Babble.Core.HashgraphImpl.Stores
             return InMemStore.LastEventFrom(participant);
         }
 
+        public (string last, bool isRoot, StoreError err) LastConsensusEventFrom(stringstring participant )
+        {
+            return InmemStore.LastConsensusEventFrom(participant);
+        }
+
+
+
+
+
         public async Task<Dictionary<int, int>> KnownEvents()
         {
             var known = new Dictionary<int, int>();
@@ -306,9 +324,9 @@ namespace Babble.Core.HashgraphImpl.Stores
             return InMemStore.ConsensusEventsCount();
         }
 
-        public StoreError AddConsensusEvent(string key)
+        public StoreError AddConsensusEvent(Event ev)
         {
-            return InMemStore.AddConsensusEvent(key);
+            return InMemStore.AddConsensusEvent(ev);
         }
 
         public async Task<(RoundInfo roundInfo, StoreError err)> GetRound(int r)
@@ -396,6 +414,37 @@ namespace Babble.Core.HashgraphImpl.Stores
 
             return err;
         }
+
+
+        public async Task<int> LastBlockIndex()
+        {
+            return InmemStore.LastBlockIndex();
+        }
+
+        public async Task<(Frame frame, StoreError error)> GetFrame(int rr) 
+        {
+            var (res, err) = await InmemStore.GetFrame(rr);
+            if (err != null)
+            {
+                (res, err) = await DbGetFrame(rr);
+            }
+
+            return (res, err); //return res, mapError(err, string(frameKey(rr)))
+        }
+
+        public async Task<StoreError>  SetFrame( Frame frame) 
+        {
+            var err = await InmemStore.SetFrame(frame);
+            
+            if (err != null)
+            {
+                return err;
+            }
+
+            return DbSetFrame(frame);
+        }
+
+
 
         public StoreError Reset(Dictionary<string, Root> roots)
         {
@@ -703,6 +752,64 @@ namespace Babble.Core.HashgraphImpl.Stores
 
             return Task.FromResult<StoreError>(null);
         }
+
+
+       public  Task<(Frame frame, StoreError err)> DbGetFrame(int index)
+       {
+           
+           logger.Verbose("Db - GetFrame");
+
+           var key = FrameKey(index);
+
+
+           var result = tx.Select<string, Frame>(FramePrefix, key);
+
+            
+           if (!result.Exists)
+           {
+               return Task.FromResult<(Frame, StoreError)>((new Frame(), new StoreError(StoreErrorType.KeyNotFound)));
+           }
+
+
+
+           return Task.FromResult<(Frame, StoreError)>((result.Value, null));
+
+        }
+
+        public Task<StoreError> DbSetFrame( Frame frame)
+        {
+        
+            
+            
+            
+            logger.Verbose("Db - SetFrame");
+
+            var key = FrameKey(frame.Round);
+            
+            tx.Insert(FramePrefix, key, frame);
+
+            return Task.FromResult<StoreError>(null);
+            
+  
+        }
+
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+        //func isDBKeyNotFound(err error) bool {
+        //    return err.Error() == badger.ErrKeyNotFound.Error()
+        //}
+
+        //func mapError(err error, key string) error {
+        //    if err != nil {
+        //        if isDBKeyNotFound(err) {
+        //            return cm.NewStoreErr(cm.KeyNotFound, key)
+        //        }
+        //    }
+        //    return err
+        //}
+
+
 
 
 
