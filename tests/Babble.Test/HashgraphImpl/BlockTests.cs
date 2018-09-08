@@ -26,6 +26,7 @@ namespace Babble.Test.HashgraphImpl
             var privateKey = CryptoUtils.GenerateEcdsaKey();
 
             var block = new Block(0, 1,
+                "framehash".StringToBytes(),
                 new[]
                 {
                     "abc".StringToBytes(),
@@ -50,6 +51,7 @@ namespace Babble.Test.HashgraphImpl
 
       
         var block = new Block(0, 1,
+            "framehash".StringToBytes(),
             new[]
             {
                 "abc".StringToBytes(),

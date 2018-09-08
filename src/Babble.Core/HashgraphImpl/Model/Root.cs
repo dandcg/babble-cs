@@ -23,7 +23,6 @@ namespace Babble.Core.HashgraphImpl.Model
     - Root 0        - 		 - Root 1        - 		 - Root 2        -
     - X = Y = ""    - 		 - X = Y = ""    -		 - X = Y = ""    -
     - Index= -1     -		 - Index= -1     -       - Index= -1     -
-    - Round= 0      -		 - Round= 0      -       - Round= 0      -
     - Others= empty - 		 - Others= empty -       - Others= empty -
     -----------------		 -----------------       -----------------
 
@@ -51,35 +50,71 @@ namespace Babble.Core.HashgraphImpl.Model
     - Root 0        - 		 - Root 1        - 		 - Root 2        -
     - X: x0, Y: y0  - 		 - X: x1, Y: y1  - 		 - X: x2, Y: y2  -
     - Index= i0     -		 - Index= i1     -       - Index= i2     -
-    - Round= r0     -		 - Round= r1     -       - Round= r2     -
     - Others= {     - 		 - Others= empty -       - Others= empty -
     -  E02: E_OLD   -        -----------------       -----------------
     - }             -
     -----------------
     */
 
+    //RootEvent contains enough information about an Event and its direct descendant
+//to allow inserting Events on top of it.
+    public class RootEvent
+    {
+
+        public RootEvent()
+        {
+            
+        }
+
+        public string Hash { get; set; }
+        public int CreatorId { get; set; }
+        public int Index { get; set; }
+        public int LamportTimestamp { get; set; }
+        public int Round { get; set; }
+
+//NewBaseRootEvent creates a RootEvent corresponding to the the very beginning
+//of a Hashgraph.
+       public static RootEvent NewBaseRootEvent(int creatorId )
+       {
+           var res = new RootEvent
+           {
+               Hash = $"Root{creatorId}",
+               CreatorId = creatorId,
+               Index = -1,
+               LamportTimestamp = -1,
+               Round = -1
+           };
+           return res;
+       }
+    }
+//Root forms a base on top of which a participant's Events can be inserted. In
+//contains the SelfParent of the first descendant of the Root, as well as other
+//Events, belonging to a past before the Root, which might be referenced
+//in future Events. NextRound corresponds to a proposed value for the child's
+//Round; it is only used if the child's OtherParent is empty or NOT in the
+//Root's Others.
+
+
+
+
     public class Root
     {
-        public string X { get; set; }
-        public string Y { get; set; }
-        public int Index { get; set; }
-        public int Round { get; set; }
-        public Dictionary<string, string> Others { get; set; }
+        public int NextRound { get; set; }
+        public RootEvent SelfParent { get; set; }
+        public Dictionary<string, RootEvent> Others { get; set; }
 
         public Root()
         {
             
         }
 
-        public static Root NewBaseRoot()
+        public static Root NewBaseRoot(int creatorId )
         {
             return new Root
             {
-                X = "",
-                Y = "",
-                Index = -1,
-                Round = -1,
-                Others = new Dictionary<string, string>()
+               NextRound = 0,
+                SelfParent = RootEvent.NewBaseRootEvent(creatorId ),
+                Others = new Dictionary<string, RootEvent>()
             };
         }
 

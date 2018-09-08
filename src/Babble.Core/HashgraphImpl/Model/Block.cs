@@ -17,17 +17,36 @@ namespace Babble.Core.HashgraphImpl.Model
         {
 
         }
-        public Block(int blockIndex, int roundReceived, byte[][] transactions)
+        public Block(int blockIndex, int roundReceived, byte[] frameHash, byte[][] transactions)
         {
             Body = new BlockBody
             {
                 Index = blockIndex,
                 RoundReceived = roundReceived,
-                Transactions = transactions
+                Transactions = transactions,
+                FrameHash =frameHash
             };
 
             Signatures = new Dictionary<string, byte[]>();
         }
+
+        public static (Block block, HashgraphError err) NewBlockFromFrame(int blockIndex, Frame frame)
+        {
+            var frameHash = frame.Hash();
+     
+            var transactions = new List<byte[]> { };
+            foreach (var e in frame.Events)
+            {
+                transactions.AddRange(e.Transactions());
+            }
+
+            return (new Block(blockIndex, frame.Round, frameHash, transactions.ToArray()),null);
+
+        }
+
+
+
+
 
         public int Index()
         {
@@ -48,6 +67,36 @@ namespace Babble.Core.HashgraphImpl.Model
         {
             return Body.StateHash;
         }
+
+
+        public byte[] FrameHash()
+        {
+            return Body.FrameHash;
+        }
+
+        public  BlockSignature[] GetSignatures()
+        {
+            var res = new List<BlockSignature>(Signatures.Count);
+            var i = 0;
+
+            foreach (var s in Signatures)
+            {
+                var val = s.Key;
+                var sig = s.Value;
+
+                var validatorBytes = StringUtils.GetBytesFromHexString(val.Skip(2).ToString());
+                res[i] = new BlockSignature
+                {
+                    Validator = validatorBytes,
+                    Index = Index(),
+                    Signature = sig,
+                };
+                i++;
+            }
+
+            return res.ToArray();
+        }
+
 
         public (BlockSignature bs, HashgraphError err ) GetSignature(string validator)
         {

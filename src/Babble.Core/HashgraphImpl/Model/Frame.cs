@@ -1,15 +1,18 @@
-﻿using Babble.Core.Crypto;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using Babble.Core.Crypto;
 using Babble.Core.Util;
 
 namespace Babble.Core.HashgraphImpl.Model
 {
-    public class BlockBody
+    public class Frame
     {
-        public int Index { get; set; }
-        public int RoundReceived { get; set; }
-        public byte[] StateHash { get; set; }
-        public byte[] FrameHash { get; set; }
-        public byte[][] Transactions { get; set; }
+
+        public int Round { get; set; } //RoundReceived
+        public    Root[]  Roots   { get; set; }   // [participant ID] => Root
+         public    Event[]    Events  { get; set; }  //Event with RoundReceived = Round
+
 
         //json encoding of body only
         public byte[] Marshal()
@@ -26,5 +29,6 @@ namespace Babble.Core.HashgraphImpl.Model
         {
             return CryptoUtils.Sha256(Marshal());
         }
+
     }
 }

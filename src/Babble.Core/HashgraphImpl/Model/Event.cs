@@ -43,15 +43,15 @@ namespace Babble.Core.HashgraphImpl.Model
             return roundReceived;
         }
 
-        public void SetConsensusTimestamp(DateTimeOffset value)
-        {
-            consensusTimestamp = value;
-        }
+        //public void SetConsensusTimestamp(DateTimeOffset value)
+        //{
+        //    consensusTimestamp = value;
+        //}
 
-        public DateTimeOffset GetConsensusTimestamp()
-        {
-            return consensusTimestamp;
-        }
+        //public DateTimeOffset GetConsensusTimestamp()
+        //{
+        //    return consensusTimestamp;
+        //}
 
         public void SetLastAncestors(EventCoordinates[] value)
         {
@@ -75,12 +75,20 @@ namespace Babble.Core.HashgraphImpl.Model
 
         //sha256 hash of body and signature
 
-        private string creator;
+       
         private int topologicalIndex;
+        //private int? roundReceived;
+        //private DateTimeOffset consensusTimestamp;
+        
+        private int? round;
+        private int? lamportTimestamp;
         private int? roundReceived;
-        private DateTimeOffset consensusTimestamp;
+        
+        
         private EventCoordinates[] lastAncestors;
         private EventCoordinates[] firstDescendants;
+        
+        private string creator;
         private byte[] hash;
 
         public string Creator()
@@ -109,11 +117,10 @@ namespace Babble.Core.HashgraphImpl.Model
             var body = new EventBody
             {
                 Transactions = transactions?? new byte[][]{},
-                BlockSignatures = blockSignatures ?? new BlockSignature[]{},
                 Parents = parents,
                 Creator = creator,
-                Timestamp = DateTime.UtcNow, //strip monotonic time
-                Index = index
+                Index = index,
+                BlockSignatures = blockSignatures ?? new BlockSignature[]{},
             };
 
             Body = body;
@@ -149,9 +156,7 @@ namespace Babble.Core.HashgraphImpl.Model
 
             var hasTransactions = Body.Transactions != null && Body.Transactions.Length > 0;
 
-            var hasBlockSignatures = Body.BlockSignatures != null && Body.BlockSignatures.Length > 0;
-
-            return hasTransactions || hasBlockSignatures;
+            return hasTransactions;
         }
 
         //ecdsa sig
@@ -181,6 +186,24 @@ namespace Babble.Core.HashgraphImpl.Model
         {
             return data.DeserializeFromByteArray<Event>();
         }
+
+
+        public void  SetRound(int r) 
+        {
+        
+             
+                round = r;
+            
+
+        }
+
+       public void SetLamportTimestamp( int t)
+       {
+           lamportTimestamp = t;
+       }
+
+
+
 
         public void SetWireInfo(int selfParentIndex, int otherParentCreatorId, int otherParentIndex, int creatorId)
         {
@@ -223,7 +246,7 @@ namespace Babble.Core.HashgraphImpl.Model
                     OtherParentCreatorId = Body.GetOtherParentCreatorId(),
                     OtherParentIndex = Body.GetOtherParentIndex(),
                     CreatorId = Body.GetCreatorId(),
-                    Timestamp = Body.Timestamp,
+
                     Index = Body.Index,
                     BlockSignatures=WireBlockSignatures()
                 },
@@ -232,15 +255,18 @@ namespace Babble.Core.HashgraphImpl.Model
         }
 
         //Sorting
-        public class EventByTimeStamp : IComparer<Event>
-        {
-            public int Compare(Event x, Event y)
-            {
-                if (x == null) throw new ArgumentNullException(nameof(x));
-                if (y == null) throw new ArgumentNullException(nameof(y));
-                return DateTimeOffset.Compare(x.Body.Timestamp, y.Body.Timestamp);
-            }
-        }
+        //public class EventByTimeStamp : IComparer<Event>
+        //{
+        //    public int Compare(Event x, Event y)
+        //    {
+        //        if (x == null) throw new ArgumentNullException(nameof(x));
+        //        if (y == null) throw new ArgumentNullException(nameof(y));
+        //        return DateTimeOffset.Compare(x.Body.Timestamp, y.Body.Timestamp);
+        //    }
+        //}
+
+
+
 
         public class EventByTopologicalOrder : IComparer<Event>
         {
@@ -252,61 +278,90 @@ namespace Babble.Core.HashgraphImpl.Model
             }
         }
 
-        public class EventByConsensus : IComparer<Event>
-        {
-            private readonly Dictionary<int, RoundInfo> r = new Dictionary<int, RoundInfo>();
-            private readonly Dictionary<int, BigInteger> cache = new Dictionary<int, BigInteger>();
 
+        public class EventByLamportTimeStamp : IComparer<Event>
+        {
             public int Compare(Event i, Event j)
             {
                 if (i == null) throw new ArgumentNullException(nameof(i));
                 if (j == null) throw new ArgumentNullException(nameof(j));
 
-                var irr = i.GetRoundReceived() ?? -1;
-                var jrr = j.GetRoundReceived() ?? -1;
+                var (it, jt) = (-1, -1);
 
-                if (irr != jrr)
+                if (i.lamportTimestamp != null)
                 {
-                    return irr.CompareTo(jrr);
+                    it = (int)i.lamportTimestamp;
+                }
+                if (j.lamportTimestamp != null)
+                {
+                    jt = (int) j.lamportTimestamp;
+                }
+                if (it != jt)
+                {
+                    return (it.CompareTo(jt));
                 }
 
-                if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
-                {
-                    return DateTimeOffset.Compare(i.GetConsensusTimestamp(), j.GetConsensusTimestamp());
-                }
-
-                Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
-
-                var w = GetPseudoRandomNumber(i.GetRoundReceived() ?? -1);
-
-                var wsi = i.SignatureRs().S ^ w;
-
-                var wsj = j.SignatureRs().S ^ w;
-
+                var wsi = i.SignatureRs().S;
+                var wsj = j.SignatureRs().S;
+        
                 return wsi.CompareTo(wsj);
             }
+        }
 
-            public BigInteger GetPseudoRandomNumber(int round)
-            {
-                if (cache.TryGetValue(round, out var ps))
-                {
-                    return ps;
-                }
 
-                if (!r.TryGetValue(round, out var rd))
-                {
-                    rd = new RoundInfo();
-                }
 
-                ps = rd.PseudoRandomNumber();
+        //public class EventByConsensus : IComparer<Event>
+        //{
+        //    private readonly Dictionary<int, RoundInfo> r = new Dictionary<int, RoundInfo>();
+        //    private readonly Dictionary<int, BigInteger> cache = new Dictionary<int, BigInteger>();
 
-                cache[round] = ps;
+        //    public int Compare(Event i, Event j)
+        //    {
+        //        if (i == null) throw new ArgumentNullException(nameof(i));
+        //        if (j == null) throw new ArgumentNullException(nameof(j));
 
-                return ps;
-            }
+        //        var irr = i.GetRoundReceived() ?? -1;
+        //        var jrr = j.GetRoundReceived() ?? -1;
+
+        //        if (irr != jrr)
+        //        {
+        //            return irr.CompareTo(jrr);
+        //        }
+
+        //        if (!i.GetConsensusTimestamp().Equals(j.GetConsensusTimestamp()))
+        //        {
+        //            return DateTimeOffset.Compare(i.GetConsensusTimestamp(), j.GetConsensusTimestamp());
+        //        }
+
+        //        Debug.Assert(i.GetRoundReceived() != null, "i.RoundReceived != null");
+
+        //        var w = GetPseudoRandomNumber(i.GetRoundReceived() ?? -1);
+
+        //        var wsi = i.SignatureRs().S ^ w;
+
+        //        var wsj = j.SignatureRs().S ^ w;
+
+        //        return wsi.CompareTo(wsj);
+        //    }
+
+            //public BigInteger GetPseudoRandomNumber(int round)
+            //{
+            //    if (cache.TryGetValue(round, out var ps))
+            //    {
+            //        return ps;
+            //    }
+
+            //    if (!r.TryGetValue(round, out var rd))
+            //    {
+            //        rd = new RoundInfo();
+            //    }
+
+            //    ps = rd.PseudoRandomNumber();
+
+            //    cache[round] = ps;
+
+            //    return ps;
+            //}
         }
     }
 
-    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    // WireEvent
-}

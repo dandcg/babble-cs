@@ -14,7 +14,7 @@ namespace Babble.Core.HashgraphImpl.Model
          
         }
 
-        public Dictionary<string, RoundEvent> Events { get; set; }  = new Dictionary<string, RoundEvent>();
+        private Dictionary<string, RoundEvent> Events { get; set; }  = new Dictionary<string, RoundEvent>();
 
         public void SetQueued()
         {
@@ -33,6 +33,32 @@ namespace Babble.Core.HashgraphImpl.Model
                 Events.Add(x, new RoundEvent {Witness = witness});
             }
         }
+
+        public void  SetConsensusEvent(string x) {
+
+            if (Events.TryGetValue(x, out var e))
+            {
+
+                e.Consensus = true;
+     
+
+              
+
+            }
+
+            else
+            {
+                Events.Add(x, new RoundEvent());
+            }
+
+
+
+
+        }
+
+
+
+
 
         public void SetFame(string x, bool f)
         {
@@ -62,6 +88,23 @@ namespace Babble.Core.HashgraphImpl.Model
                 .Select(s => s.Key)
                 .ToArray();
         }
+
+        
+        public  string[] RoundEvents()
+        {
+
+            return Events.Where(w => !w.Value.Consensus).Select(s => s.Key).ToArray();
+
+        }
+
+        //return consensus events
+        public  string[]  ConsensusEvents() 
+        {
+            return Events.Where(w => w.Value.Consensus).Select(s => s.Key).ToArray();
+
+        }
+
+
 
         //return famous witnesses
         public string[] FamousWitnesses()

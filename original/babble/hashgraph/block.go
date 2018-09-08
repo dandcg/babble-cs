@@ -7,24 +7,25 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/babbleio/babble/crypto"
+	"github.com/mosaicnetworks/babble/crypto"
 )
 
 type BlockBody struct {
 	Index         int
 	RoundReceived int
 	StateHash     []byte
+	FrameHash     []byte
 	Transactions  [][]byte
 }
 
 //json encoding of body only
 func (bb *BlockBody) Marshal() ([]byte, error) {
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b) //will write to b
+	bf := bytes.NewBuffer([]byte{})
+	enc := json.NewEncoder(bf)
 	if err := enc.Encode(bb); err != nil {
 		return nil, err
 	}
-	return b.Bytes(), nil
+	return bf.Bytes(), nil
 }
 
 func (bb *BlockBody) Unmarshal(data []byte) error {
@@ -57,12 +58,12 @@ func (bs *BlockSignature) ValidatorHex() string {
 }
 
 func (bs *BlockSignature) Marshal() ([]byte, error) {
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b) //will write to b
+	bf := bytes.NewBuffer([]byte{})
+	enc := json.NewEncoder(bf)
 	if err := enc.Encode(bs); err != nil {
 		return nil, err
 	}
-	return b.Bytes(), nil
+	return bf.Bytes(), nil
 }
 
 func (bs *BlockSignature) Unmarshal(data []byte) error {
@@ -96,11 +97,24 @@ type Block struct {
 	hex  string
 }
 
-func NewBlock(blockIndex, roundReceived int, transactions [][]byte) Block {
+func NewBlockFromFrame(blockIndex int, frame Frame) (Block, error) {
+	frameHash, err := frame.Hash()
+	if err != nil {
+		return Block{}, err
+	}
+	transactions := [][]byte{}
+	for _, e := range frame.Events {
+		transactions = append(transactions, e.Transactions()...)
+	}
+	return NewBlock(blockIndex, frame.Round, frameHash, transactions), nil
+}
+
+func NewBlock(blockIndex, roundReceived int, frameHash []byte, txs [][]byte) Block {
 	body := BlockBody{
 		Index:         blockIndex,
 		RoundReceived: roundReceived,
-		Transactions:  transactions,
+		FrameHash:     frameHash,
+		Transactions:  txs,
 	}
 	return Block{
 		Body:       body,
@@ -124,6 +138,25 @@ func (b *Block) StateHash() []byte {
 	return b.Body.StateHash
 }
 
+func (b *Block) FrameHash() []byte {
+	return b.Body.FrameHash
+}
+
+func (b *Block) GetSignatures() []BlockSignature {
+	res := make([]BlockSignature, len(b.Signatures))
+	i := 0
+	for val, sig := range b.Signatures {
+		validatorBytes, _ := hex.DecodeString(val[2:])
+		res[i] = BlockSignature{
+			Validator: validatorBytes,
+			Index:     b.Index(),
+			Signature: sig,
+		}
+		i++
+	}
+	return res
+}
+
 func (b *Block) GetSignature(validator string) (res BlockSignature, err error) {
 	sig, ok := b.Signatures[validator]
 	if !ok {
@@ -143,8 +176,8 @@ func (b *Block) AppendTransactions(txs [][]byte) {
 }
 
 func (b *Block) Marshal() ([]byte, error) {
-	var bf bytes.Buffer
-	enc := json.NewEncoder(&bf)
+	bf := bytes.NewBuffer([]byte{})
+	enc := json.NewEncoder(bf)
 	if err := enc.Encode(b); err != nil {
 		return nil, err
 	}

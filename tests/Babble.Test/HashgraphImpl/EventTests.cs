@@ -21,12 +21,17 @@ namespace Babble.Test.HashgraphImpl
             {
                 Transactions = new[] {"abc".StringToBytes(), "def".StringToBytes()},
                 Parents = new[] {"self", "other"},
-                Creator = "public key".StringToBytes(),
-                Timestamp = DateTimeOffset.UtcNow,
+                Creator = "public key".StringToBytes()
+
                 
             };
 
-            body.BlockSignatures = new[] {new BlockSignature() {Validator = body.Creator, Index = 0, Signature = "r|s".StringToBytes()}};
+            body.BlockSignatures = new[] {new BlockSignature()
+            {
+                Validator = body.Creator, 
+                Index = 0, 
+                Signature = "r|s".StringToBytes()
+            }};
             return body;
         }
 
@@ -49,7 +54,6 @@ namespace Babble.Test.HashgraphImpl
 
             newBody.Creator.ShouldCompareTo(body.Creator);
 
-            Assert.Equal(body.Timestamp,newBody.Timestamp);
 
         }
 
@@ -137,7 +141,6 @@ namespace Babble.Test.HashgraphImpl
                     OtherParentCreatorId = 66,
                     OtherParentIndex = 2,
                     CreatorId = 67,
-                    Timestamp = ev.Body.Timestamp,
                     Index = ev.Body.Index,
                     BlockSignatures = ev.WireBlockSignatures()
                 },

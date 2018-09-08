@@ -14,7 +14,7 @@ namespace Babble.Core.HashgraphImpl.Model
         public byte[][] Transactions { get; set; } //the payload
         public string[] Parents { get; set; }  //hashes of the event's parents, self-parent first
         public byte[] Creator { get; set; } //creator's public key
-        public DateTimeOffset Timestamp { get; set; } //creator's claimed timestamp of the event's creation
+
 
         public int Index { get; set; } //index in the sequence of events created by Creator
 
