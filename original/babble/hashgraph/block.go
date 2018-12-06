@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mosaicnetworks/babble/crypto"
+	"github.com/mosaicnetworks/babble/src/crypto"
 )
 
 type BlockBody struct {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/mosaicnetworks/babble/crypto"
+	"github.com/mosaicnetworks/babble/src/crypto"
 )
 
 type Frame struct {
