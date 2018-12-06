@@ -4,6 +4,7 @@
     {
         public int Round { get; set; }
         public bool IsRoot { get; set; }
+        public int RootStronglySeenWitnesses { get; set; }
         
         public ParentRoundInfo()
         {

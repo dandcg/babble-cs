@@ -1,4 +1,6 @@
 ﻿using System.Threading.Tasks;
+using Babble.Core.Common;
+using Babble.Core.PeersImpl;
 using Nito.AsyncEx;
 
 namespace Babble.Core.NetImpl.PeerImpl
@@ -7,7 +9,7 @@ namespace Babble.Core.NetImpl.PeerImpl
     {
 
 
-        public async Task<Peer[]> Peers()
+        public async Task< (Peers, StoreError)> Peers()
         {
 
             using (await l.LockAsync())
@@ -17,13 +19,16 @@ namespace Babble.Core.NetImpl.PeerImpl
             
         }
 
-        public async Task SetPeers(Peer[] npeers)
+        public async Task<    StoreError> SetPeers(Peer[] npeers)
         {
             using (await l.LockAsync())
             {
                 this.peers = npeers;
             }
         }
+
+
+
 
         private readonly AsyncLock l = new AsyncLock();
         private Peer[] peers;
