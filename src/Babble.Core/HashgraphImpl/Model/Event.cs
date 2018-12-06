@@ -43,32 +43,22 @@ namespace Babble.Core.HashgraphImpl.Model
             return roundReceived;
         }
 
-        //public void SetConsensusTimestamp(DateTimeOffset value)
-        //{
-        //    consensusTimestamp = value;
-        //}
-
-        //public DateTimeOffset GetConsensusTimestamp()
-        //{
-        //    return consensusTimestamp;
-        //}
-
-        public void SetLastAncestors(EventCoordinates[] value)
+        public void SetLastAncestors(OrderedEventCoordinates value)
         {
             lastAncestors = value;
         }
 
-        public EventCoordinates[] GetLastAncestors()
+        public OrderedEventCoordinates GetLastAncestors()
         {
             return lastAncestors;
         }
 
-        public void SetFirstDescendants(EventCoordinates[] value)
+        public void SetFirstDescendants(OrderedEventCoordinates value)
         {
             firstDescendants = value;
         }
 
-        public EventCoordinates[] GetFirstDescendants()
+        public OrderedEventCoordinates GetFirstDescendants()
         {
             return firstDescendants;
         }
@@ -85,8 +75,8 @@ namespace Babble.Core.HashgraphImpl.Model
         private int? roundReceived;
         
         
-        private EventCoordinates[] lastAncestors;
-        private EventCoordinates[] firstDescendants;
+        private OrderedEventCoordinates lastAncestors;
+        private OrderedEventCoordinates firstDescendants;
         
         private string creator;
         private byte[] hash;
