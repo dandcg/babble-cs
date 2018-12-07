@@ -1,47 +1,43 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.PeersImpl;
 
 namespace Babble.Core.HashgraphImpl
 {
     public class ParticipantBlockSignaturesCache
     {
-        public Dictionary<string, int> Participants { get; set; }
-        public RollingIndexMap<BlockSignature> Rim { get; set; }
+        public Peers Participants { get; private set; }
+        public RollingIndexMap<BlockSignature> Rim { get; private set; }
 
-
-        public ParticipantBlockSignaturesCache(int size, Dictionary<string, int> participants)
+        public static async Task<ParticipantBlockSignaturesCache> NewParticipantBlockSignaturesCache(int size, Peers participants)
         {
-            Participants = participants;
-            Rim = new RollingIndexMap<BlockSignature>(size, participants.GetValues());
+            return new ParticipantBlockSignaturesCache
+            {
+                Participants = participants,
+                Rim = new RollingIndexMap<BlockSignature>(size, await participants.ToIdSlice())
+            };
         }
-
-
-
 
         public (int, StoreError) ParticipantId(string participant)
         {
-            var ok = Participants.TryGetValue(participant, out var id);
+            var ok = Participants.ByPubKey.TryGetValue(participant, out var peer);
             if (!ok)
             {
                 return (-1, new StoreError(StoreErrorType.UnknownParticipant, participant));
             }
 
-            return (id, null);
+            return (peer.ID, null);
         }
-
-
-
 
         //return participant BlockSignatures where index > skip
         public (BlockSignature[] items, StoreError err) Get(string participant, int skipIndex)
         {
-
             var (id, err) = ParticipantId(participant);
             if (err != null)
             {
                 return (new BlockSignature[] { }, err);
-
             }
 
             BlockSignature[] ps;
@@ -49,7 +45,6 @@ namespace Babble.Core.HashgraphImpl
             if (err != null)
             {
                 return (new BlockSignature[] { }, err);
-
             }
 
             var res = new List<BlockSignature>();
@@ -59,9 +54,7 @@ namespace Babble.Core.HashgraphImpl
             }
 
             return (res.ToArray(), null);
-
         }
-
 
         public (BlockSignature item, StoreError err) GetItem(string participant, int index)
         {
@@ -69,7 +62,6 @@ namespace Babble.Core.HashgraphImpl
             if (err != null)
             {
                 return (new BlockSignature(), err);
-
             }
 
             BlockSignature item;
@@ -77,7 +69,6 @@ namespace Babble.Core.HashgraphImpl
             if (err != null)
             {
                 return (new BlockSignature(), err);
-
             }
 
             return (item, null);
@@ -85,25 +76,13 @@ namespace Babble.Core.HashgraphImpl
 
         public (BlockSignature item, StoreError err) GetLast(string participant)
         {
-
-            var (id, err) = ParticipantId(participant);
+            var (last, err) = Rim.GetLast(Participants.ByPubKey[participant].ID);
             if (err != null)
             {
                 return (new BlockSignature(), err);
-
-            }
-
-            BlockSignature last;
-            (last, err) = Rim.GetLast(id);
-            if (err != null)
-            {
-                return (new BlockSignature(), err);
-
             }
 
             return (last, null);
-
-
         }
 
         public StoreError Set(string participant, BlockSignature sig)
@@ -112,11 +91,9 @@ namespace Babble.Core.HashgraphImpl
             if (err != null)
             {
                 return err;
-
             }
 
             return Rim.Set(id, sig, sig.Index);
-
         }
 
         //returns [participant id] => lastKnownIndex
@@ -127,9 +104,7 @@ namespace Babble.Core.HashgraphImpl
 
         public StoreError Reset()
         {
-
             return Rim.Reset();
         }
-
     }
 }

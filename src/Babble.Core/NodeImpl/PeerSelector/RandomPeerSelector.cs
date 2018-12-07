@@ -1,5 +1,4 @@
 ﻿using System;
-using Babble.Core.NetImpl.PeerImpl;
 
 namespace Babble.Core.NodeImpl.PeerSelector
 {

@@ -9,7 +9,6 @@ using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.NetImpl;
-using Babble.Core.NetImpl.PeerImpl;
 using Babble.Core.NetImpl.TransportImpl;
 using Babble.Core.NodeImpl;
 using Babble.Core.ProxyImpl;

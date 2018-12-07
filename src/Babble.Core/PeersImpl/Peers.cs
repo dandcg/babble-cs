@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Babble.Core.PeersImpl;
 using Nito.AsyncEx;
 
-namespace go
+namespace Babble.Core.PeersImpl
 {
     public class Peers
     {
-        public AsyncLock RWMutex = new AsyncLock();
+        public AsyncLock RwMutex = new AsyncLock();
         public List<Peer> Sorted;
         public Dictionary<string, Peer> ByPubKey;
         public Dictionary<int, Peer> ById;
@@ -41,7 +40,7 @@ namespace go
         // Useful for adding a bunch of peers at the same time
         // This method is private and is not protected by mutex.
         // Handle with care
-        private void addPeerRaw(Peer peer)
+        public void addPeerRaw(Peer peer)
         {
             if (peer.ID == 0)
             {
@@ -52,9 +51,9 @@ namespace go
             ById[peer.ID] = peer;
         }
 
-        private async Task AddPeer(Peer peer)
+        public  async Task AddPeer(Peer peer)
         {
-            using (await RWMutex.LockAsync())
+            using (await RwMutex.LockAsync())
             {
                 addPeerRaw(peer);
 
@@ -62,16 +61,16 @@ namespace go
             }
         }
 
-        private void internalSort()
+        private  void internalSort()
         {
-            Sorted = ById.Values.ToList(); //Todo: Ordering here
+            Sorted = ById.Values.OrderBy(o => o.ID).ToList();
         }
 
         /* Remove Methods */
 
-        private async Task RemovePeer(Peer peer)
+        public  async Task RemovePeer(Peer peer)
         {
-            using (await RWMutex.LockAsync())
+            using (await RwMutex.LockAsync())
             {
                 var ok = ByPubKey.ContainsKey(peer.PubKeyHex);
 
@@ -87,34 +86,34 @@ namespace go
             }
         }
 
-        private Task RemovePeerByPubKey(string pubKey)
+        public  Task RemovePeerByPubKey(string pubKey)
         {
             return RemovePeer(ByPubKey[pubKey]);
         }
 
-        private Task RemovePeerById(int id)
+        public  Task RemovePeerById(int id)
         {
             return RemovePeer(ById[id]);
         }
 
         /* ToSlice Methods */
 
-        private Peer[] ToPeerSlice()
+        public Peer[] ToPeerSlice()
         {
             return Sorted.ToArray();
         }
 
-        private async Task<string[]> ToPubKeySlice(Peers p)
+        public async Task<string[]> ToPubKeySlice(Peers p)
         {
-            using (await RWMutex.LockAsync())
+            using (await RwMutex.LockAsync())
             {
                 return Sorted.Select(s => s.PubKeyHex).ToArray();
             }
         }
 
-        private async Task<int[]> ToIdSlice(Peers p)
+        public async Task<int[]> ToIdSlice()
         {
-            using (await RWMutex.LockAsync())
+            using (await RwMutex.LockAsync())
             {
                 return Sorted.Select(s => s.ID).ToArray();
             }
@@ -122,9 +121,9 @@ namespace go
 
         /* Utilities */
 
-        private int Len()
+        public  int Len()
         {
-            using (RWMutex.Lock())
+            using (RwMutex.Lock())
             {
                 return ByPubKey.Count;
             }

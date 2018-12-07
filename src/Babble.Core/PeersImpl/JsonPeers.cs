@@ -1,9 +1,8 @@
 ﻿using System.Threading.Tasks;
 using Babble.Core.Common;
-using Babble.Core.PeersImpl;
 using Nito.AsyncEx;
 
-namespace Babble.Core.NetImpl.PeerImpl
+namespace Babble.Core.PeersImpl
 {
     public class JsonPeers : IPeerStore
     {
@@ -14,7 +13,7 @@ namespace Babble.Core.NetImpl.PeerImpl
 
             using (await l.LockAsync())
             {
-                return peers;
+                return (null,null);
             }
             
         }
@@ -25,6 +24,9 @@ namespace Babble.Core.NetImpl.PeerImpl
             {
                 this.peers = npeers;
             }
+
+            return null;
+
         }
 
 

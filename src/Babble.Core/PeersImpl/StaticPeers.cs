@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Nito.AsyncEx;
 
-namespace Babble.Core.NetImpl.PeerImpl
+namespace Babble.Core.PeersImpl
 {
     public class StaticPeers : IPeerStore
     {

@@ -1,6 +1,4 @@
-﻿using Babble.Core.NetImpl.PeerImpl;
-
-namespace Babble.Core.NodeImpl.PeerSelector
+﻿namespace Babble.Core.NodeImpl.PeerSelector
 {
     public interface IPeerSelector
 

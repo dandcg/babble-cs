@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Babble.Core.Common;
+using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using Serilog;
 
@@ -7,32 +9,28 @@ namespace Babble.Core.HashgraphImpl
 {
     public class ParticipantEventsCache
     {
-        
-        private readonly ILogger logger;
 
+        public Peers Participants { get; private set; }
+        public RollingIndexMap<string> Rim { get; private set; }
 
-        public Dictionary<string, int> Participants { get; } //[public key] => id
-        public RollingIndexMap<string> Rim { get; }
-
-        
-
-        public ParticipantEventsCache(int size, Dictionary<string, int> participants, ILogger logger, string instanceName = null)
+        public static async Task<ParticipantEventsCache> NewParticipantEventsCache(int size, Peers participants)
         {
-            this.logger = logger.AddNamedContext("ParticipantEventsCache", instanceName);
-            
-            Participants = participants;
-            Rim= new RollingIndexMap<string>(size,participants.GetValues());
+            return new ParticipantEventsCache()
+            {
+                Participants = participants,
+                Rim = new RollingIndexMap<string>(size, await participants.ToIdSlice())
+            };
         }
 
         public (int,StoreError) ParticipantId(string participant)
         {
-            var ok = Participants.TryGetValue(participant, out var id);
+            var ok = Participants.ByPubKey.TryGetValue(participant, out var peer);
             if (!ok)
             {
                 return (-1, new StoreError(StoreErrorType.UnknownParticipant, participant));
             }
 
-            return (id, null);
+            return (peer.ID, null);
         }
 
 
@@ -108,6 +106,31 @@ namespace Babble.Core.HashgraphImpl
 
  
         }
+
+
+        public (string item, StoreError err) GetLastConsensus(string participant)
+        {
+
+            var (id, err) = ParticipantId(participant);
+            if (err != null)
+            {
+                return ("", err);
+
+            }
+
+            string last;
+            (last, err) = Rim.GetLast(id);
+            if (err != null)
+            {
+                return ("", err);
+
+            }
+        
+            return (last,null);
+
+ 
+        }
+
 
         public StoreError Set(string participant, string hash, int index)
         {

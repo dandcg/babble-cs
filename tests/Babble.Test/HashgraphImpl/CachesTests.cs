@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl;
+using Babble.Core.PeersImpl;
 using Babble.Test.Helpers;
 using Serilog;
 using Xunit;
@@ -21,31 +23,34 @@ namespace Babble.Test.HashgraphImpl
  
 
         [Fact]
-        public void TestParticipantEventsCache()
+        public async Task TestParticipantEventsCache()
         {
             var size = 10;
 
             var testSize = 25;
 
-            var participants = new Dictionary<string, int>
+            var participants =Peers.NewPeersFromSlice(
+            new []
             {
-                {"alice", 0},
-                {"bob", 1},
-                {"charlie", 2}
-            };
 
-            var pec = new ParticipantEventsCache(size, participants,logger);
+                Peer.New("0xaa", ""),
+                Peer.New("0xbb", ""),
+                Peer.New("0xcc", ""),
+
+            });
+                
+            var pec = await ParticipantEventsCache.NewParticipantEventsCache(size, participants);
 
             var items = new Dictionary<string, List<string>>();
 
-            foreach (var p in participants)
+            foreach (var p in participants.ByPubKey)
             {
                 items[p.Key] = new List<string>();
             }
 
             for (var i = 0; i < testSize; i++)
             {
-                foreach (var p in participants)
+                foreach (var p in participants.ByPubKey)
                 {
                     var item = $"{p.Key}:{i}";
 
@@ -61,7 +66,7 @@ namespace Babble.Test.HashgraphImpl
 
             // GET ITEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-            foreach (var p in participants)
+            foreach (var p in participants.ByPubKey)
             {
                 var index1 = 9;
 
@@ -106,7 +111,7 @@ namespace Babble.Test.HashgraphImpl
 
             // GET ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-            foreach (var p in participants)
+            foreach (var p in participants.ByPubKey)
             {
                 var (_,err) =  pec.Get(p.Key, 0);
                 Assert.Equal(StoreErrorType.TooLate, err.StoreErrorType);
@@ -150,31 +155,34 @@ namespace Babble.Test.HashgraphImpl
         }
 
         [Fact]
-        public void TestParticipantEventsCacheEdge()
+        public async Task TestParticipantEventsCacheEdge()
         {
             var size = 10;
 
             var testSize = 11;
 
-            var participants = new Dictionary<string, int>
-            {
-                {"alice", 0},
-                {"bob", 1},
-                {"charlie", 2}
-            };
+            var participants =Peers.NewPeersFromSlice(
+                new []
+                {
 
-            var pec = new ParticipantEventsCache(size, participants,logger);
+                    Peer.New("0xaa", ""),
+                    Peer.New("0xbb", ""),
+                    Peer.New("0xcc", ""),
+
+                });
+
+            var pec =await ParticipantEventsCache.NewParticipantEventsCache(size, participants);
 
             var items = new Dictionary<string, List<string>>();
             
-            foreach (var p in participants)
+            foreach (var p in participants.ByPubKey)
             {
                 items.Add(p.Key, new List<string>());
             }
 
             for (var i = 0; i < testSize; i++)
             {
-                foreach (var p in participants)
+                foreach (var p in participants.ByPubKey)
                 {
                     var item = $"{p.Key}:{i}";
 
@@ -186,7 +194,7 @@ namespace Babble.Test.HashgraphImpl
                 }
             }
 
-            foreach (var p in participants)
+            foreach (var p in participants.ByPubKey)
             {
                 var expected = items[p.Key].Skip(size).ToArray();
 
