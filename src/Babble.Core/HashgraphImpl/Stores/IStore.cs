@@ -40,6 +40,6 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         StoreTx BeginTx();
 
-        object RootsBySelfParent();
+       (Dictionary<string,Root>, StoreError err) RootsBySelfParent();
     }
 }

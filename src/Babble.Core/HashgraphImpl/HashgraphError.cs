@@ -3,22 +3,12 @@ using System.Runtime.Serialization;
 
 namespace Babble.Core.HashgraphImpl
 {
-    public class HashgraphError : ApplicationException
+    public class HashgraphError : BabbleError
     {
-        public HashgraphError()
+        public HashgraphError(string message = null, Exception innerException = null)
         {
-        }
-
-        public HashgraphError(string message) : base(message)
-        {
-        }
-
-        public HashgraphError(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected HashgraphError(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
+            Message = message;
+            InnerException = innerException;
         }
     }
 }

@@ -5,6 +5,15 @@ namespace Babble.Core.HashgraphImpl.Model
 {
     public class OrderedEventCoordinates : List<Index>
     {
+        public OrderedEventCoordinates():base()
+        {
+            
+        }
+
+        public OrderedEventCoordinates(int capacity):base(capacity)
+        {
+            
+        }
         public int GetIdIndex(int id)
         {
             return FindIndex(a => a.ParticipantId == id);
@@ -23,7 +32,7 @@ namespace Babble.Core.HashgraphImpl.Model
 
         public void Add(int id, EventCoordinates evt)
         {
-            Add(new Index {ParticipantId = id, Event = evt});
+            this.Add(new Index {ParticipantId = id, Event = evt});
         }
     }
 

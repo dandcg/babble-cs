@@ -48,9 +48,9 @@ namespace Babble.Core.HashgraphImpl.Model
             lastAncestors = value;
         }
 
-        public OrderedEventCoordinates GetLastAncestors()
+        public OrderedEventCoordinates LastAncestors
         {
-            return lastAncestors;
+            get { return lastAncestors; }
         }
 
         public void SetFirstDescendants(OrderedEventCoordinates value)
@@ -58,9 +58,9 @@ namespace Babble.Core.HashgraphImpl.Model
             firstDescendants = value;
         }
 
-        public OrderedEventCoordinates GetFirstDescendants()
+        public OrderedEventCoordinates FirstDescendants
         {
-            return firstDescendants;
+            get { return firstDescendants; }
         }
 
         //sha256 hash of body and signature
@@ -157,7 +157,7 @@ namespace Babble.Core.HashgraphImpl.Model
             return null;
         }
 
-        public (bool res, Exception err) Verify()
+        public (bool res, HashgraphError err) Verify()
         {
             var pubBytes = Body.Creator;
             var pubKey = CryptoUtils.ToEcdsaPub(pubBytes);
@@ -187,12 +187,17 @@ namespace Babble.Core.HashgraphImpl.Model
 
         }
 
+        public int? Round => round;
+
+
+
+
        public void SetLamportTimestamp( int t)
        {
            lamportTimestamp = t;
        }
 
-
+        public int? LamportTimestamp => lamportTimestamp;
 
 
         public void SetWireInfo(int selfParentIndex, int otherParentCreatorId, int otherParentIndex, int creatorId)
