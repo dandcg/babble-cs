@@ -1610,8 +1610,8 @@ namespace Babble.Core.HashgraphImpl
 
 
 
-                        var lastBlockIndex = Store.LastBlockIndex();
-                        var (block, err4) = NewBlockFromFrame(lastBlockIndex + 1, frame);
+                        var lastBlockIndex = await Store.LastBlockIndex();
+                        var (block, err4) =Block.NewBlockFromFrame(lastBlockIndex + 1, frame);
                         if (err4 != null)
                         {
                             return err4;
@@ -1703,7 +1703,7 @@ namespace Babble.Core.HashgraphImpl
 
                         if (!ok)
                         {
-                            var (root, err4) = CreateRoot(ev);
+                            var (root, err4) = await createRoot(ev);
                             if (err4 != null)
                             {
                                 return (new Frame{}, err4);
@@ -1744,10 +1744,12 @@ namespace Babble.Core.HashgraphImpl
                                 {
                                     return (new Frame{}, err6);
                                 }
-                                (root, err6) = createRoot(lastConsensusEvent);
-                                if (err6 != null)
+
+                                BabbleError err7;
+                                (root, err7) = await createRoot(lastConsensusEvent);
+                                if (err7 != null)
                                 {
-                                    return (new Frame{}, err6);
+                                    return (new Frame{}, err7);
                                 }
                             }
                             roots[p] = root;
@@ -1883,7 +1885,7 @@ namespace Babble.Core.HashgraphImpl
                         }
 
                     }
-                    if (block.Signatures.Count > TrustCount && (AnchorBlock == null || block.Index() > AnchorBlock.Deref))
+                    if (block.Signatures.Count > TrustCount && (AnchorBlock == null || block.Index() > AnchorBlock))
                     {
                         SetAnchorBlock(block.Index());
 
@@ -1926,309 +1928,371 @@ namespace Babble.Core.HashgraphImpl
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        public async Task<BabbleError> FindOrder()
+        //GetAnchorBlockWithFrame returns the AnchorBlock and the corresponding Frame.
+        //This can be used as a base to Reset a Hashgraph
+        private async Task<(Block, Frame, BabbleError)> GetAnchorBlockWithFrame()
         {
-            await DecideRoundReceived();
-
-            var newConsensusEvents = new List<Event>();
-
-            var newUndeterminedEvents = new List<string>();
-            Exception err;
-            foreach (var x in UndeterminedEvents)
+            if (AnchorBlock == null)
             {
-                Event ex;
-                (ex, err) = await Store.GetEvent(x);
-
-                if (err != null)
-                {
-                    return err;
-                }
-
-                if (ex.GetRoundReceived() != null)
-                {
-                    newConsensusEvents.Add(ex);
-                }
-                else
-                {
-                    newUndeterminedEvents.Add(x);
-                }
+                return (new Block{}, new Frame{}, new HashgraphError("No Anchor Block"));
             }
-
-            UndeterminedEvents = newUndeterminedEvents;
-
-            newConsensusEvents.Sort(new Event.EventByConsensus());
-
-            err = await HandleNewConsensusEvents(newConsensusEvents);
-            return err;
-        }
-
-        public async Task<BabbleError> HandleNewConsensusEvents(IEnumerable<Event> newConsensusEvents)
-        {
-            var blockMap = new Dictionary<int, List<byte[]>>(); // [RoundReceived] => []Transactions
-            var blockOrder = new List<int>(); // [index] => RoundReceived
-
-            foreach (var e in newConsensusEvents)
+            var (block, err1) = await Store.GetBlock(AnchorBlock??0);
+            if (err1 != null)
             {
-                Store.AddConsensusEvent(e.Hex());
-
-                ConsensusTransactions += e.Transactions().Length;
-
-                if (e.IsLoaded())
-                {
-                    PendingLoadedEvents--;
-                }
-
-                var rr = e.GetRoundReceived() ?? -1;
-                var ok = blockMap.TryGetValue(rr, out var btxs);
-                if (!ok)
-                {
-                    btxs = new List<byte[]>();
-                    blockOrder.Add(rr);
-                }
-
-                btxs.AddRange(e.Transactions());
-                blockMap[rr] = btxs;
+                return (new Block{},new Frame{}, err1);
             }
-
-            foreach (var rr in blockOrder)
+            var (frame, err2) = await GetFrame(block.RoundReceived());
+            if (err2 != null)
             {
-                var blockTxs = blockMap[rr];
-                if (blockTxs.Count > 0)
-                {
-                    var (block, err) = await CreateAndInsertBlock(rr, blockTxs.ToArray());
-                    if (err != null)
-                    {
-                        return err;
-                    }
-
-                    logger.Debug("Block created! Index={Index}", block.Index());
-
-                    if (CommitCh != null)
-                    {
-                        await CommitCh.EnqueueAsync(block);
-                    }
-                }
+                return (new Block{},new Frame{}, err2);
             }
-
-            return null;
+            return (block, frame, null);
         }
 
-        public async Task<(Block, BabbleError)> CreateAndInsertBlock(int roundReceived, byte[][] txs)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //public async Task<BabbleError> FindOrder()
+        //{
+        //    await DecideRoundReceived();
+
+        //    var newConsensusEvents = new List<Event>();
+
+        //    var newUndeterminedEvents = new List<string>();
+        //    Exception err;
+        //    foreach (var x in UndeterminedEvents)
+        //    {
+        //        Event ex;
+        //        (ex, err) = await Store.GetEvent(x);
+
+        //        if (err != null)
+        //        {
+        //            return err;
+        //        }
+
+        //        if (ex.GetRoundReceived() != null)
+        //        {
+        //            newConsensusEvents.Add(ex);
+        //        }
+        //        else
+        //        {
+        //            newUndeterminedEvents.Add(x);
+        //        }
+        //    }
+
+        //    UndeterminedEvents = newUndeterminedEvents;
+
+        //    newConsensusEvents.Sort(new Event.EventByConsensus());
+
+        //    err = await HandleNewConsensusEvents(newConsensusEvents);
+        //    return err;
+        //}
+
+        //public async Task<BabbleError> HandleNewConsensusEvents(IEnumerable<Event> newConsensusEvents)
+        //{
+        //    var blockMap = new Dictionary<int, List<byte[]>>(); // [RoundReceived] => []Transactions
+        //    var blockOrder = new List<int>(); // [index] => RoundReceived
+
+        //    foreach (var e in newConsensusEvents)
+        //    {
+        //        Store.AddConsensusEvent(e.Hex());
+
+        //        ConsensusTransactions += e.Transactions().Length;
+
+        //        if (e.IsLoaded())
+        //        {
+        //            PendingLoadedEvents--;
+        //        }
+
+        //        var rr = e.GetRoundReceived() ?? -1;
+        //        var ok = blockMap.TryGetValue(rr, out var btxs);
+        //        if (!ok)
+        //        {
+        //            btxs = new List<byte[]>();
+        //            blockOrder.Add(rr);
+        //        }
+
+        //        btxs.AddRange(e.Transactions());
+        //        blockMap[rr] = btxs;
+        //    }
+
+        //    foreach (var rr in blockOrder)
+        //    {
+        //        var blockTxs = blockMap[rr];
+        //        if (blockTxs.Count > 0)
+        //        {
+        //            var (block, err) = await CreateAndInsertBlock(rr, blockTxs.ToArray());
+        //            if (err != null)
+        //            {
+        //                return err;
+        //            }
+
+        //            logger.Debug("Block created! Index={Index}", block.Index());
+
+        //            if (CommitCh != null)
+        //            {
+        //                await CommitCh.EnqueueAsync(block);
+        //            }
+        //        }
+        //    }
+
+        //    return null;
+        //}
+
+        //public async Task<(Block, BabbleError)> CreateAndInsertBlock(int roundReceived, byte[][] txs)
+        //{
+        //    var block = new Block(LastBlockIndex + 1, roundReceived, txs);
+
+        //    Exception err = await Store.SetBlock(block);
+
+        //    if (err != null)
+        //    {
+        //        return (new Block(), new HashgraphError(err.Message, err));
+        //    }
+
+        //    LastBlockIndex++;
+        //    return (block, null);
+        //}
+
+        //public async Task<DateTimeOffset> MedianTimestamp(List<string> evHashes)
+        //{
+        //    var evs = new List<Event>();
+        //    foreach (var x in evHashes)
+        //    {
+        //        var (ex, _) = await Store.GetEvent(x);
+        //        evs.Add(ex);
+        //    }
+
+        //    evs.Sort(new Event.EventByTimeStamp());
+        //    return evs[evs.Count / 2].Body.Timestamp;
+        //}
+
+        //public string[] ConsensusEvents()
+        //{
+        //    return Store.ConsensusEvents();
+        //}
+
+        ////number of evs per participants
+        //public Task<Dictionary<int, int>> KnownEvents()
+        //{
+        //    return Store.KnownEvents();
+        //}
+
+        //Reset clears the Hashgraph and resets it from a new base.
+        public async Task<BabbleError> Reset(Block block, Frame frame)
         {
-            var block = new Block(LastBlockIndex + 1, roundReceived, txs);
+            //Clear all state
 
-            Exception err = await Store.SetBlock(block);
+            LastConsensusRound = null;
+            FirstConsensusRound=null;
+            AnchorBlock = null;
 
-            if (err != null)
-            {
-                return (new Block(), new HashgraphError(err.Message, err));
-            }
-
-            LastBlockIndex++;
-            return (block, null);
-        }
-
-        public async Task<DateTimeOffset> MedianTimestamp(List<string> evHashes)
-        {
-            var evs = new List<Event>();
-            foreach (var x in evHashes)
-            {
-                var (ex, _) = await Store.GetEvent(x);
-                evs.Add(ex);
-            }
-
-            evs.Sort(new Event.EventByTimeStamp());
-            return evs[evs.Count / 2].Body.Timestamp;
-        }
-
-        public string[] ConsensusEvents()
-        {
-            return Store.ConsensusEvents();
-        }
-
-        //number of evs per participants
-        public Task<Dictionary<int, int>> KnownEvents()
-        {
-            return Store.KnownEvents();
-        }
-
-        public Exception Reset(Dictionary<string, Root> roots)
-        {
-            Store.Reset(roots);
             UndeterminedEvents = new List<string>();
-            UndecidedRounds = new Queue<int>();
+            PendingRounds = new Queue<PendingRound>();
             PendingLoadedEvents = 0;
             TopologicalIndex = 0;
+
             var cacheSize = Store.CacheSize();
             AncestorCache = new LruCache<string, bool>(cacheSize, null, logger, "AncestorCache");
             SelfAncestorCache = new LruCache<string, bool>(cacheSize, null, logger, "SelfAncestorCache");
-            OldestSelfAncestorCache = new LruCache<string, string>(cacheSize, null, logger, "OldestAncestorCache");
-            StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger, "StronglySeeCache");
-            ParentRoundCache = new LruCache<string, ParentRoundInfo>(cacheSize, null, logger, "ParentRoundCache");
-            RoundCache = new LruCache<string, int>(cacheSize, null, logger, "RoundCache");
+           StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger, "StronglySeeCache");
+           RoundCache = new LruCache<string, int>(cacheSize, null, logger, "RoundCache");
 
+            var participants =Participants.ToPeerSlice();
+
+
+            var rootMap = new Dictionary<string, Root>();
+            var id = 0;
+            foreach (var root in frame.Roots)
+            {
+                var p = participants[id];
+                rootMap[p.PubKeyHex] = root;
+                id++;
+            }
+
+            var err1= Store.Reset(rootMap);
+            if (err1 != null)
+            {
+                return err1;
+            }
+
+            var err2 =await Store.SetBlock(block);
+            //Insert Block
+            if (err2 != null)
+            {
+                return err2;
+            }
+
+            SetLastConsensusRound(block.RoundReceived());
+
+            //Insert Frame Events
+            foreach (var ev in frame.Events)
+            {
+                var err3 = await InsertEvent(ev, false);
+
+                if (err3 != null)
+                {
+                    return err3;
+                }
+            }
+            
             return null;
         }
 
-        public async Task<(Frame frame, Exception err)> GetFrame()
-        {
-            Exception err;
+        //public async Task<(Frame frame, Exception err)> GetFrame()
+        //{
+        //    Exception err;
 
-            var lastConsensusRoundIndex = 0;
-            var lcr = LastConsensusRound;
-            if (lcr != null)
-            {
-                lastConsensusRoundIndex = (int) lcr;
-            }
+        //    var lastConsensusRoundIndex = 0;
+        //    var lcr = LastConsensusRound;
+        //    if (lcr != null)
+        //    {
+        //        lastConsensusRoundIndex = (int) lcr;
+        //    }
 
-            RoundInfo lastConsensusRound;
-            (lastConsensusRound, err) = await Store.GetRound(lastConsensusRoundIndex);
-            if (err != null)
-            {
-                return (new Frame(), err);
-            }
+        //    RoundInfo lastConsensusRound;
+        //    (lastConsensusRound, err) = await Store.GetRound(lastConsensusRoundIndex);
+        //    if (err != null)
+        //    {
+        //        return (new Frame(), err);
+        //    }
 
-            var witnessHashes = lastConsensusRound.Witnesses();
-            var evs = new List<Event>();
-            var roots = new Dictionary<string, Root>();
-            foreach (var wh in witnessHashes)
-            {
-                Event w;
-                (w, err) = await Store.GetEvent(wh);
-                if (err != null)
-                {
-                    return (new Frame(), err);
-                }
+        //    var witnessHashes = lastConsensusRound.Witnesses();
+        //    var evs = new List<Event>();
+        //    var roots = new Dictionary<string, Root>();
+        //    foreach (var wh in witnessHashes)
+        //    {
+        //        Event w;
+        //        (w, err) = await Store.GetEvent(wh);
+        //        if (err != null)
+        //        {
+        //            return (new Frame(), err);
+        //        }
 
-                evs.Add(w);
-                roots.Add(w.Creator(), new Root
-                {
-                    X = w.SelfParent,
-                    Y = w.OtherParent,
-                    Index = w.Index() - 1,
-                    Round = await Round(w.SelfParent),
-                    Others = new Dictionary<string, string>()
-                });
-                string[] participantEvents;
-                (participantEvents, err) = await Store.ParticipantEvents(w.Creator(), w.Index());
-                if (err != null)
-                {
-                    return (new Frame(), err);
-                }
+        //        evs.Add(w);
+        //        roots.Add(w.Creator(), new Root
+        //        {
+        //            X = w.SelfParent,
+        //            Y = w.OtherParent,
+        //            Index = w.Index() - 1,
+        //            Round = await Round(w.SelfParent),
+        //            Others = new Dictionary<string, string>()
+        //        });
+        //        string[] participantEvents;
+        //        (participantEvents, err) = await Store.ParticipantEvents(w.Creator(), w.Index());
+        //        if (err != null)
+        //        {
+        //            return (new Frame(), err);
+        //        }
 
-                foreach (var e in participantEvents)
-                {
-                    var (ev, errev) = await Store.GetEvent(e);
-                    if (errev != null)
-                    {
-                        return (new Frame(), errev);
-                    }
+        //        foreach (var e in participantEvents)
+        //        {
+        //            var (ev, errev) = await Store.GetEvent(e);
+        //            if (errev != null)
+        //            {
+        //                return (new Frame(), errev);
+        //            }
 
-                    evs.Add(ev);
-                }
-            }
+        //            evs.Add(ev);
+        //        }
+        //    }
 
-            //Not every participant necessarily has a witness in LastConsensusRound.
-            //Hence, there could be participants with no Root at this point.
-            //For these partcipants, use their last known Event.
-            foreach (var p in Participants)
-            {
-                if (!roots.ContainsKey(p.Key))
-                {
-                    var (last, isRoot, errp) = Store.LastEventFrom(p.Key);
-                    if (errp != null)
-                    {
-                        return (new Frame(), errp);
-                    }
+        //    //Not every participant necessarily has a witness in LastConsensusRound.
+        //    //Hence, there could be participants with no Root at this point.
+        //    //For these partcipants, use their last known Event.
+        //    foreach (var p in Participants)
+        //    {
+        //        if (!roots.ContainsKey(p.Key))
+        //        {
+        //            var (last, isRoot, errp) = Store.LastEventFrom(p.Key);
+        //            if (errp != null)
+        //            {
+        //                return (new Frame(), errp);
+        //            }
 
-                    Root root;
-                    if (isRoot)
-                    {
-                        (root, err) = await Store.GetRoot(p.Key);
-                        if (root == null)
-                        {
-                            return (new Frame(), err);
-                        }
-                    }
-                    else
-                    {
-                        Event ev;
-                        (ev, err) = await Store.GetEvent(last);
-                        if (err != null)
-                        {
-                            return (new Frame(), err);
-                        }
+        //            Root root;
+        //            if (isRoot)
+        //            {
+        //                (root, err) = await Store.GetRoot(p.Key);
+        //                if (root == null)
+        //                {
+        //                    return (new Frame(), err);
+        //                }
+        //            }
+        //            else
+        //            {
+        //                Event ev;
+        //                (ev, err) = await Store.GetEvent(last);
+        //                if (err != null)
+        //                {
+        //                    return (new Frame(), err);
+        //                }
 
-                        evs.Add(ev);
-                        root = new Root
-                        {
-                            X = ev.SelfParent,
-                            Y = ev.OtherParent,
-                            Index = ev.Index() - 1,
-                            Round = await Round(ev.SelfParent)
-                        };
-                    }
+        //                evs.Add(ev);
+        //                root = new Root
+        //                {
+        //                    X = ev.SelfParent,
+        //                    Y = ev.OtherParent,
+        //                    Index = ev.Index() - 1,
+        //                    Round = await Round(ev.SelfParent)
+        //                };
+        //            }
 
-                    roots.Add(p.Key, root);
-                }
-            }
+        //            roots.Add(p.Key, root);
+        //        }
+        //    }
 
-            evs.Sort(new Event.EventByTopologicalOrder());
+        //    evs.Sort(new Event.EventByTopologicalOrder());
 
-            //Some Events in the Frame might have other-parents that are outside of the
-            //Frame (cf root.go ex 2)
-            //When inserting these Events in a newly reset hashgraph, the CheckOtherParent
-            //method would return an error because the other-parent would not be found.
-            //So we make it possible to also look for other-parents in the creator's Root.
-            var treated = new Dictionary<string, bool>();
-            foreach (var ev in evs)
-            {
-                treated.Add(ev.Hex(), true);
-                var otherParent = ev.OtherParent;
-                if (!string.IsNullOrEmpty(otherParent))
-                {
-                    var ok = treated.TryGetValue(otherParent, out var opt);
-                    if (!opt || !ok)
-                    {
-                        if (ev.SelfParent != roots[ev.Creator()].X)
-                        {
-                            roots[ev.Creator()].Others[ev.Hex()] = otherParent;
-                        }
-                    }
-                }
-            }
+        //    //Some Events in the Frame might have other-parents that are outside of the
+        //    //Frame (cf root.go ex 2)
+        //    //When inserting these Events in a newly reset hashgraph, the CheckOtherParent
+        //    //method would return an error because the other-parent would not be found.
+        //    //So we make it possible to also look for other-parents in the creator's Root.
+        //    var treated = new Dictionary<string, bool>();
+        //    foreach (var ev in evs)
+        //    {
+        //        treated.Add(ev.Hex(), true);
+        //        var otherParent = ev.OtherParent;
+        //        if (!string.IsNullOrEmpty(otherParent))
+        //        {
+        //            var ok = treated.TryGetValue(otherParent, out var opt);
+        //            if (!opt || !ok)
+        //            {
+        //                if (ev.SelfParent != roots[ev.Creator()].X)
+        //                {
+        //                    roots[ev.Creator()].Others[ev.Hex()] = otherParent;
+        //                }
+        //            }
+        //        }
+        //    }
 
-            var frame = new Frame
-            {
-                Roots = roots,
-                Events = evs.ToArray()
-            };
-            return (frame, null);
-        }
+        //    var frame = new Frame
+        //    {
+        //        Roots = roots,
+        //        Events = evs.ToArray()
+        //    };
+        //    return (frame, null);
+        //}
 
         //Bootstrap loads all Events from the Store's DB (if there is one) and feeds
         //them to the Hashgraph (in topological order) for consensus ordering. After this
         //method call, the Hashgraph should be in a state coeherent with the 'tip' of the
         //Hashgraph
-        public async Task<Exception> Bootstrap()
+        public async Task<BabbleError> Bootstrap()
         {
-            Exception err;
+   
             if (Store is LocalDbStore)
 
             {
@@ -2238,12 +2302,11 @@ namespace Babble.Core.HashgraphImpl
                 {
                     //Retreive the Events from the underlying DB. They come out in topological
                     //order
-                    Event[] topologicalEvents;
-                    (topologicalEvents, err) = await ((LocalDbStore) Store).DbTopologicalEvents();
+                    var (topologicalEvents, err1) = await ((LocalDbStore) Store).DbTopologicalEvents();
 
-                    if (err != null)
+                    if (err1 != null)
                     {
-                        return err;
+                        return err1;
                     }
 
                     logger.Debug("Topological Event Count {count}", topologicalEvents.Length);
@@ -2251,33 +2314,45 @@ namespace Babble.Core.HashgraphImpl
                     //Insert the Events in the Hashgraph
                     foreach (var e in topologicalEvents)
                     {
-                        err = await InsertEvent(e, true);
+                        var err2 = await InsertEvent(e, true);
 
-                        if (err != null)
+                        if (err2 != null)
                         {
-                            return err;
+                            return err2;
                         }
                     }
 
                     //Compute the consensus order of Events
-                    err = await DivideRounds();
-                    if (err != null)
+                    var err3 = await DivideRounds();
+                    if (err3 != null)
                     {
-                        return err;
+                        return err3;
                     }
 
-                    err = await DecideFame();
-                    if (err != null)
+                    var err4 = await DecideFame();
+                    if (err4 != null)
                     {
-                        return err;
+                        return err4;
                     }
 
-                    err = await FindOrder();
-
-                    if (err != null)
+                    var err5 = await DecideRoundReceived();
+                    if (err5 != null)
                     {
-                        return err;
+                        return err5;
                     }
+
+                    var err6 = await ProcessDecidedRounds();
+                    if (err6 != null)
+                    {
+                        return err6;
+                    }
+
+                    var err7 = await ProcessSigPool();
+                    if (err7 != null)
+                    {
+                        return err7;
+                    }
+
 
                     tx.Commit();
                 }
@@ -2288,18 +2363,20 @@ namespace Babble.Core.HashgraphImpl
 
 
         
-        public async Task<(Event ev, Exception err)> ReadWireInfo(WireEvent wev)
+        public async Task<(Event ev, BabbleError err)> ReadWireInfo(WireEvent wev)
         {
             var selfParent = "";
             var otherParent = "";
-            Exception err;
+            BabbleError err;
 
-            var creator = ReverseParticipants[wev.Body.CreatorId];
-            var creatorBytes = creator.FromHex();
+            var creator = Participants.ById[wev.Body.CreatorId];
+            var creatorBytes = creator.PubKeyHex.FromHex();
+
+
 
             if (wev.Body.SelfParentIndex >= 0)
             {
-                (selfParent, err) = await Store.ParticipantEvent(creator, wev.Body.SelfParentIndex);
+                (selfParent, err) = await Store.ParticipantEvent(creator.PubKeyHex, wev.Body.SelfParentIndex);
                 if (err != null)
                 {
                     return (null, err);
@@ -2308,8 +2385,8 @@ namespace Babble.Core.HashgraphImpl
 
             if (wev.Body.OtherParentIndex >= 0)
             {
-                var otherParentCreator = ReverseParticipants[wev.Body.OtherParentCreatorId];
-                (otherParent, err) = await Store.ParticipantEvent(otherParentCreator, wev.Body.OtherParentIndex);
+                var otherParentCreator =Participants.ById[wev.Body.OtherParentCreatorId];
+                (otherParent, err) = await Store.ParticipantEvent(otherParentCreator.PubKeyHex, wev.Body.OtherParentIndex);
                 if (err != null)
                 {
                     return (null, err);
@@ -2322,7 +2399,6 @@ namespace Babble.Core.HashgraphImpl
                 BlockSignatures = wev.BlockSignatures(creatorBytes),
                 Parents = new[] {selfParent, otherParent},
                 Creator = creatorBytes,
-                Timestamp = wev.Body.Timestamp,
                 Index = wev.Body.Index
             };
 
@@ -2340,11 +2416,64 @@ namespace Babble.Core.HashgraphImpl
         }
 
 
+        //CheckBlock returns an error if the Block does not contain valid signatures
+        //from MORE than 1/3 of participants
+        private BabbleError CheckBlock(Block block)
+        {
+            var validSignatures = 0;
+            foreach (var s in block.GetSignatures())
+            {
+                
+      
+                    var (ok, _) = block.Verify(s);
+                if (ok)
+                {
+                    validSignatures++;
+                }
+            }
+            if (validSignatures <= TrustCount)
+            {
+                return new HashgraphError(string.Format("Not enough valid signatures: got {0}, need {1}", validSignatures, TrustCount + 1));
+            }
+            logger.Debug("CheckBlock : ValidSignatures = {ValidSignatures}" , validSignatures);
+            return null;
+        }
+
+        /*******************************************************************************
+        Setters
+        *******************************************************************************/
+
+        private void SetLastConsensusRound(int i)
+        {
+            if (LastConsensusRound == null)
+            {
+                LastConsensusRound =default(int);
+            }
+            LastConsensusRound = i;
+
+            if (FirstConsensusRound == null)
+            {
+                FirstConsensusRound = default(int);
+                FirstConsensusRound= i;
+            }
+        }
+
+        private  void SetAnchorBlock( int i)
+        {
+            if (AnchorBlock == null)
+            {
+                AnchorBlock = default(int);
+            }
+           AnchorBlock= i;
+        }
 
 
 
 
 
+        /*******************************************************************************
+           Helpers
+        *******************************************************************************/
 
 
         public bool MiddleBit(string ehex)
@@ -2358,15 +2487,6 @@ namespace Babble.Core.HashgraphImpl
             return true;
         }
 
-        public void SetVote(Dictionary<string, Dictionary<string, bool>> votes, string x, string y, bool vote)
-        {
-            if (votes.TryGetValue(x, out var v))
-            {
-                v[y] = vote;
-                return;
-            }
 
-            votes.Add(x, new Dictionary<string, bool> {{y, vote}});
-        }
     }
 }
