@@ -103,7 +103,7 @@ namespace Babble.Core.PeersImpl
             return Sorted.ToArray();
         }
 
-        public async Task<string[]> ToPubKeySlice(Peers p)
+        public async Task<string[]> ToPubKeySlice()
         {
             using (await RwMutex.LockAsync())
             {

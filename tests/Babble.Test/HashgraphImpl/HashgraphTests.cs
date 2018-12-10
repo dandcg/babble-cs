@@ -590,8 +590,8 @@ namespace Babble.Test.HashgraphImpl
                 Index = -1
             });
 
-            e0.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
-            e0.GetLastAncestors().ShouldCompareTo(expectedLastAncestors.ToArray());
+            e0.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
+            e0.LastAncestors.ShouldCompareTo(expectedLastAncestors.ToArray());
 
             //e21
             Event e21;
@@ -650,10 +650,10 @@ namespace Babble.Test.HashgraphImpl
             };
 
             // "e21 firstDescendants not good"
-            e21.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
+            e21.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
 
             //"e21 lastAncestors not good" 
-            e21.GetLastAncestors().ShouldCompareTo(expectedLastAncestors.ToArray());
+            e21.LastAncestors.ShouldCompareTo(expectedLastAncestors.ToArray());
 
             //f1
             Event f1;
@@ -703,10 +703,10 @@ namespace Babble.Test.HashgraphImpl
             };
 
             // "f1 firstDescendants not good"
-            f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
+            f1.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
 
             // "f1 lastAncestors not good"
-            f1.GetFirstDescendants().ShouldCompareTo(expectedFirstDescendants.ToArray());
+            f1.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
 
             //Pending loaded Events
             // 3 Events with index 0,

@@ -11,6 +11,7 @@ using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
+using Serilog.Context;
 
 namespace Babble.Core.HashgraphImpl
 {
@@ -25,7 +26,7 @@ namespace Babble.Core.HashgraphImpl
         public int? LastConsensusRound { get; set; } //index of last consensus round
         public int? FirstConsensusRound { get; set; } //index of first consensus round (only used in tests)
 
-        public int AnchorBlock { get; set; } //index of last block with enough signatures
+        public int? AnchorBlock { get; set; } //index of last block with enough signatures
 
         public int LastCommitedRoundEvents { get; set; } //number of evs in round before LastConsensusRound
 
@@ -1399,50 +1400,76 @@ namespace Babble.Core.HashgraphImpl
   
         }
 
-        //remove items from UndecidedRounds
-        public void UpdateUndecidedRounds(Dictionary<int, int> decidedRounds)
-        {
-            logger.Debug("Update Undecided Rounds");
+        ////remove items from UndecidedRounds
+        //public void UpdateUndecidedRounds(Dictionary<int, int> decidedRounds)
+        //{
+        //    logger.Debug("Update Undecided Rounds");
 
-            var newUndecidedRounds = new Queue<int>();
-            foreach (var ur in UndecidedRounds)
-            {
-                if (!decidedRounds.ContainsKey(ur))
+        //    var newUndecidedRounds = new Queue<int>();
+        //    foreach (var ur in UndecidedRounds)
+        //    {
+        //        if (!decidedRounds.ContainsKey(ur))
 
-                {
-                    newUndecidedRounds.Enqueue(ur);
-                }
-            }
+        //        {
+        //            newUndecidedRounds.Enqueue(ur);
+        //        }
+        //    }
 
-            UndecidedRounds = newUndecidedRounds;
-        }
+        //    UndecidedRounds = newUndecidedRounds;
+        //}
 
-        public async Task SetLastConsensusRound(int i)
-        {
-            LastConsensusRound = i;
-            LastCommitedRoundEvents = await Store.RoundEvents(i - 1);
-        }
+        //public async Task SetLastConsensusRound(int i)
+        //{
+        //    LastConsensusRound = i;
+        //    LastCommitedRoundEvents = await Store.RoundEvents(i - 1);
+        //}
 
         //assign round received and timestamp to all evs
-        public async Task<Exception> DecideRoundReceived()
+        public async Task<BabbleError> DecideRoundReceived()
         {
+
+
+            var newUndeterminedEvents = new List<string>();
+
+            /* From whitepaper - 18/03/18
+	           "[...] An event is said to be “received” in the first round where all the
+	           unique famous witnesses have received it, if all earlier rounds have the
+	           fame of all witnesses decided"
+	        */
+
             foreach (var x in UndeterminedEvents)
             {
-                var r = await Round(x);
+                var received = false;
+                var (r,err1) = await Round(x);
+
+                if (err1 != null)
+                {
+                    return err1;
+                }
 
                 for (var i = r + 1; i <= Store.LastRound(); i++)
 
                 {
-                    var (tr, err) = await Store.GetRound(i);
-                    if (err != null && err.StoreErrorType != StoreErrorType.KeyNotFound)
+                    var (tr, err2) = await Store.GetRound(i);
+                    if (err2 != null)
                     {
-                        return err;
+                        //Can happen after a Reset/FastSync
+                        if (LastConsensusRound != null &&
+                            r < LastConsensusRound)
+                        {
+                            received = true;
+                            break;
+                        }
+                        
+                        return err2;
                     }
 
-                    //skip if some witnesses are left undecided
-                    if (!(tr.WitnessesDecided() && UndecidedRounds.Peek() > i))
+                    //We are looping from earlier to later rounds; so if we encounter
+                    //one round with undecided witnesses, we are sure that this event
+                    //is not "received". Break out of i loop
+                    if (!tr.WitnessesDecided())
                     {
-                        continue;
+                        break;
                     }
 
                     var fws = tr.FamousWitnesses();
@@ -1451,42 +1478,471 @@ namespace Babble.Core.HashgraphImpl
                     var s = new List<string>();
                     foreach (var w in fws)
                     {
-                        if (await See(w, x))
+
+                        var (see, err3) = await See(w, x);
+
+                        if (err3 != null)
+                        {
+                            return err3;
+                        }
+
+                        if (see)
                         {
                             s.Add(w);
                         }
                     }
 
-                    if (s.Count > fws.Length / 2)
+                    if (s.Count == fws.Length && s.Count>0)
                     {
-                        var (ex, erre) = await Store.GetEvent(x);
+                        received = true;
 
-                        if (erre != null)
+                        var (ex, err4) = await Store.GetEvent(x);
+
+                        if (err4 != null)
                         {
-                            return erre;
+                            return err4;
                         }
 
                         ex.SetRoundReceived(i);
 
-                        var t = new List<string>();
-                        foreach (var a in s)
+                        var err5 = await Store.SetEvent(ex);
+                        if (err5 != null)
                         {
-                            t.Add(await OldestSelfAncestorToSee(a, x));
+                            return err5;
                         }
 
-                        ex.SetConsensusTimestamp(await MedianTimestamp(t));
+                        tr.SetConsensusEvent(x);
+                        var err6 = await Store.SetRound(i, tr);
+                        if (err6 != null)
+                        {
+                            return err6;
+                        }
 
-                        await Store.SetEvent(ex);
-
+                        //break out of i loop
                         break;
+
+                        
                     }
                 }
+
+                if (!received)
+                {
+                    newUndeterminedEvents.Add(x);
+                }
+
             }
 
+            UndeterminedEvents = newUndeterminedEvents;
+            
             return null;
         }
 
-        public async Task<Exception> FindOrder()
+
+           //ProcessDecidedRounds takes Rounds whose witnesses are decided, computes the
+        //corresponding Frames, maps them into Blocks, and commits the Blocks via the
+        //commit channel
+        private async Task<BabbleError> ProcessDecidedRounds()
+        {
+            //Defer removing processed Rounds from the PendingRounds Queue
+            var processedIndex = 0;
+            //defer(() =>
+            //{
+            //    
+            //}());
+
+            try
+            {
+
+
+
+                foreach (var r in PendingRounds)
+                {
+                    //Although it is possible for a Round to be 'decided' before a previous
+                    //round, we should NEVER process a decided round before all the previous
+                    //rounds are processed.
+                    if (!r.Decided)
+                    {
+                        break;
+                    }
+
+                    //This is similar to the lower bound introduced in DivideRounds; it is
+                    //redundant in normal operations, but becomes necessary after a Reset.
+                    //Indeed, after a Reset, LastConsensusRound is added to PendingRounds,
+                    //but its ConsensusEvents (which are necessarily 'under' this Round) are
+                    //already deemed committed. Hence, skip this Round after a Reset.
+                    if (LastConsensusRound != null && r.Index == LastConsensusRound)
+                    {
+                        continue;
+                    }
+
+                    var (frame, err1) = await GetFrame(r.Index);
+                    if (err1 != null)
+                    {
+                        return new HashgraphError($"Getting Frame {r.Index}: {err1.Message}");
+                    }
+
+                    var (round, err2) = await Store.GetRound(r.Index);
+                    if (err2 != null)
+                    {
+                        return err2;
+                    }
+
+
+                    //LogContext.Push()
+                    //logger.WithFields(logrus.Fields{"round_received":r.Index,"witnesses":round.FamousWitnesses(),"events":len(frame.Events),"roots":frame.Roots,}).Debugf("Processing Decided Round");
+
+                    if (frame.Events.Any())
+                    {
+                        foreach (var e in frame.Events)
+                        {
+                            var err3 = Store.AddConsensusEvent(e);
+                            if (err3 != null)
+                            {
+                                return err3;
+                            }
+
+                            ConsensusTransactions += e.Transactions().Count();
+                            if (e.IsLoaded())
+                            {
+                                PendingLoadedEvents--;
+                            }
+                        }
+
+
+
+                        var lastBlockIndex = Store.LastBlockIndex();
+                        var (block, err4) = NewBlockFromFrame(lastBlockIndex + 1, frame);
+                        if (err4 != null)
+                        {
+                            return err4;
+                        }
+
+                        var err5 = await Store.SetBlock(block);
+
+                        if (err5 != null)
+                        {
+                            return err5;
+                        }
+
+                        if (CommitCh != null)
+                        {
+                            await CommitCh.EnqueueAsync(block);
+                        }
+                        else
+                        {
+                            logger.Debug("No Events to commit for ConsensusRound {Index}", r.Index);
+                        }
+
+                        processedIndex++;
+
+                        if (LastConsensusRound == null || r.Index > LastConsensusRound)
+                        {
+                            SetLastConsensusRound(r.Index);
+                        }
+                    }
+
+
+                }
+
+                return null;
+
+
+        }
+        finally
+            {
+
+   PendingRounds = new Queue<PendingRound>(PendingRounds.Take(processedIndex));
+        }
+
+        }
+
+        //GetFrame computes the Frame corresponding to a RoundReceived.
+        private async Task<(Frame, BabbleError)> GetFrame(int roundReceived)
+        {
+            //Try to get it from the Store first
+            var (frame, err1) = await Store.GetFrame(roundReceived);
+            if (err1 == null || err1.StoreErrorType!= StoreErrorType.KeyNotFound)
+            {
+                return (frame, err1);
+            }
+
+            //Get the Round and corresponding consensus Events
+            var (round, err2) = await Store.GetRound(roundReceived);
+            if (err2 != null)
+            {
+                return (new Frame{}, err2);
+            }
+            var events = new List<Event>{};
+            
+            foreach (var eh in round.ConsensusEvents())
+
+
+                {
+                    var (e, err3) = await Store.GetEvent(eh);
+                    if (err3 != null)
+                    {
+                        return (new Frame{}, err3);
+                    }
+                    events.Add(e);
+                }
+
+    
+            events.Sort(new Event.EventByLamportTimeStamp());
+            
+            // Get/Create Roots
+            var roots = new Dictionary<string, Root>();
+            //The events are in topological order. Each time we run into the first Event
+            //of a participant, we create a Root for it.
+            
+            foreach (var ev in events)
+            {
+                
+                    var p = ev.Creator();
+           
+                        var ok= roots.ContainsKey(p);
+
+                        if (!ok)
+                        {
+                            var (root, err4) = CreateRoot(ev);
+                            if (err4 != null)
+                            {
+                                return (new Frame{}, err4);
+                            }
+                            roots[ev.Creator()] = root;
+                        }
+
+                    }
+            
+
+                //Every participant needs a Root in the Frame. For the participants that
+                //have no Events in this Frame, we create a Root from their last consensus
+                //Event, or their last known Root
+
+          foreach (var p in await Participants.ToPubKeySlice())
+
+  
+                    {
+                        var  ok = roots.ContainsKey(p);
+
+                        if (!ok)
+                        {
+                            Root root;
+
+                            var (lastConsensusEventHash, isRoot, err5) = Store.LastConsensusEventFrom(p);
+                            if (err5 != null)
+                            {
+                                return (new Frame{}, err5);
+                            }
+                            if (isRoot)
+                            {
+                                (root, _) = await Store.GetRoot(p);
+                            }
+                            else
+                            {
+                                var (lastConsensusEvent, err6) = await Store.GetEvent(lastConsensusEventHash);
+                                if (err6 != null)
+                                {
+                                    return (new Frame{}, err6);
+                                }
+                                (root, err6) = createRoot(lastConsensusEvent);
+                                if (err6 != null)
+                                {
+                                    return (new Frame{}, err6);
+                                }
+                            }
+                            roots[p] = root;
+               
+
+                    }
+                }
+
+            //Some Events in the Frame might have other-parents that are outside of the
+            //Frame (cf root.go ex 2)
+            //When inserting these Events in a newly reset hashgraph, the CheckOtherParent
+            //method would return an error because the other-parent would not be found.
+            //So we make it possible to also look for other-parents in the creator's Root.
+            var treated = new Dictionary<string, bool>();
+            foreach (var ev in events)
+            {
+                
+       
+                
+                    treated[ev.Hex()] = true;
+                    var otherParent = ev.OtherParent;
+                    if (otherParent != "")
+                    {
+                        var  ok = treated.TryGetValue(otherParent, out var opt);
+                        if (!opt || !ok)
+
+                        {
+                            if (ev.SelfParent != roots[ev.Creator()].SelfParent.Hash)
+                            {
+                                var (other, err7) =await CreateOtherParentRootEvent(ev);
+                                if (err7 != null)
+                                {
+                                    return (new Frame{}, err7);
+                                }
+                                roots[ev.Creator()].Others[ev.Hex()] = other;
+                            }
+                        }
+                    }
+             
+                //order roots
+
+            }
+
+            //order roots
+            var orderedRoots =new Root[ Participants.Len()];
+            {
+                var i=0;
+                foreach (var peer in Participants.ToPeerSlice())
+                {
+                    orderedRoots[i] = roots[peer.PubKeyHex];
+                    i++;
+                }
+
+            }
+
+            var res = new Frame(){Round=roundReceived,Roots=orderedRoots,Events=events.ToArray()};
+
+         
+                var err8 = await Store.SetFrame(res);
+
+                if (err8 != null)
+                {
+                    return (new Frame{}, err8);
+                }
+
+        
+            return (res, null);
+        }
+
+        //ProcessSigPool runs through the SignaturePool and tries to map a Signature to
+        //a known Block. If a Signature is found to be valid for a known Block, it is
+        //appended to the block and removed from the SignaturePool
+        private async  Task<BabbleError> ProcessSigPool()
+        {
+            var processedSignatures = new Dictionary<int, bool>(); //index in SigPool => Processed?
+
+            try
+            {
+                var i = 0;
+                foreach (var bs in SigPool)
+
+                {
+                    //check if validator belongs to list of participants
+                    var validatorHex = $"0x{bs.Validator}";
+                    {
+                        var  ok = Participants.ByPubKey.ContainsKey(validatorHex);
+
+                        if (!ok)
+                        {
+
+                            logger.Warning("Index={Index}; Validator={Validator} : Verifying Block signature. Unknown validator", bs.Index, validatorHex);
+
+                            continue;
+                        }
+
+                    }
+                    var (block, err1) =await Store.GetBlock(bs.Index);
+                    if (err1 != null)
+                    {
+
+                        
+                        logger.Warning("Index={Index}; Msg={Msg} : Verifying Block signature. Could not fetch Block", bs.Index, err1.Message);
+
+                        continue;
+                    }
+
+                    var (valid, err2) = block.Verify(bs);
+                    if (err2 != null)
+                    {
+
+                        logger.Warning("Index={Index}; Msg={Msg} : Verifying Block signature", bs.Index, err2.Message);
+
+                        return err2;
+                    }
+
+                    if (!valid)
+                    {
+
+                        logger.Warning("Index={Index}; Validator={Validator} : Verifying Block signature. Invalid signature", bs.Index, Participants.ByPubKey[validatorHex]);
+
+                        continue;
+                    }
+
+                    block.SetSignature(bs);
+
+                    {
+                        var err3 = await Store.SetBlock(block);
+
+                        if (err3!= null)
+                        {
+                            logger.Warning("Index={Index}; Msg={Msg} : Saving Block", bs.Index, err3.Message);
+
+                        }
+
+                    }
+                    if (block.Signatures.Count > TrustCount && (AnchorBlock == null || block.Index() > AnchorBlock.Deref))
+                    {
+                        SetAnchorBlock(block.Index());
+
+
+                        logger.Debug("BlockIndex={BlockIndex};Signatures={Signatures};TrustCount={TrustCount} : Setting AnchorBlock", block.Index(), block.Signatures.Count(), TrustCount);
+                            
+
+                        
+                    }
+
+                    processedSignatures[i] = true;
+
+                    i++;
+
+                }
+                return null;
+            }
+            finally
+            {
+                removeProcessedSignatures(processedSignatures);
+            }
+       
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        public async Task<BabbleError> FindOrder()
         {
             await DecideRoundReceived();
 
@@ -1522,7 +1978,7 @@ namespace Babble.Core.HashgraphImpl
             return err;
         }
 
-        public async Task<HashgraphError> HandleNewConsensusEvents(IEnumerable<Event> newConsensusEvents)
+        public async Task<BabbleError> HandleNewConsensusEvents(IEnumerable<Event> newConsensusEvents)
         {
             var blockMap = new Dictionary<int, List<byte[]>>(); // [RoundReceived] => []Transactions
             var blockOrder = new List<int>(); // [index] => RoundReceived
@@ -1573,7 +2029,7 @@ namespace Babble.Core.HashgraphImpl
             return null;
         }
 
-        public async Task<(Block, HashgraphError)> CreateAndInsertBlock(int roundReceived, byte[][] txs)
+        public async Task<(Block, BabbleError)> CreateAndInsertBlock(int roundReceived, byte[][] txs)
         {
             var block = new Block(LastBlockIndex + 1, roundReceived, txs);
 
@@ -1912,11 +2368,5 @@ namespace Babble.Core.HashgraphImpl
 
             votes.Add(x, new Dictionary<string, bool> {{y, vote}});
         }
-    }
-
-    public class Frame
-    {
-        public Dictionary<string, Root> Roots { get; set; }
-        public Event[] Events { get; set; }
     }
 }
