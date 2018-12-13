@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl;
 using Babble.Core.HashgraphImpl.Model;
@@ -21,7 +22,7 @@ namespace Babble.Core.NodeImpl
         private string hexId;
         public readonly Hashgraph Hg;
         private readonly Peers participants;
-        private readonly AsyncProducerConsumerQueue<Block> commitCh;
+        private readonly BufferBlock<Block> commitCh;
         public string Head { get; private set; }
         public int Seq { get; private set; }
         public List<byte[]> TransactionPool { get; } = new List<byte[]>();
@@ -29,7 +30,7 @@ namespace Babble.Core.NodeImpl
 
         private readonly ILogger logger;
 
-        public Controller(int id, CngKey key, Peers participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger loggerIn)
+        public Controller(int id, CngKey key, Peers participants, IStore store, BufferBlock<Block> commitCh, ILogger loggerIn)
         {
             logger = loggerIn.AddNamedContext("Controller", id.ToString());
 

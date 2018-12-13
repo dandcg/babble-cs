@@ -5,7 +5,7 @@ namespace Babble.Core.ProxyImpl
 {
     public interface IBabbleProxy
     {
-        AsyncProducerConsumerQueue<Block> CommitCh();
+        BufferBlock<Block> CommitCh();
         ProxyError SubmitTx(byte[] tx);
     }
 }

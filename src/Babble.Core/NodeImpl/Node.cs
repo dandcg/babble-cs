@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
@@ -44,11 +45,11 @@ namespace Babble.Core.NodeImpl
         private Task nodeTask;
 
 
-        private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
+        private readonly BufferBlock<byte[]> submitCh;
         private readonly AsyncMonitor submitChMonitor;
-        private readonly AsyncProducerConsumerQueue<Rpc> netCh;
+        private readonly BufferBlock<Rpc> netCh;
         private readonly AsyncMonitor netChMonitor;
-        private readonly AsyncProducerConsumerQueue<Block> commitCh;
+        private readonly BufferBlock<Block> commitCh;
         private readonly AsyncMonitor commitChMonitor;
 
         private Stopwatch nodeStart;
@@ -64,7 +65,7 @@ namespace Babble.Core.NodeImpl
 
             var (pmap, _) = store.Participants();
 
-            commitCh = new AsyncProducerConsumerQueue<Block>(400);
+            commitCh = new BufferBlock<Block>(new DataflowBlockOptions(){ BoundedCapacity = 400});
             commitChMonitor = new AsyncMonitor();
 
             Controller = new Controller(id, key, pmap, store, commitCh, logger);
@@ -184,7 +185,7 @@ namespace Babble.Core.NodeImpl
         {
             while (!ct.IsCancellationRequested)
             {
-                var rpc = await netCh.DequeueAsync(ct);
+                var rpc = await netCh.ReceiveAsync(ct);
                 logger.Debug("Processing RPC");
                 await ProcessRpcAsync(rpc, ct);
 
@@ -209,7 +210,7 @@ namespace Babble.Core.NodeImpl
         {
             while (!ct.IsCancellationRequested)
             {
-                var tx = await submitCh.DequeueAsync(ct);
+                var tx = await submitCh.ReceiveAsync(ct);
            
                 logger.Debug("Adding Transaction {TxString}", tx.BytesToString());
                 await AddTransaction(tx, ct);
@@ -234,7 +235,7 @@ namespace Babble.Core.NodeImpl
         {
             while (!ct.IsCancellationRequested)
             {
-                var block = await commitCh.DequeueAsync(ct);
+                var block = await commitCh.ReceiveAsync(ct);
                 logger.Debug("Committing Block Index={Index}; RoundReceived={RoundReceived}; TxCount={TxCount}", block.Index(), block.RoundReceived(), block.Transactions().Length);
 
                 var err = await Commit(block);
@@ -306,7 +307,7 @@ namespace Babble.Core.NodeImpl
             {
                 logger.Debug("Discarding RPC Request {state}", s);
                 var resp = new RpcResponse {Error = new NetError($"not ready: {s}"), Response = new SyncResponse {FromId = Id}};
-                await rpc.RespChan.EnqueueAsync(resp, ct);
+                await rpc.RespChan.SendAsync(resp, ct);
             }
             else
             {
@@ -324,7 +325,7 @@ namespace Babble.Core.NodeImpl
 
                         logger.Error("Discarding RPC Request {@cmd}", rpc.Command);
                         var resp = new RpcResponse {Error = new NetError($"unexpected command"), Response = null};
-                        await rpc.RespChan.EnqueueAsync(resp, ct);
+                        await rpc.RespChan.SendAsync(resp, ct);
 
                         break;
                 }

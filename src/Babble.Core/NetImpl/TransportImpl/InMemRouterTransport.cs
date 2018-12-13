@@ -15,13 +15,13 @@ namespace Babble.Core.NetImpl.TransportImpl
                 addr = GenerateUuid();
             }
 
-            Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
+            Consumer = new BufferBlock<Rpc>(16);
             LocalAddr = addr;
             Router = router;
             Timeout = TimeSpan.FromMilliseconds(2000);
         }
 
-        public AsyncProducerConsumerQueue<Rpc> Consumer { get; }
+        public BufferBlock<Rpc> Consumer { get; }
 
         public string LocalAddr { get; }
         public InMemRouter Router { get; }
@@ -68,7 +68,7 @@ namespace Babble.Core.NetImpl.TransportImpl
                 return (null, err);
             }
 
-            var rpc = new Rpc {Command = args, RespChan = new AsyncProducerConsumerQueue<RpcResponse>()};
+            var rpc = new Rpc {Command = args, RespChan = new BufferBlock<RpcResponse>()};
 
             await peer.Consumer.EnqueueAsync(rpc);
 

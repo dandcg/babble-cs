@@ -19,13 +19,13 @@ namespace Babble.Core.NetImpl.TransportImpl
             }
 
             sync = new AsyncLock();
-            Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
+            Consumer = new BufferBlock<Rpc>(16);
             LocalAddr = addr;
             Peers = new Dictionary<string, ITransport>();
             Timeout = TimeSpan.FromMilliseconds(5000);
         }
 
-        public AsyncProducerConsumerQueue<Rpc> Consumer { get; }
+        public BufferBlock<Rpc> Consumer { get; }
 
         public string LocalAddr { get; }
 
@@ -77,7 +77,7 @@ namespace Babble.Core.NetImpl.TransportImpl
                 return (null, new NetError($"Failed to connect to peer: {target}"));
             }
 
-            var rpc = new Rpc {Command = args, RespChan = new AsyncProducerConsumerQueue<RpcResponse>()};
+            var rpc = new Rpc {Command = args, RespChan = new BufferBlock<RpcResponse>()};
 
             await peer.Consumer.EnqueueAsync(rpc);
 

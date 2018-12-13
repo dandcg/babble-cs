@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.Util;
@@ -11,19 +12,19 @@ namespace Babble.Core.ProxyImpl
 {
     public class InMemAppProxy : IAppProxy
     {
-        private readonly AsyncProducerConsumerQueue<byte[]> submitCh;
+        private readonly BufferBlock<byte[]> submitCh;
         private readonly List<byte[]> committedTransactions;
         private readonly ILogger logger;
         private byte[] stateHash;
 
         public InMemAppProxy(int id, ILogger logger)
         {
-            submitCh = new AsyncProducerConsumerQueue<byte[]>();
+            submitCh = new BufferBlock<byte[]>();
             committedTransactions = new List<byte[]>();
             this.logger = logger.AddNamedContext(nameof(InMemAppProxy) ,id.ToString());
         }
 
-        public AsyncProducerConsumerQueue<byte[]> SubmitCh()
+        public BufferBlock<byte[]> SubmitCh()
         {
             return submitCh;
         }
@@ -57,7 +58,7 @@ namespace Babble.Core.ProxyImpl
         public async Task SubmitTx(byte[] tx)
         {
             logger.Debug("SubmitTx -> {TxString}", tx.BytesToString());
-            await submitCh.EnqueueAsync(tx);
+            await submitCh.SendAsync(tx);
             }
 
         public byte[][] GetCommittedTransactions()

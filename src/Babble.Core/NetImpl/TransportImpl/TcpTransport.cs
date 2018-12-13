@@ -15,14 +15,14 @@ namespace Babble.Core.NetImpl.TransportImpl
         public TcpTransport()
         {
             sync = new AsyncLock();
-            Consumer = new AsyncProducerConsumerQueue<Rpc>(16);
+            Consumer = new BufferBlock<Rpc>(16);
             //LocalAddr = GenerateUuid();
             peers = new Dictionary<string, ITransport>();
             timeout = new TimeSpan(0, 0, 0, 50);
    
         }
 
-        public AsyncProducerConsumerQueue<Rpc> Consumer { get; }
+        public BufferBlock<Rpc> Consumer { get; }
         public string LocalAddr { get; }
         public Task<(SyncResponse resp, NetError err)> Sync(string target, SyncRequest args)
         {

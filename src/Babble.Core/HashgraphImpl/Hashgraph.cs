@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
@@ -34,7 +35,7 @@ namespace Babble.Core.HashgraphImpl
 
         public int ConsensusTransactions { get; set; } //number of consensus transactions
         public int PendingLoadedEvents { get; set; } //number of loaded evs that are not yet committed
-        public AsyncProducerConsumerQueue<Block> CommitCh { get; set; } //channel for committing evs
+        public BufferBlock<Block> CommitCh { get; set; } //channel for committing evs
         public int TopologicalIndex { get; set; } //counter used to order evs in topological order
         public int SuperMajority { get; set; }
         public int TrustCount { get; set; }
@@ -47,7 +48,7 @@ namespace Babble.Core.HashgraphImpl
 
         private readonly ILogger logger;
 
-        public Hashgraph(Peers participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger logger)
+        public Hashgraph(Peers participants, IStore store, BufferBlock<Block> commitCh, ILogger logger)
         {
             this.logger = logger.AddNamedContext("Hashgraph");
 
@@ -1626,7 +1627,7 @@ namespace Babble.Core.HashgraphImpl
 
                         if (CommitCh != null)
                         {
-                            await CommitCh.EnqueueAsync(block);
+                            await CommitCh.SendAsync(block);
                         }
                         else
                         {

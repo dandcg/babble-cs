@@ -12,16 +12,16 @@ namespace Babble.Core.NodeImpl
         public ControlTimer(Func<TimeSpan> timerFactory)
         {
             this.timerFactory = timerFactory;
-            TickCh = new AsyncProducerConsumerQueue<bool>();
-            ResetCh = new AsyncProducerConsumerQueue<bool>();
-            StopCh = new AsyncProducerConsumerQueue<bool>();
+            TickCh = new BufferBlock<bool>();
+            ResetCh = new BufferBlock<bool>();
+            StopCh = new BufferBlock<bool>();
         }
 
-        public AsyncProducerConsumerQueue<bool> TickCh { get; }
+        public BufferBlock<bool> TickCh { get; }
 
-        public AsyncProducerConsumerQueue<bool> ResetCh { get; }
+        public BufferBlock<bool> ResetCh { get; }
 
-        public AsyncProducerConsumerQueue<bool> StopCh { get; }
+        public BufferBlock<bool> StopCh { get; }
 
         public bool Set { get; private set; }
 

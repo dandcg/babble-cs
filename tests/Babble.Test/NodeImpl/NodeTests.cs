@@ -11,6 +11,7 @@ using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.NetImpl;
 using Babble.Core.NetImpl.TransportImpl;
 using Babble.Core.NodeImpl;
+using Babble.Core.PeersImpl;
 using Babble.Core.ProxyImpl;
 using Babble.Core.Util;
 using Babble.Test.Helpers;
@@ -36,18 +37,18 @@ namespace Babble.Test.NodeImpl
 
         private const int PortStart = 9990;
 
-        private static (CngKey[] keys, Peer[] peers, Dictionary<string, int> pmap) InitPeers(int n)
+        private async static Task<(CngKey[] keys, Peers peers, Dictionary<string, int> pmap)> InitPeers(int n)
         {
             var port = PortStart;
             var keys = new List<CngKey>();
-            var peers = new List<Peer>();
+            var peers = Peers.NewPeers();
 
             int i = 0;
             for (i = 0; i < n; i++)
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 keys.Add(key);
-                peers.Add(new Peer
+                await peers.AddPeer(Peer.New
                 (
                     $"127.0.0.1:{port}",
                     CryptoUtils.FromEcdsaPub(key).ToHex()
@@ -65,13 +66,13 @@ namespace Babble.Test.NodeImpl
                 i++;
             }
 
-            return (keys.ToArray(), peers.ToArray(), pmap);
+            return (keys.ToArray(), peers, pmap);
         }
 
         [Fact]
         public async Task TestProcessSync()
         {
-            var (keys, peers, pmap) = InitPeers(2);
+            var (keys, peers, pmap) = await InitPeers(2);
 
             var config = Config.TestConfig();
 

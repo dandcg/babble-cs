@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Nito.AsyncEx;
 
 namespace Babble.Core.NetImpl.TransportImpl
@@ -7,7 +8,7 @@ namespace Babble.Core.NetImpl.TransportImpl
     {
         // Consumer returns a channel that can be used to
         // consume and respond to RPC requests.
-        AsyncProducerConsumerQueue<Rpc> Consumer { get; }
+        BufferBlock<Rpc> Consumer { get; }
 
         // LocalAddr is used to return our local address to distinguish from our peers.
         string LocalAddr { get; }
