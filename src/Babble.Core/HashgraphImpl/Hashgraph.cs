@@ -1541,7 +1541,7 @@ namespace Babble.Core.HashgraphImpl
            //ProcessDecidedRounds takes Rounds whose witnesses are decided, computes the
         //corresponding Frames, maps them into Blocks, and commits the Blocks via the
         //commit channel
-        private async Task<BabbleError> ProcessDecidedRounds()
+        public async Task<BabbleError> ProcessDecidedRounds()
         {
             //Defer removing processed Rounds from the PendingRounds Queue
             var processedIndex = 0;
@@ -1822,7 +1822,7 @@ namespace Babble.Core.HashgraphImpl
         //ProcessSigPool runs through the SignaturePool and tries to map a Signature to
         //a known Block. If a Signature is found to be valid for a known Block, it is
         //appended to the block and removed from the SignaturePool
-        private async  Task<BabbleError> ProcessSigPool()
+        public async  Task<BabbleError> ProcessSigPool()
         {
             var processedSignatures = new Dictionary<int, bool>(); //index in SigPool => Processed?
 
@@ -1930,7 +1930,7 @@ namespace Babble.Core.HashgraphImpl
 
         //GetAnchorBlockWithFrame returns the AnchorBlock and the corresponding Frame.
         //This can be used as a base to Reset a Hashgraph
-        private async Task<(Block, Frame, BabbleError)> GetAnchorBlockWithFrame()
+        public async Task<(Block, Frame, BabbleError)> GetAnchorBlockWithFrame()
         {
             if (AnchorBlock == null)
             {
@@ -2418,7 +2418,7 @@ namespace Babble.Core.HashgraphImpl
 
         //CheckBlock returns an error if the Block does not contain valid signatures
         //from MORE than 1/3 of participants
-        private BabbleError CheckBlock(Block block)
+        public BabbleError CheckBlock(Block block)
         {
             var validSignatures = 0;
             foreach (var s in block.GetSignatures())

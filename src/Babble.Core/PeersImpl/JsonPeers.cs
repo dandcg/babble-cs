@@ -8,7 +8,7 @@ namespace Babble.Core.PeersImpl
     {
 
 
-        public async Task< (Peers, StoreError)> Peers()
+        public async Task< (Peer[], StoreError)> Peers()
         {
 
             using (await l.LockAsync())

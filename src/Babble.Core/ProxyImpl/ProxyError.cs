@@ -3,22 +3,12 @@ using System.Runtime.Serialization;
 
 namespace Babble.Core.ProxyImpl
 {
-    public class ProxyError : ApplicationException
+    public class ProxyError :  BabbleError
     {
-        public ProxyError()
+        public ProxyError(string message = null, Exception innerException = null)
         {
-        }
-
-        public ProxyError(string message) : base(message)
-        {
-        }
-
-        public ProxyError(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected ProxyError(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
+            Message = message;
+            InnerException = innerException;
         }
     }
 }

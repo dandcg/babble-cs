@@ -18,7 +18,7 @@ namespace Babble.Core.HashgraphImpl
             return new ParticipantEventsCache()
             {
                 Participants = participants,
-                Rim = new RollingIndexMap<string>(size, await participants.ToIdSlice())
+                Rim = new RollingIndexMap<string>("ParticipantEvents", size, await participants.ToIdSlice())
             };
         }
 

@@ -16,7 +16,7 @@ namespace Babble.Core.HashgraphImpl
             return new ParticipantBlockSignaturesCache
             {
                 Participants = participants,
-                Rim = new RollingIndexMap<BlockSignature>(size, await participants.ToIdSlice())
+                Rim = new RollingIndexMap<BlockSignature>("ParticipantBlockSignatures", size, await participants.ToIdSlice())
             };
         }
 

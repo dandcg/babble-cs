@@ -11,6 +11,7 @@ using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.NetImpl;
 using Babble.Core.NetImpl.TransportImpl;
 using Babble.Core.NodeImpl.PeerSelector;
+using Babble.Core.PeersImpl;
 using Babble.Core.ProxyImpl;
 using Babble.Core.Util;
 using Nito.AsyncEx;
@@ -24,7 +25,7 @@ namespace Babble.Core.NodeImpl
         public Config Conf { get; }
         public int Id { get; }
         public IStore Store { get; }
-        private readonly Peer[] participants;
+        private readonly Peers participants;
         public ITransport Trans { get; }
 
         public IAppProxy Proxy { get; }
@@ -54,7 +55,7 @@ namespace Babble.Core.NodeImpl
         private int syncRequests;
         private int syncErrors;
 
-        public Node(Config conf, int id, CngKey key, Peer[] participants, IStore store, ITransport trans, IAppProxy proxy, ILogger loggerIn)
+        public Node(Config conf, int id, CngKey key, Peers participants, IStore store, ITransport trans, IAppProxy proxy, ILogger loggerIn)
 
         {
             logger = loggerIn.AddNamedContext("Node", id.ToString());
@@ -68,7 +69,7 @@ namespace Babble.Core.NodeImpl
 
             Controller = new Controller(id, key, pmap, store, commitCh, logger);
             coreLock = new AsyncLock();
-            PeerSelector = new RandomPeerSelector(participants, LocalAddr);
+            PeerSelector =  new  RandomPeerSelector(participants, LocalAddr);
 
             selectorLock = new AsyncLock();
             Id = id;
@@ -98,10 +99,10 @@ namespace Babble.Core.NodeImpl
             nodeState.SetState(NodeStateEnum.Babbling);
         }
 
-        public Task<Exception> Init(bool bootstrap)
+        public Task<BabbleError> Init(bool bootstrap)
         {
             var peerAddresses = new List<string>();
-            foreach (var p in PeerSelector.Peers())
+            foreach (var p in PeerSelector.Peers().ToPeerSlice())
             {
                 peerAddresses.Add(p.NetAddr);
             }
@@ -113,7 +114,7 @@ namespace Babble.Core.NodeImpl
                 return Controller.Bootstrap();
             }
 
-            return Controller.Init();
+            return Controller.SetHeadAndSeq();
         }
 
         public Task StartAsync(bool gossip, CancellationToken ct = default)
@@ -339,7 +340,7 @@ namespace Babble.Core.NodeImpl
                 FromId = Id
             };
 
-            Exception respErr = null;
+            BabbleError respErr = null;
 
             //Check sync limit
             bool overSyncLimit;
@@ -358,7 +359,7 @@ namespace Babble.Core.NodeImpl
                 //Compute EventDiff
                 var start = Stopwatch.StartNew();
                 Event[] diff;
-                Exception err;
+                BabbleError err;
                 using (await coreLock.LockAsync())
                 {
                     (diff, err) = await Controller.EventDiff(cmd.Known);
@@ -415,7 +416,7 @@ namespace Babble.Core.NodeImpl
 
             var success = true;
 
-            Exception respErr;
+            BabbleError respErr;
             using (await coreLock.LockAsync())
             {
                 respErr = await Sync(cmd.Events);
@@ -436,7 +437,7 @@ namespace Babble.Core.NodeImpl
             await rpc.RespondAsync(resp, respErr != null ? new NetError(resp.FromId.ToString(), respErr) : null);
         }
 
-        private async Task<(bool proceed, Exception error)> PreGossip()
+        private async Task<(bool proceed, BabbleError error)> PreGossip()
         {
             using (await coreLock.LockAsync())
             {
@@ -448,20 +449,12 @@ namespace Babble.Core.NodeImpl
                     return (false, null);
                 }
 
-                //If the transaction pool is not empty, create a new self-event and empty the
-                //transaction pool in its payload
-                var err = await Controller.AddSelfEvent();
-                if (err != null)
-                {
-                    logger.Error("Adding SelfEvent", err);
-                    return (false, err);
-                }
             }
 
             return (true, null);
         }
 
-        public async Task<Exception> Gossip(string peerAddr)
+        public async Task< BabbleError> Gossip(string peerAddr)
         {
             //Pull
             var (syncLimit, otherKnownEvents, err) = await Pull(peerAddr);
@@ -498,7 +491,7 @@ namespace Babble.Core.NodeImpl
             return null;
         }
 
-        private async Task<( bool syncLimit, Dictionary<int, int> otherKnown, Exception err)> Pull(string peerAddr)
+        private async Task<( bool syncLimit, Dictionary<int, int> otherKnown,  BabbleError err)> Pull(string peerAddr)
         {
             //Compute KnownEvents
             Dictionary<int, int> knownEvents;
@@ -541,7 +534,7 @@ namespace Babble.Core.NodeImpl
             return (false, resp.Known, null);
         }
 
-        private async Task<Exception> Push(string peerAddr, Dictionary<int, int> knownEvents)
+        private async Task< BabbleError> Push(string peerAddr, Dictionary<int, int> knownEvents)
         {
             //Check SyncLimit
             bool overSyncLimit;
@@ -560,7 +553,7 @@ namespace Babble.Core.NodeImpl
             var start = Stopwatch.StartNew();
 
             Event[] diff;
-            Exception err;
+            BabbleError err;
             using (await coreLock.LockAsync())
             {
                 (diff, err) = await Controller.EventDiff(knownEvents);
@@ -613,7 +606,7 @@ namespace Babble.Core.NodeImpl
             return Task.FromResult(true);
         }
 
-        private async Task<(SyncResponse resp, Exception err)> RequestSync(string target, Dictionary<int, int> known)
+        private async Task<(SyncResponse resp, BabbleError err)> RequestSync(string target, Dictionary<int, int> known)
         {
             var args = new SyncRequest
             {
@@ -625,7 +618,7 @@ namespace Babble.Core.NodeImpl
             return (resp, err);
         }
 
-        private async Task<(EagerSyncResponse resp, Exception err)> RequestEagerSync(string target, WireEvent[] events)
+        private async Task<(EagerSyncResponse resp, BabbleError err)> RequestEagerSync(string target, WireEvent[] events)
         {
             var args = new EagerSyncRequest
             {
@@ -637,7 +630,7 @@ namespace Babble.Core.NodeImpl
             return (resp, err);
         }
 
-        public async Task<Exception> Sync(WireEvent[] events)
+        public async Task< BabbleError> Sync(WireEvent[] events)
         {
             logger.Debug("Unknown events {@events}",events);
 
@@ -663,9 +656,9 @@ namespace Babble.Core.NodeImpl
             return err;
         }
 
-        private async Task<Exception> Commit(Block block)
+        private async Task< BabbleError> Commit(Block block)
         {
-            Exception err;
+            BabbleError err;
             byte[] stateHash;
             (stateHash, err) = await Proxy.CommitBlock(block);
 
@@ -759,7 +752,7 @@ namespace Babble.Core.NodeImpl
                 {"consensus_transactions", Controller.GetConsensusTransactionsCount().ToString()},
                 {"undetermined_events", Controller.GetUndeterminedEvents().Length.ToString()},
                 {"transaction_pool", Controller.TransactionPool.Count.ToString()},
-                {"num_peers", PeerSelector.Peers().Length.ToString()},
+                {"num_peers", PeerSelector.Peers().Len().ToString()},
                 {"sync_rate", SyncRate().ToString("0.00")},
                 {"events_per_second", consensusEventsPerSecond.ToString("0.00")},
                 {"rounds_per_second", consensusRoundsPerSecond.ToString("0.00")},

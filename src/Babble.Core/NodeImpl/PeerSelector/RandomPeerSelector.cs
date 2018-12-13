@@ -1,20 +1,22 @@
 ﻿using System;
+using Babble.Core.PeersImpl;
 
 namespace Babble.Core.NodeImpl.PeerSelector
 {
     public class RandomPeerSelector:IPeerSelector
     {
-
-        private readonly Peer[] peers;
+        private readonly Peers peers;
+        private readonly string localAddr;
         private string last;
 
-        public RandomPeerSelector(Peer[] participants, string localAddr)
+        public RandomPeerSelector(Peers peers, string localAddr)
         {
-        
-            (_,peers) = Peer.ExcludePeer(participants, localAddr);
+            this.peers = peers;
+            this.localAddr = localAddr;
+
         }
 
-        public Peer[] Peers()
+        public Peers Peers()
         {
             return peers;
         }
@@ -22,10 +24,15 @@ namespace Babble.Core.NodeImpl.PeerSelector
 
         public Peer Next()
         {
-            var selectablePeers = peers;
+            var selectablePeers = peers.ToPeerSlice();
             if (selectablePeers.Length > 1)
             {
-                (_, selectablePeers) = Peer.ExcludePeer(selectablePeers, last);
+                (_, selectablePeers) = Peer.ExcludePeer(selectablePeers, localAddr);
+
+                if (selectablePeers.Length > 1)
+                {
+                    (_,selectablePeers) = Peer.ExcludePeer(selectablePeers, last);
+                }
             }
             Random rnd = new Random();
             var i = rnd.Next(0, selectablePeers.Length); 

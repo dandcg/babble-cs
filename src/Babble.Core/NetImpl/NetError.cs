@@ -3,22 +3,15 @@ using System.Runtime.Serialization;
 
 namespace Babble.Core.NetImpl
 {
-    public class NetError : ApplicationException
+    public class NetError : BabbleError
     {
-        public NetError()
-        {
-        }
+        public BabbleError InnerError { get; private set; }
 
-        public NetError(string message) : base(message)
+        public NetError(string message = null, BabbleError innerError=null, Exception innerException = null)
         {
-        }
-
-        public NetError(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        protected NetError(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
+            this.InnerError = innerError;
+            Message = message;
+            InnerException = innerException;
         }
     }
 }

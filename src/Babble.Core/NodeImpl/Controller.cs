@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
+using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using Nito.AsyncEx;
 using Serilog;
@@ -20,39 +19,24 @@ namespace Babble.Core.NodeImpl
         public CngKey Key { get; }
         private byte[] pubKey;
         private string hexId;
-
         public readonly Hashgraph Hg;
-
-        private readonly Dictionary<string, int> participants;
-        private readonly Dictionary<int, string> reverseParticipants;
-
-        private readonly IStore store;
+        private readonly Peers participants;
         private readonly AsyncProducerConsumerQueue<Block> commitCh;
-
         public string Head { get; private set; }
         public int Seq { get; private set; }
-
         public List<byte[]> TransactionPool { get; } = new List<byte[]>();
         public List<BlockSignature> BlockSignaturePool { get; } = new List<BlockSignature>();
 
         private readonly ILogger logger;
 
-        public Controller(int id, CngKey key, Dictionary<string, int> participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger loggerIn)
+        public Controller(int id, CngKey key, Peers participants, IStore store, AsyncProducerConsumerQueue<Block> commitCh, ILogger loggerIn)
         {
-
-            logger = loggerIn.AddNamedContext( "Controller", id.ToString());
+            logger = loggerIn.AddNamedContext("Controller", id.ToString());
 
             this.id = id;
             Key = key;
             this.participants = participants;
-            this.store = store;
             this.commitCh = commitCh;
-            reverseParticipants = new Dictionary<int, string>();
-            
-            foreach (var p in participants)
-            {
-                reverseParticipants.Add(p.Value, p.Key);
-            }
 
             Hg = new Hashgraph(participants, store, commitCh, logger);
         }
@@ -80,64 +64,35 @@ namespace Babble.Core.NodeImpl
             return hexId;
         }
 
-        public async Task<Exception> Init()
+        public async Task<BabbleError> SetHeadAndSeq()
         {
-            //Create and save the first Event
-            var initialEvent = new Event(
-                new byte[][] { }, 
-                null, 
-                new[] {"", ""},
-                PubKey(),
-                Seq)
-            {
-                Body = {Timestamp = DateTimeOffset.UtcNow}
-            };
-            
-            var err = await SignAndInsertSelfEvent(initialEvent);
-            
-            logger.Debug("Initial Event {@Event}", new {Index = initialEvent.Index(), Hex = initialEvent.Hex()});
-
-            return err;
-        }
-
-        public async Task<Exception> Bootstrap()
-        {
-            var err = await Hg.Bootstrap();
-
-            if (err != null)
-            {
-                return err;
-            }
-
             string head = null;
             int seq = 0;
 
-            string last;
-            bool isRoot;
-            (last, isRoot, err) = Hg.Store.LastEventFrom(HexId());
+            var (last, isRoot, err1) = Hg.Store.LastEventFrom(HexId());
 
-            if (err != null)
+            if (err1 != null)
             {
-                return err;
+                return err1;
             }
 
             if (isRoot)
             {
-                Root root;
-                (root, err) = await Hg.Store.GetRoot(HexId());
-                if (err != null)
+                var (root, err2) = await Hg.Store.GetRoot(HexId());
+                if (err2 != null)
                 {
-                    head = root.X;
-                    seq = root.Index;
+                    return err2;
                 }
+
+                head = root.SelfParent.Hash;
+                seq = root.SelfParent.Index;
             }
             else
             {
-                Event lastEvent;
-                (lastEvent, err) = await GetEvent(last);
-                if (err != null)
+                var (lastEvent, err3) = await GetEvent(last);
+                if (err3 != null)
                 {
-                    return err;
+                    return err3;
                 }
 
                 head = last;
@@ -147,12 +102,22 @@ namespace Babble.Core.NodeImpl
             Head = head;
             Seq = seq;
 
+            logger.Debug("SetHeadAndSeq: core.Head = {Head}, core.Seq = {Seq}, is_root = {isRoot}", Head, Seq, isRoot);
+
             return null;
         }
 
-        public async Task<Exception> SignAndInsertSelfEvent(Event ev)
+      public Task<BabbleError>  Bootstrap()
+      {
+          return Hg.Bootstrap();
+      }
+
+
+
+
+        public async Task<BabbleError> SignAndInsertSelfEvent(Event ev)
         {
-            Exception err = ev.Sign(Key);
+            BabbleError err = ev.Sign(Key);
 
             if (err != null)
             {
@@ -164,7 +129,7 @@ namespace Babble.Core.NodeImpl
             return err;
         }
 
-        public async Task<Exception> InsertEvent(Event ev, bool setWireInfo)
+        public async Task<BabbleError> InsertEvent(Event ev, bool setWireInfo)
         {
             var err = await Hg.InsertEvent(ev, setWireInfo);
 
@@ -184,12 +149,12 @@ namespace Babble.Core.NodeImpl
 
         public Task<Dictionary<int, int>> KnownEvents()
         {
-            return Hg.KnownEvents();
+            return Hg.Store.KnownEvents();
         }
 
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-        public async Task<(BlockSignature bs, Exception err)> SignBlock(Block block)
+        public async Task<(BlockSignature bs, BabbleError err)> SignBlock(Block block)
         {
             var (sig, err) = block.Sign(Key);
             if (err != null)
@@ -233,13 +198,13 @@ namespace Babble.Core.NodeImpl
             return false;
         }
 
-        public Task<(Frame frame, Exception err)> GetFrame()
+        public Task<(Block block, Frame frame, BabbleError err)> GetAnchorBlockWithFrame()
         {
-            return Hg.GetFrame();
+            return Hg.GetAnchorBlockWithFrame();
         }
 
         //returns events that c knowns about that are not in 'known'
-        public async Task<(Event[] events, Exception err)> EventDiff(Dictionary<int, int> known)
+        public async Task<(Event[] events, BabbleError err)> EventDiff(Dictionary<int, int> known)
         {
             var unknown = new List<Event>();
 
@@ -249,11 +214,13 @@ namespace Babble.Core.NodeImpl
 
             foreach (var kn in known)
             {
+                var idl = kn.Key;
                 var ct = kn.Value;
 
-                var pk = reverseParticipants[kn.Key];
+                var peer = participants.ById[idl];
+
                 //get participant Events with index > ct
-                var (participantEvents, err) = await Hg.Store.ParticipantEvents(pk, ct);
+                var (participantEvents, err) = await Hg.Store.ParticipantEvents(peer.PubKeyHex, ct);
 
                 if (err != null)
                 {
@@ -278,38 +245,36 @@ namespace Babble.Core.NodeImpl
             return (unknown.ToArray(), null);
         }
 
-        public async Task<Exception> Sync(WireEvent[] unknownEvents)
+        public async Task<BabbleError> Sync(WireEvent[] unknownEvents)
         {
             logger.Debug("Sync unknownEvents={@unknownEvents}; transactionPool={transactionPoolCount}; blockSignaturePool={blockSignaturePoolCount}", unknownEvents.Length, TransactionPool.Count, BlockSignaturePool.Count);
-            
+
             using (var tx = Hg.Store.BeginTx())
             {
-
                 string otherHead = "";
 
                 //add unknownEvents events
                 int k = 0;
-                Exception err;
+
                 foreach (var we in unknownEvents)
 
                 {
                     //logger.Debug("wev={wev}",we.Body.CreatorId);
 
-                    Event ev;
-                    (ev, err) = await Hg.ReadWireInfo(we);
+                    var (ev, err1) = await Hg.ReadWireInfo(we);
 
-                    if (err != null)
+                    if (err1 != null)
                     {
-                        return err;
+                        return err1;
                     }
 
                     //logger.Debug("ev={ev}",ev.Creator());
 
-                    err = await InsertEvent(ev, false);
+                    var err2 = await InsertEvent(ev, false);
 
-                    if (err != null)
+                    if (err2 != null)
                     {
-                        return err;
+                        return err2;
                     }
 
                     //assume last event corresponds to other-head
@@ -321,50 +286,79 @@ namespace Babble.Core.NodeImpl
                     k++;
                 }
 
-                //create new event with self head and other head
-                //only if there are pending loaded events or the transaction pool is not empty
-                if (unknownEvents.Length > 0 || TransactionPool.Count > 0 || BlockSignaturePool.Count > 0)
-                {
-                    var newHead = new Event(TransactionPool.ToArray(), BlockSignaturePool.ToArray(),
-                        new[] {Head, otherHead},
-                        PubKey(),
-                        Seq + 1);
-
-                    err = await SignAndInsertSelfEvent(newHead);
-
-                    if (err != null)
-                    {
-                        return new CoreError($"Error inserting new head: {err.Message}", err);
-                    }
-
-                    //empty the  pool
-                    TransactionPool.Clear();
-                    BlockSignaturePool.Clear();
-                }
-
-                return null;
+                //create new event with self head and other head only if there are pending
+                //loaded events or the pools are not empty
+                return await AddSelfEvent(otherHead);
             }
         }
 
-        public async Task<Exception> AddSelfEvent()
+        public async Task<BabbleError> FastForward(string peer, Block block, Frame frame)
         {
-            if (TransactionPool.Count == 0 && BlockSignaturePool.Count == 0)
+            //Check Block Signatures
+            var err1 = Hg.CheckBlock(block);
+            if (err1 != null)
             {
-                logger.Debug("Empty TxPool");
+                return err1;
+            }
+
+            //Check Frame Hash
+            var frameHash = frame.Hash();
+
+            if (block.FrameHash().GetHashCode() != frameHash.GetHashCode())
+            {
+                return new CoreError("Invalid Frame Hash");
+            }
+
+            var err3 = await Hg.Reset(block, frame);
+            if (err3 != null)
+            {
+                return err3;
+            }
+
+            var err4 = await SetHeadAndSeq();
+            if (err4 != null)
+            {
+                return err4;
+            }
+
+            // lastEventFromPeer, _, err := c.hg.Store.LastEventFrom(peer)
+            // if err != nil {
+            // 	return err
+            // }
+
+            // err = c.AddSelfEvent(lastEventFromPeer)
+            // if err != nil {
+            // 	return err
+            // }
+
+            var err5 = await RunConsensus();
+            if (err5 != null)
+            {
+                return err5;
+            }
+
+            return null;
+        }
+
+        public async Task<BabbleError> AddSelfEvent(string otherHead)
+        {
+            if (otherHead == "" && TransactionPool.Count == 0 && BlockSignaturePool.Count == 0)
+            {
+                logger.Debug("Empty transaction pool and block signature pool");
                 return null;
             }
 
             //create new event with self head and empty other parent
             //empty transaction pool in its payload
             var newHead = new Event(TransactionPool.ToArray(), BlockSignaturePool.ToArray(),
-                new[] {Head, ""},
+                new[] {Head, otherHead},
                 PubKey(), Seq + 1);
 
-            var err = await SignAndInsertSelfEvent(newHead);
+            var err1 = await SignAndInsertSelfEvent(newHead);
 
-            if (err != null)
+            if (err1 != null)
             {
-                return new CoreError($"Error inserting new head: {err.Message}", err);
+                return new CoreError($"Error inserting new head: {err1.Message}");
             }
 
             logger.Debug("Created Self-Event Transactions={TransactionCount}; BlockSignatures={BlockSignatureCount}", TransactionPool.Count, BlockSignaturePool.Count);
@@ -375,7 +369,7 @@ namespace Babble.Core.NodeImpl
             return null;
         }
 
-        public async Task<(Event[] events, Exception err)> FromWire(WireEvent[] wireEvents)
+        public async Task<(Event[] events, BabbleError err)> FromWire(WireEvent[] wireEvents)
         {
             var events = new List<Event>(wireEvents.Length);
 
@@ -393,7 +387,7 @@ namespace Babble.Core.NodeImpl
             return (events.ToArray(), null);
         }
 
-        public (WireEvent[] wireEvents, Exception err) ToWire(Event[] events)
+        public (WireEvent[] wireEvents, BabbleError err) ToWire(Event[] events)
         {
             var wireEvents = new List<WireEvent>(events.Length);
             foreach (var e in events)
@@ -404,51 +398,78 @@ namespace Babble.Core.NodeImpl
             return (wireEvents.ToArray(), null);
         }
 
-        public async Task<Exception> RunConsensus()
+        public async Task<BabbleError> RunConsensus()
         {
             using (var tx = Hg.Store.BeginTx())
             {
-
                 // DivideRounds
 
-                var watch = Stopwatch.StartNew();
-                var err = await Hg.DivideRounds();
-                watch.Stop();
+                var watch1 = Stopwatch.StartNew();
+                var err1 = await Hg.DivideRounds();
+                watch1.Stop();
 
-                logger.Debug("DivideRounds() Duration={DivideRoundsDuration}", watch.Nanoseconds());
+                logger.Debug("DivideRounds() Duration={DivideRoundsDuration}", watch1.Nanoseconds());
 
-                if (err != null)
+                if (err1 != null)
                 {
-                    logger.Error("DivideRounds Error={@err}", err);
-                    return err;
+                    logger.Error("DivideRounds Error={@err}", err1);
+                    return err1;
                 }
 
                 // DecideFrame
 
-                watch = Stopwatch.StartNew();
-                err = await Hg.DecideFame();
-                watch.Stop();
+                var watch2 = Stopwatch.StartNew();
+                var err2 = await Hg.DecideFame();
+                watch2.Stop();
 
-                logger.Debug("DecideFame() Duration={DecideFameDuration}", watch.Nanoseconds());
+                logger.Debug("DecideFame() Duration={DecideFameDuration}", watch2.Nanoseconds());
 
-                if (err != null)
+                if (err2 != null)
                 {
-                    logger.Error("DecideFame Error={@err}", err);
-                    return err;
+                    logger.Error("DecideFame Error={@err}", err2);
+                    return err2;
                 }
 
-                // FindOrder
+                var watch3 = Stopwatch.StartNew();
 
-                watch = Stopwatch.StartNew();
-                err = await Hg.FindOrder();
-                watch.Stop();
+                var err3 = await Hg.DecideRoundReceived();
 
-                logger.Debug("FindOrder() Duration={FindOrderDuration}", watch.Nanoseconds());
+                watch3.Stop();
 
-                if (err != null)
+                logger.Debug("DecideRoundReceived() Duration={DecideFameDuration}", watch3.Nanoseconds());
+
+                if (err3 != null)
                 {
-                    logger.Error("FindOrder Error={@err}", err);
-                    return err;
+                    logger.Error("DecideRoundReceived Error={@err}", err3);
+                    return err3;
+                }
+
+                var watch4 = Stopwatch.StartNew();
+
+                var err4 = await Hg.ProcessDecidedRounds();
+
+                watch4.Stop();
+
+                logger.Debug("ProcessDecidedRounds() Duration={DecideFameDuration}", watch3.Nanoseconds());
+
+                if (err4 != null)
+                {
+                    logger.Error("ProcessDecidedRounds Error={@err}", err4);
+                    return err4;
+                }
+
+                var watch5 = Stopwatch.StartNew();
+
+                var err5 = await Hg.ProcessSigPool();
+
+                watch5.Stop();
+
+                logger.Debug("ProcessSigPool() Duration={DecideFameDuration}", watch5.Nanoseconds());
+
+                if (err5 != null)
+                {
+                    logger.Error("ProcessSigPool Error={@err}", err5);
+                    return err5;
                 }
 
                 return null;
@@ -465,17 +486,17 @@ namespace Babble.Core.NodeImpl
             BlockSignaturePool.Add(bs);
         }
 
-        public async Task<(Event ev, Exception err)> GetHead()
+        public async Task<(Event ev, BabbleError err)> GetHead()
         {
             return await Hg.Store.GetEvent(Head);
         }
 
-        public async Task<(Event ev, Exception err)> GetEvent(string hash)
+        public async Task<(Event ev, BabbleError err)> GetEvent(string hash)
         {
             return await Hg.Store.GetEvent(hash);
         }
 
-        public async Task<(byte[][] txs, Exception err)> GetEventTransactions(string hash)
+        public async Task<(byte[][] txs, BabbleError err)> GetEventTransactions(string hash)
         {
             var (ex, err) = await GetEvent(hash);
             if (err != null)
@@ -489,7 +510,7 @@ namespace Babble.Core.NodeImpl
 
         public string[] GetConsensusEvents()
         {
-            return Hg.ConsensusEvents();
+            return Hg.Store.ConsensusEvents();
         }
 
         public int GetConsensusEventsCount()
@@ -507,7 +528,7 @@ namespace Babble.Core.NodeImpl
             return Hg.PendingLoadedEvents;
         }
 
-        public async Task<(byte[][] txs, Exception err)> GetConsensusTransactions()
+        public async Task<(byte[][] txs, BabbleError err)> GetConsensusTransactions()
         {
             var txs = new List<byte[]>();
             foreach (var e in GetConsensusEvents())
@@ -539,9 +560,9 @@ namespace Babble.Core.NodeImpl
             return Hg.LastCommitedRoundEvents;
         }
 
-        public int GetLastBlockIndex()
+        public Task<int> GetLastBlockIndex()
         {
-            return Hg.LastBlockIndex;
+            return Hg.Store.LastBlockIndex();
         }
 
         public bool NeedGossip()

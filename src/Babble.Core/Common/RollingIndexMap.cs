@@ -4,19 +4,21 @@ namespace Babble.Core.Common
 {
     public class RollingIndexMap<T>
     {
+        public string Name { get; }
         public int Size { get; }
         public int[] Keys { get; }
 
         public Dictionary<int, RollingIndex<T>> Mapping { get; private set; }
 
-        public RollingIndexMap(int size, int[] keys)
+        public RollingIndexMap(string name, int size, int[] keys)
         {
             var items = new Dictionary<int, RollingIndex<T>>();
             foreach (var key in keys)
             {
-                items[key] = new RollingIndex<T>(size);
+                items[key] = new RollingIndex<T>(name, size);
             }
 
+            Name = name;
             Size = size;
             Keys = keys;
             Mapping = items;
@@ -71,7 +73,7 @@ namespace Babble.Core.Common
 
             if (!ok)
             {
-                items = new RollingIndex<T>(Size);
+                items = new RollingIndex<T>(Name, Size);
                 Mapping[key] = items;
             }
 
@@ -100,7 +102,7 @@ namespace Babble.Core.Common
             var items = new Dictionary<int, RollingIndex<T>>();
             foreach (var key in Keys)
             {
-                items[key] = new RollingIndex<T>(Size);
+                items[key] = new RollingIndex<T>(Name, Size);
             }
 
             Mapping = items;

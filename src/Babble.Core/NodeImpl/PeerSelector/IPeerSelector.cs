@@ -1,9 +1,11 @@
-﻿namespace Babble.Core.NodeImpl.PeerSelector
+﻿using Babble.Core.PeersImpl;
+
+namespace Babble.Core.NodeImpl.PeerSelector
 {
     public interface IPeerSelector
 
     {
-        Peer[] Peers();
+        Peers Peers();
         Peer Next();
         void UpdateLast(string peerAddr);
     }

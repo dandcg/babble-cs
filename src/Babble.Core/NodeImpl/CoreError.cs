@@ -3,9 +3,9 @@ using System.Runtime.Serialization;
 
 namespace Babble.Core.NodeImpl
 {
-    public class NodeError : BabbleError
+    public class CoreError : BabbleError
     {
-        public NodeError(string message = null, Exception innerException = null)
+        public CoreError(string message = null, Exception innerException = null)
         {
             Message = message;
             InnerException = innerException;
