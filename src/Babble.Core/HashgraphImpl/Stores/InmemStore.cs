@@ -31,10 +31,7 @@ namespace Babble.Core.HashgraphImpl.Stores
         private Dictionary<string,string> lastConsensusEvents;
         private int lastBlock;
 
-        public InmemStore()
-        {
-            
-        }
+
 
 
         public static async Task<InmemStore> NewInmemStore(Peers participants, int cacheSize, ILogger logger)

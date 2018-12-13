@@ -37,7 +37,7 @@ namespace Babble.Test.NodeImpl
 
         private const int PortStart = 9990;
 
-        private async static Task<(CngKey[] keys, Peers peers, Dictionary<string, int> pmap)> InitPeers(int n)
+        private static async Task< (CngKey[] keys, Peers peers)> InitPeers(int n)
         {
             var port = PortStart;
             var keys = new List<CngKey>();
@@ -48,7 +48,7 @@ namespace Babble.Test.NodeImpl
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 keys.Add(key);
-                await peers.AddPeer(Peer.New
+               await peers.AddPeer(Peer.New
                 (
                     $"127.0.0.1:{port}",
                     CryptoUtils.FromEcdsaPub(key).ToHex()
@@ -56,35 +56,28 @@ namespace Babble.Test.NodeImpl
                 port++;
             }
 
-            peers.Sort((peer, peer1) => string.Compare(peer.PubKeyHex, peer1.PubKeyHex, StringComparison.Ordinal));
-            var pmap = new Dictionary<string, int>();
+   
 
-            i = 0;
-            foreach (var p in peers)
-            {
-                pmap[p.PubKeyHex] = i;
-                i++;
-            }
-
-            return (keys.ToArray(), peers, pmap);
+            return (keys.ToArray(), peers);
         }
 
         [Fact]
         public async Task TestProcessSync()
         {
-            var (keys, peers, pmap) = await InitPeers(2);
+            var (keys, p) =await InitPeers(2);
 
             var config = Config.TestConfig();
 
             //Start two nodes
 
+            var peers = p.ToPeerSlice();
+
             var router = new InMemRouter();
 
-            var id0 = pmap[peers[0].PubKeyHex];
             var peer0Trans = await router.Register(peers[0].NetAddr);
       
 
-            var node0 = new Node(config,id0 , keys[0], peers, new InmemStore(pmap, config.CacheSize, logger), peer0Trans, new InMemAppProxy(id0,logger), logger);
+            var node0 = new Node(config,peers[0].ID , keys[0], p, await InmemStore.NewInmemStore(p, config.CacheSize, logger), peer0Trans, new InMemAppProxy(id0,logger), logger);
             await node0.Init(false);
 
             await node0.StartAsync(false);

@@ -1,13 +1,12 @@
 package proxy
 
-import "github.com/babbleio/babble/hashgraph"
+import (
+	"github.com/mosaicnetworks/babble/src/hashgraph"
+)
 
 type AppProxy interface {
 	SubmitCh() chan []byte
 	CommitBlock(block hashgraph.Block) ([]byte, error)
-}
-
-type BabbleProxy interface {
-	CommitCh() chan hashgraph.Block
-	SubmitTx(tx []byte) error
+	GetSnapshot(blockIndex int) ([]byte, error)
+	Restore(snapshot []byte) error
 }
