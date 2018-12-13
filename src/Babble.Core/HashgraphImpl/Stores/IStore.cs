@@ -2,13 +2,14 @@
 using System.Threading.Tasks;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.PeersImpl;
 
 namespace Babble.Core.HashgraphImpl.Stores
 {
     public interface IStore
     {
         int CacheSize();
-        (Dictionary<string, int> participants, StoreError err) Participants();
+        (Peers participants, StoreError err) Participants();
         Task<(Event evt, StoreError err)> GetEvent(string str);
         Task<StoreError> SetEvent(Event ev);
         Task<(string[] evts, StoreError err)> ParticipantEvents(string str, int i);

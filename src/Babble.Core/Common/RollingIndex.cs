@@ -9,7 +9,7 @@ namespace Babble.Core.Common
         public int LastIndex { get; private set; }
         public List<T> Items { get; private set; } = new List<T>();
 
-        public RollingIndex(int size)
+        public RollingIndex(string name, int size)
         {
             Size = size;
             Items.Capacity = 2 * size;

@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using Serilog;
 
@@ -9,36 +10,67 @@ namespace Babble.Core.HashgraphImpl.Stores
 {
     public class InmemStore : IStore
     {
-        private readonly int cacheSize;
-        private readonly ILogger logger;
-        private readonly Dictionary<string, int> participants;
+        private  ILogger logger;
+
+        private  int cacheSize;
+        private  Peers participants;
+        
         private LruCache<string, Event> eventCache;
         private LruCache<int, RoundInfo> roundCache;
-        private readonly LruCache<int, Block> blockCache;
+        private  LruCache<int, Block> blockCache;
+        private  LruCache<int, Frame> frameCache;
+        
         private RollingIndex<string> consensusCache;
         private int totConsensusEvents;
-        private readonly ParticipantEventsCache participantEventsCache;
+        private  ParticipantEventsCache participantEventsCache;
+
+        private Dictionary<string, Root> rootsByParticipant; //[participant] => Root
+        private Dictionary<string, Root> rootsBySelfParent; //[Root.SelfParent.Hash] => Root
+        
         private int lastRound;
+        private Dictionary<string,string> lastConsensusEvents;
+        private int lastBlock;
 
-        public InmemStore(Dictionary<string, int> participants, int cacheSize, ILogger logger)
+        public InmemStore()
         {
-            var rts = new Dictionary<string, Root>();
+            
+        }
 
-            foreach (var p in participants)
+
+        public static async Task<InmemStore> NewInmemStore(Peers participants, int cacheSize, ILogger logger)
+        {
+            
+            var inmemStore = new InmemStore();
+
+        var rootsByParticipant = new Dictionary<string, Root>();
+
+
+
+            foreach (var p in participants.ByPubKey)
             {
-                rts.Add(p.Key, Root.NewBaseRoot());
+                var pk = p.Key;
+                var pid = p.Value;
+
+                var root = Root.NewBaseRoot(pid.ID);
+             rootsByParticipant[pk] = root;
             }
 
-            this.participants = participants;
-            this.cacheSize = cacheSize;
-            this.logger = logger.AddNamedContext("InmemStore");
-            eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
-            roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
-            blockCache= new LruCache<int, Block>(cacheSize, null, logger,"BlockCache");
-            consensusCache = new RollingIndex<string>(cacheSize);
-            participantEventsCache = new ParticipantEventsCache(cacheSize, participants, logger);
-            Roots = rts;
-            lastRound = -1;
+            inmemStore.logger = logger.AddNamedContext("InmemStore");
+
+            inmemStore.cacheSize = cacheSize;
+            inmemStore.participants = participants;
+            inmemStore.eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
+            inmemStore.roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
+            inmemStore.blockCache= new LruCache<int, Block>(cacheSize, null, logger,"BlockCache");
+            inmemStore.frameCache= new LruCache<int, Frame>(cacheSize,null,logger, "FrameCache");
+            inmemStore.consensusCache = new RollingIndex<string>("ConsensusCache",cacheSize);
+            inmemStore.participantEventsCache =await ParticipantEventsCache.NewParticipantEventsCache(cacheSize, participants);
+            inmemStore.rootsByParticipant = rootsByParticipant;
+            inmemStore.lastRound = -1;
+            inmemStore.lastBlock = -1;
+            inmemStore.lastConsensusEvents = new Dictionary<string, string>();
+
+            return inmemStore;
         }
 
         public Dictionary<string, Root> Roots { get; private set; }
@@ -48,10 +80,26 @@ namespace Babble.Core.HashgraphImpl.Stores
             return cacheSize;
         }
 
-        public (Dictionary<string, int> participants, StoreError err) Participants()
+        public (Peers participants, StoreError err) Participants()
         {
             return (participants, null);
         }
+
+        public (Dictionary<string,Root>,StoreError) RootsBySelfParent() 
+        {
+            if (rootsBySelfParent == null)
+            {
+                rootsBySelfParent = new Dictionary<string, Root>();
+                foreach (var root in rootsByParticipant.Values)
+                {
+                    rootsBySelfParent[root.SelfParent.Hash] = root;
+                }
+            }
+
+            return (rootsBySelfParent, null);
+        }
+
+
 
         public Task<(Event evt, StoreError err)> GetEvent(string key)
         {
@@ -60,7 +108,7 @@ namespace Babble.Core.HashgraphImpl.Stores
 
             if (!ok)
             {
-                return Task.FromResult((new Event(), new StoreError(StoreErrorType.KeyNotFound, key)));
+                return Task.FromResult((new Event(), new StoreError(StoreErrorType.KeyNotFound, $"EventCache Key={key}")));
             }
 
             return Task.FromResult<(Event, StoreError)>((res, null));
@@ -102,6 +150,19 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public Task<(string ev, StoreError err)> ParticipantEvent(string particant, int index)
         {
+            var (ev, err1 ) = participantEventsCache.GetItem(particant, index);
+
+            if (err1 != null)
+            {
+                var ok = rootsByParticipant.TryGetValue(particant, out var root);
+                if (!ok)
+                {
+                    return Task.FromResult(("", new StoreError(StoreErrorType.NoRoot, $"InmemStore.Roots Participant={particant}")));
+                }
+
+            }
+
+
             return Task.FromResult(participantEventsCache.GetItem(particant, index));
         }
 
@@ -109,26 +170,47 @@ namespace Babble.Core.HashgraphImpl.Stores
         {
             //try to get the last event from this participant
             var (last, err) = participantEventsCache.GetLast(participant);
+            bool isRoot = false;
 
-            var isRoot = false;
-            if (err != null)
+            if (err != null && err.StoreErrorType== StoreErrorType.Empty )
             {
-                return (last, false, err);
-            }
-
-            //if there is none, grab the root
-            if (string.IsNullOrEmpty(last))
-            {
-                var ok = Roots.TryGetValue(participant, out var root);
-
+                var ok = rootsByParticipant.TryGetValue(participant, out var root);
                 if (ok)
                 {
-                    last = root.X;
+                    last = root.SelfParent.Hash;
                     isRoot = true;
+                    err = null;
+
+
                 }
                 else
                 {
-                    err = new StoreError(StoreErrorType.NoRoot, participant);
+                    err= new StoreError(StoreErrorType.NoRoot, $"InmemStore.Roots Participant={participant}") ;
+                }
+
+         
+            }
+
+   
+            return (last, isRoot, err);
+        }
+
+        public (string last, bool isRoot, StoreError err) LastConsensusEventFrom(string participant)
+        {
+            //try to get the last consensus event from this participant
+            var ok = lastConsensusEvents.TryGetValue(participant, out var last);
+            bool isRoot = false;
+            StoreError err = null;
+            //if there is none, grab the root
+            if (!ok)
+            {
+                ok = rootsByParticipant.TryGetValue(participant, out var root);
+                if (ok)
+                {
+                    last = root.SelfParent.Hash;
+                    isRoot = true;
+                } else {
+                    err= new StoreError(StoreErrorType.NoRoot, $"InmemStore.Roots Participant={participant}") ;
                 }
             }
 
@@ -137,7 +219,22 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public Task<Dictionary<int, int>> KnownEvents()
         {
-            return Task.FromResult(participantEventsCache.Known());
+            var known = participantEventsCache.Known();
+            foreach (var p in participants.ByPubKey)
+            {
+                var pk = p.Key;
+                var pid = p.Value;
+                if (known[pid.ID] == -1)
+                {
+                    var ok = rootsByParticipant.TryGetValue(pk, out var root);
+                    if (ok)
+                    {
+                        known[pid.ID] = root.SelfParent.Index;
+                    }
+                }
+            }
+
+            return Task.FromResult(known);
         }
 
         public string[] ConsensusEvents()
@@ -158,13 +255,15 @@ namespace Babble.Core.HashgraphImpl.Stores
             return totConsensusEvents;
         }
 
-        public StoreError AddConsensusEvent(string key)
+        public StoreError AddConsensusEvent(Event ev)
         {
-            logger.Debug("Set consensus event {key}",key);
-            consensusCache.Set(key, totConsensusEvents);
+            consensusCache.Set(ev.Hex(), totConsensusEvents);
             totConsensusEvents++;
+            lastConsensusEvents[ev.Creator()] = ev.Hex();
             return null;
         }
+
+  
 
         public Task<(RoundInfo roundInfo, StoreError err)> GetRound(int r)
         {
@@ -172,7 +271,7 @@ namespace Babble.Core.HashgraphImpl.Stores
 
             if (!ok)
             {
-                return Task.FromResult((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound, r.ToString())));
+                return Task.FromResult((new RoundInfo(), new StoreError(StoreErrorType.KeyNotFound,$"RoundCache {r}" )));
                 ;
             }
 
@@ -245,29 +344,70 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public async Task<StoreError> SetBlock(Block block)
         {
-            var (_,err) = await GetBlock(block.Index());
+
+            var index = block.Index();
+
+            var (_,err) = await GetBlock(index);
             if (err != null && err.StoreErrorType!=StoreErrorType.KeyNotFound)
             {
                 return err;
             }
 
-            blockCache.Add(block.Index(), block);
+            blockCache.Add(index, block);
+
+            if (index > lastBlock)
+            {
+                lastBlock = index;
+            }
+
+
             return null;
         }
 
-        public StoreError Reset(Dictionary<string, Root> newRoots)
+        public Task<int> LastBlockIndex()
         {
-            Roots = newRoots;
+            return Task.FromResult(lastBlock);
+        }
+
+        public Task<(Frame frame, StoreError err)> GetFrame(int index)
+        {
+            var (res, ok) = frameCache.Get(index);
+            if (!ok)
+            {
+                return Task.FromResult((new Frame { }, new StoreError(StoreErrorType.KeyNotFound, $"FrameCache: Index={index}")));
+            }
+
+            return Task.FromResult<(Frame,StoreError)>((res, null));
+        }
+
+        public async Task<StoreError> SetFrame(Frame frame)
+        {
+            var index = frame.Round;
+            var (_, err) = await GetFrame(index);
+            if (err != null && err.StoreErrorType!= StoreErrorType.KeyNotFound)
+            {
+                return err;
+            }
+
+            frameCache.Add(index, frame);
+            return null;
+        }
+
+        public StoreError Reset(Dictionary<string, Root> roots)
+        {
+            rootsByParticipant = roots;
+            rootsBySelfParent = null;
 
             eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
 
             roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
 
-            consensusCache = new RollingIndex<string>(cacheSize);
+            consensusCache = new RollingIndex<string>("ConsensusCache",cacheSize);
 
             var err = participantEventsCache.Reset();
 
             lastRound = -1;
+            lastBlock = -1;
 
             return err;
         }
@@ -277,9 +417,20 @@ namespace Babble.Core.HashgraphImpl.Stores
             return null;
         }
 
+        public bool NeedBoostrap()
+        {
+            return false;
+        }
+
+        public string StorePath()
+        {
+            return "";
+        }
+
         public StoreTx BeginTx()
         {
             return new StoreTx(null, null);
         }
+        
     }
 }

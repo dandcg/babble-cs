@@ -6,7 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/babbleio/babble/crypto"
+	"github.com/mosaicnetworks/babble/src/crypto"
+	"github.com/mosaicnetworks/babble/src/peers"
 )
 
 type pub struct {
@@ -19,13 +20,15 @@ type pub struct {
 func initInmemStore(cacheSize int) (*InmemStore, []pub) {
 	n := 3
 	participantPubs := []pub{}
-	participants := make(map[string]int)
+	participants := peers.NewPeers()
 	for i := 0; i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		pubKey := crypto.FromECDSAPub(&key.PublicKey)
+		peer := peers.NewPeer(fmt.Sprintf("0x%X", pubKey), "")
 		participantPubs = append(participantPubs,
-			pub{i, key, pubKey, fmt.Sprintf("0x%X", pubKey)})
-		participants[fmt.Sprintf("0x%X", pubKey)] = i
+			pub{i, key, pubKey, peer.PubKeyHex})
+		participants.AddPeer(peer)
+		participantPubs[len(participantPubs)-1].id = peer.ID
 	}
 
 	store := NewInmemStore(participants, cacheSize)
@@ -107,7 +110,7 @@ func TestInmemEvents(t *testing.T) {
 		for _, p := range participants {
 			evs := events[p.hex]
 			for _, ev := range evs {
-				if err := store.AddConsensusEvent(ev.Hex()); err != nil {
+				if err := store.AddConsensusEvent(ev); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -177,7 +180,8 @@ func TestInmemBlocks(t *testing.T) {
 		[]byte("tx4"),
 		[]byte("tx5"),
 	}
-	block := NewBlock(index, roundReceived, transactions)
+	frameHash := []byte("this is the frame hash")
+	block := NewBlock(index, roundReceived, frameHash, transactions)
 
 	sig1, err := block.Sign(participants[0].privKey)
 	if err != nil {

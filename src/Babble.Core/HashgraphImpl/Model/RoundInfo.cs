@@ -14,7 +14,7 @@ namespace Babble.Core.HashgraphImpl.Model
          
         }
 
-        private Dictionary<string, RoundEvent> Events { get; set; }  = new Dictionary<string, RoundEvent>();
+        public Dictionary<string, RoundEvent> Events { get; set; }  = new Dictionary<string, RoundEvent>();
 
         public void SetQueued()
         {

@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl.Model;
+using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using DBreeze;
 using DBreeze.Transactions;
@@ -16,7 +17,7 @@ namespace Babble.Core.HashgraphImpl.Stores
 {
     public class LocalDbStore : IStore
     {
-        private Dictionary<string, int> participants;
+        private Peers participants;
         private readonly DBreezeEngine db;
         private readonly ILogger logger;
         private Transaction tx;
@@ -30,7 +31,7 @@ namespace Babble.Core.HashgraphImpl.Stores
             CustomSerializator.ByteArrayDeSerializator = (bt, t) => NetJSON.NetJSON.Deserialize(t, bt.UTF8_GetString());
         }
 
-        private LocalDbStore(Dictionary<string, int> participants, InmemStore inMemStore, DBreezeEngine db, string path, ILogger logger)
+        private LocalDbStore(Peers participants, InmemStore inMemStore, DBreezeEngine db, string path, ILogger logger)
         {
             this.participants = participants;
             InMemStore = inMemStore;
@@ -43,12 +44,12 @@ namespace Babble.Core.HashgraphImpl.Stores
         public InmemStore InMemStore { get; private set; }
 
         //LoadBadgerStore creates a Store from an existing database
-        public static async Task<(IStore store, StoreError err)> New(Dictionary<string, int> participants, int cacheSize, string path, ILogger logger)
+        public static async Task<(IStore store, StoreError err)> New(Peers participants, int cacheSize, string path, ILogger logger)
         {
             logger = logger.AddNamedContext("LocalDbStore");
             logger.Verbose("New store");
 
-            var inmemStore = new InmemStore(participants, cacheSize, logger);
+            var inmemStore = await InmemStore.NewInmemStore(participants, cacheSize, logger);
             var db = new DBreezeEngine(new DBreezeConfiguration
             {
                 //Storage =  DBreezeConfiguration.eStorage.MEMORY, 
@@ -110,11 +111,11 @@ namespace Babble.Core.HashgraphImpl.Stores
                     return (null, err);
                 }
 
-                var inmemStore = new InmemStore(participants, cacheSize, logger);
+                var inmemStore = await InmemStore.NewInmemStore(participants, cacheSize, logger);
 
                 //read roots from db and put them in InmemStore
                 var roots = new Dictionary<string, Root>();
-                foreach (var p in participants)
+                foreach (var p in participants.ByPubKey)
                 {
                     Root root;
                     (root, err) = await store.DbGetRoot(p.Key);
@@ -199,7 +200,7 @@ namespace Babble.Core.HashgraphImpl.Stores
             return InMemStore.CacheSize();
         }
 
-        public (Dictionary<string, int> participants, StoreError err) Participants()
+        public (Peers participants, StoreError err) Participants()
         {
             return (participants, null);
         }
@@ -265,9 +266,10 @@ namespace Babble.Core.HashgraphImpl.Stores
             return InMemStore.LastEventFrom(participant);
         }
 
-        public (string last, bool isRoot, StoreError err) LastConsensusEventFrom(stringstring participant )
+
+        public (string last, bool isRoot, StoreError err) LastConsensusEventFrom(string participant )
         {
-            return InmemStore.LastConsensusEventFrom(participant);
+            return InMemStore.LastConsensusEventFrom(participant);
         }
 
 
@@ -278,7 +280,7 @@ namespace Babble.Core.HashgraphImpl.Stores
         {
             var known = new Dictionary<int, int>();
 
-            foreach (var pp in participants)
+            foreach (var pp in participants.ByPubKey)
             {
                 var p = pp.Key;
                 var pid = pp.Value;
@@ -293,8 +295,8 @@ namespace Babble.Core.HashgraphImpl.Stores
                         (root, err) = await GetRoot(p);
                         if (err != null)
                         {
-                            //last = root.X;
-                            index = root.Index;
+                           last = root.SelfParent.Hash;
+                            index = root.SelfParent.Index;
                         }
                     }
                     else
@@ -308,7 +310,7 @@ namespace Babble.Core.HashgraphImpl.Stores
                     }
                 }
 
-                known[pid] = index;
+                known[pid.ID] = index;
             }
 
             return known;
@@ -416,14 +418,14 @@ namespace Babble.Core.HashgraphImpl.Stores
         }
 
 
-        public async Task<int> LastBlockIndex()
+        public Task<int> LastBlockIndex()
         {
-            return InmemStore.LastBlockIndex();
+            return InMemStore.LastBlockIndex();
         }
 
-        public async Task<(Frame frame, StoreError error)> GetFrame(int rr) 
+        public async Task<(Frame frame, StoreError err)> GetFrame(int rr) 
         {
-            var (res, err) = await InmemStore.GetFrame(rr);
+            var (res, err) = await InMemStore.GetFrame(rr);
             if (err != null)
             {
                 (res, err) = await DbGetFrame(rr);
@@ -434,14 +436,14 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public async Task<StoreError>  SetFrame( Frame frame) 
         {
-            var err = await InmemStore.SetFrame(frame);
+            var err = await InMemStore.SetFrame(frame);
             
             if (err != null)
             {
                 return err;
             }
 
-            return DbSetFrame(frame);
+            return await DbSetFrame(frame);
         }
 
 
@@ -520,6 +522,10 @@ namespace Babble.Core.HashgraphImpl.Stores
             return stx;
         }
 
+        public (Dictionary<string, Root>, StoreError err) RootsBySelfParent()
+        {
+            throw new System.NotImplementedException();
+        }
 
         public Task<(Event ev, StoreError err)> DbGetEvent(string key)
         {
@@ -694,24 +700,28 @@ namespace Babble.Core.HashgraphImpl.Stores
             return Task.FromResult<StoreError>(null);
         }
 
-        public Task<(Dictionary<string, int> participants, StoreError err)> DbGetParticipants()
+        public async Task<(Peers participants, StoreError err)> DbGetParticipants()
         {
             logger.Verbose("Db - GetParticipants");
-            var p = tx.SelectDictionary<string, int>(ParticipantPrefix).ToDictionary(k => string.Join(string.Empty, k.Key.Skip(ParticipantPrefix.Length + 1)), v => v.Value);
+
+            var res = Peers.NewPeers();
+
+            var p = tx.SelectDictionary<string,Peer>(ParticipantPrefix).ToDictionary(k => string.Join(string.Empty, k.Key.Skip(ParticipantPrefix.Length + 1)), v => v.Value);
 
             foreach (var participant in p)
             {
                 logger.Debug("Get Participant {key}",participant.Key);
+               await res.AddPeer(Peer.New(participant.Value.PubKeyHex, ""));
             }
-            return Task.FromResult<(Dictionary<string, int>, StoreError)>((p, null));
+            return (res, null);
 
         }
 
-        public Task<StoreError> DbSetParticipants(Dictionary<string, int> ps)
+        public Task<StoreError> DbSetParticipants(Peers ps)
         {
             logger.Verbose("Db - SetParticipants");
 
-            foreach (var participant in ps)
+            foreach (var participant in ps.ByPubKey)
             {
                 var key = ParticipantKey(participant.Key);
                 var val = participant.Value;

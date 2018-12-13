@@ -8,7 +8,7 @@ namespace Babble.Core.PeersImpl
     public interface IPeerStore
     {
         // Peers returns the list of known peers.
-        Task<(Peers, StoreError)> Peers();
+        Task<(Peer[], StoreError)> Peers();
 
 
         // SetPeers sets the list of known peers. This is invoked when a peer is

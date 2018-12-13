@@ -12,6 +12,7 @@
 
         NoRoot,
 
-        UnknownParticipant
+        UnknownParticipant,
+        Empty
     }
 }
