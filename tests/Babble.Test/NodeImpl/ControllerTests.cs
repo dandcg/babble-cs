@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Babble.Core;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.NodeImpl;
+using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using Babble.Test.Helpers;
 using Serilog;
@@ -25,47 +27,45 @@ namespace Babble.Test.NodeImpl
             logger = output.SetupLogging().ForContext("SourceContext", "HashGraphTests");
         }
 
-        [Fact]
-        public async Task TestInit()
-        {
-            var key = CryptoUtils.GenerateEcdsaKey();
-
-            var participants = new Dictionary<string, int> {{CryptoUtils.FromEcdsaPub(key).ToHex(), 0}};
-            var core = new Controller(0, key, participants, new InmemStore(participants, 10, logger), null, logger);
-
-            var err = await core.Init();
-
-            Assert.Null(err);
-        }
-
-        private async Task<(Controller[] cores, CngKey[] privateKey, Dictionary<string, string> index)> InitCores(int n)
+ 
+        private async Task<(Controller[] cores, Dictionary<int,CngKey> privateKeys, Dictionary<string, string> index)> InitCores(int n)
         {
             var cacheSize = 1000;
 
             var cores = new List<Controller>();
             var index = new Dictionary<string, string>();
+            var participantKeys = new Dictionary<int,CngKey>();
 
-            var participantKeys = new List<CngKey>();
-            var participants = new Dictionary<string, int>();
-            for (var i = 0; i < n; i++)
+            var participants = Peers.NewPeers();
+            int i=0;
+            for ( i = 0; i < n; i++)
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
-                participantKeys.Add(key);
-                participants[CryptoUtils.FromEcdsaPub(key).ToHex()] = i;
+                var pubHex = $"0x{CryptoUtils.FromEcdsaPub(key).ToHex()}";
+                var peer = Peer.New(pubHex, "");
+                await participants.AddPeer(peer);
+                participantKeys[peer.ID] = key;
             }
 
-            for (var i = 0; i < n; i++)
+            i = 0;
+            foreach (var peer in participants.ToPeerSlice())
             {
-                var core = new Controller(i, participantKeys[i], participants, new InmemStore(participants, cacheSize, logger), null, logger);
-                var err=await core.Init();
+                var core = new Controller(i, participantKeys[i], participants, await InmemStore.NewInmemStore(participants, cacheSize, logger), null, logger);
+                
+                var initialEvent =new Event(new byte[][]{}, null,new string[]{$"Root{peer.ID}",""},core.PubKey(),0 );
+
+                var err =await core.SignAndInsertSelfEvent(initialEvent);
+                
                 Assert.Null(err);
 
                 cores.Add(core);
                 
                 index[$"e{i}"] = core.Head;
+
+                i++;
             }
 
-            return (cores.ToArray(), participantKeys.ToArray(), index);
+            return (cores.ToArray(), participantKeys, index);
         }
 
         [Fact]
@@ -89,10 +89,10 @@ namespace Babble.Test.NodeImpl
         e0  e1  e2
         0   1   2
         */
-        private async Task InitHashgraph(Controller[] controllers, CngKey[] keys, Dictionary<string, string> index, int participant)
+        private async Task InitHashgraph(Controller[] controllers, Dictionary<int,CngKey> keys, Dictionary<string, string> index, int participant)
 
         {
-            Exception err;
+            BabbleError err;
             for (var i = 0; i < controllers.Length; i++)
             {
                 if (i != participant)
@@ -101,7 +101,7 @@ namespace Babble.Test.NodeImpl
                     
                     var ( ev, _) = await controllers[i].GetEvent(evh);
 
-                    err = await controllers[participant].InsertEvent(ev, true);
+                  err = await controllers[participant].InsertEvent(ev, true);
 
                     if (err != null)
                     {
@@ -142,9 +142,9 @@ namespace Babble.Test.NodeImpl
             }
         }
 
-        public async Task<Exception> InsertEvent(Controller[] controllers, CngKey[] keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
+        public async Task<BabbleError> InsertEvent(Controller[] controllers, Dictionary<int,CngKey> keys, Dictionary<string, string> index, Event ev, string name, int particant, int creator)
         {
-            Exception err;
+            BabbleError err;
             if (particant == creator)
             {
                 err = await controllers[particant].SignAndInsertSelfEvent(ev);
@@ -607,7 +607,7 @@ e0  e1  e2
             }
         }
 
-        private async Task<Exception> SynchronizeCores(Controller[] controllers, int from, int to, byte[][] payload)
+        private async Task<BabbleError> SynchronizeCores(Controller[] controllers, int from, int to, byte[][] payload)
         {
             var knownByTo = await controllers[to].KnownEvents();
             var ( unknownByTo, err) = await controllers[from].EventDiff(knownByTo);
@@ -631,7 +631,7 @@ e0  e1  e2
             return await  controllers[to].Sync(unknownWire);
         }
 
-        private async Task<Exception> SyncAndRunConsensus(Controller[] controllers, int from, int to, byte[][] payload)
+        private async Task<BabbleError> SyncAndRunConsensus(Controller[] controllers, int from, int to, byte[][] payload)
         {
             var err = await SynchronizeCores(controllers, from, to, payload);
 

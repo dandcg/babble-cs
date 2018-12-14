@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Babble.Core.Common;
 using Babble.Core.HashgraphImpl;
 using Babble.Core.PeersImpl;
+using Babble.Core.Util;
 using Babble.Test.Helpers;
 using Serilog;
 using Xunit;
@@ -15,12 +16,17 @@ namespace Babble.Test.HashgraphImpl
     public class CachesTests
     {
         private readonly ILogger logger;
+        private readonly ITestOutputHelper output;
 
         public CachesTests(ITestOutputHelper output)
         {
             logger = output.SetupLogging();
+            this.output = output;
         }
- 
+
+
+
+
 
         [Fact]
         public async Task TestParticipantEventsCache()

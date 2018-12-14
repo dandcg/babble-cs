@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Babble.Core;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
+using Babble.Core.PeersImpl;
 using Babble.Core.Util;
 using Babble.Test.Helpers;
 using Serilog;
@@ -22,21 +24,26 @@ namespace Babble.Test.HashgraphImpl
             logger = output.SetupLogging();
         }
 
-        public (InmemStore, Pub[]) InitInmemStore(int cacheSize)
+        public async Task<(InmemStore, Pub[])> InitInmemStore(int cacheSize)
         {
             var n = 3;
             var participantPubs = new List<Pub>();
-            var participants = new Dictionary<string, int>();
+            var participants = Peers.NewPeers();
+
             for (var i = 0; i < n; i++)
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var pubKey = CryptoUtils.FromEcdsaPub(key);
-                var hex = pubKey.ToHex();
-                participantPubs.Add(new Pub {Id = i, PrivKey = key, PubKey = pubKey, Hex = hex});
-                participants.Add(hex, i);
+                var peer = Peer.New(pubKey.ToHex(), "");
+
+                participantPubs.Add(new Pub {Id = i, PrivKey = key, PubKey = pubKey, Hex =peer.PubKeyHex});
+                await participants.AddPeer(peer);
+
+                participantPubs[participantPubs.Count - 1].Id = peer.ID;
+
             }
 
-            var store = new InmemStore(participants, cacheSize, Log.Logger);
+            var store =await InmemStore.NewInmemStore(participants, cacheSize, Log.Logger);
             return (store, participantPubs.ToArray());
         }
 
@@ -47,7 +54,7 @@ namespace Babble.Test.HashgraphImpl
 
             var testSize = 15;
 
-            var (store, participants) = InitInmemStore(cacheSize);
+            var (store, participants) =await  InitInmemStore(cacheSize);
 
             var events = new Dictionary<string, List<Event>>();
 
@@ -120,7 +127,7 @@ namespace Babble.Test.HashgraphImpl
                 foreach (var ev in evs)
 
                 {
-                    store.AddConsensusEvent(ev.Hex());
+                    store.AddConsensusEvent(ev);
                 }
             }
         }
@@ -128,7 +135,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestInmemRounds()
         {
-            var ( store, participants) = InitInmemStore(10);
+            var ( store, participants) = await  InitInmemStore(10);
 
             var round = new RoundInfo();
 
@@ -175,7 +182,7 @@ namespace Babble.Test.HashgraphImpl
         [Fact]
         public async Task TestInmemBlocks()
         {
-            var (store, participants) = InitInmemStore(10);
+            var (store, participants) = await InitInmemStore(10);
 
             var index = 0;
             var roundReceived = 7;
@@ -187,10 +194,10 @@ namespace Babble.Test.HashgraphImpl
                 "tx4".StringToBytes(),
                 "tx5".StringToBytes()
             };
+            var frameHash = "this is the frame hash".StringToBytes();
+            var block = new Block(index, roundReceived, frameHash, transactions);
 
-            var block = new Block(index, roundReceived, transactions);
-
-            Exception err;
+            BabbleError err;
             BlockSignature sig1;
 
             (sig1, err) = block.Sign(participants[0].PrivKey);

@@ -2,24 +2,6 @@
   <Settings>
     <IgnoredTests>
       <NamedTestSelector>
-        <TestName>Babble.Test.Common.LruTests.TestLru</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Common.LruTests.TestLru_Add</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Common.LruTests.TestLru_Contains</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Common.LruTests.TestLru_Peek</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Common.RollingIndexTests.TestRollingIndex</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Common.RollingIndexTests.TestRollingIndexSkip</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -36,12 +18,6 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.BlockTests.TestSignBlock</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.CachesTests.TestParticipantEventsCache</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.CachesTests.TestParticipantEventsCacheEdge</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.EventTests.TestBigIntegerSignitureEncoding</TestName>
@@ -232,6 +208,15 @@
       <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.NodeTests.TestProcessSync</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.NodeImpl.ControllerTests.TestOverSyncLimit</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.Common.LruTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.Common.RollingIndexTests</FixtureName>
+      </FixtureTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

@@ -15,7 +15,7 @@ namespace Babble.Test.Common
 
             const int testSize = 3 * size;
 
-            var rollingIndex = new RollingIndex<string>(size);
+            var rollingIndex = new RollingIndex<string>("test", size);
 
             var items = new List<string>();
             int i;
@@ -85,7 +85,7 @@ namespace Babble.Test.Common
 
             const int testSize = 25;
 
-            var rollingIndex = new RollingIndex<string>(size);
+            var rollingIndex = new RollingIndex<string>("test", size);
 
             var ( _, err) = rollingIndex.Get(-1);
             Assert.Null(err);
