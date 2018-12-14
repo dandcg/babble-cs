@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Nito.AsyncEx;
 
 namespace Babble.Core.NetImpl.TransportImpl
@@ -15,7 +16,7 @@ namespace Babble.Core.NetImpl.TransportImpl
         public TcpTransport()
         {
             sync = new AsyncLock();
-            Consumer = new BufferBlock<Rpc>(16);
+            Consumer = new BufferBlock<Rpc>(new DataflowBlockOptions(){BoundedCapacity = 16});
             //LocalAddr = GenerateUuid();
             peers = new Dictionary<string, ITransport>();
             timeout = new TimeSpan(0, 0, 0, 50);

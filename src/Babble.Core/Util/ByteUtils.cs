@@ -35,6 +35,11 @@ namespace Babble.Core.Util
         /// Decode a hex string into bytes.
         public static byte[] FromHex(this string hex)
         {
+            if (hex.Substring(0, 2) == "0x")
+            {
+                hex = hex.Substring(2);
+            }
+
             var numberChars = hex.Length;
             var bytes = new byte[numberChars / 2];
             for (var i = 0; i < numberChars; i += 2)

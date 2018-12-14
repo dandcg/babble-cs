@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Nito.AsyncEx;
 
 namespace Babble.Core.NetImpl.TransportImpl
@@ -19,7 +20,8 @@ namespace Babble.Core.NetImpl.TransportImpl
             }
 
             sync = new AsyncLock();
-            Consumer = new BufferBlock<Rpc>(16);
+            Consumer = new BufferBlock<Rpc>(new DataflowBlockOptions()
+                {BoundedCapacity = 16});
             LocalAddr = addr;
             Peers = new Dictionary<string, ITransport>();
             Timeout = TimeSpan.FromMilliseconds(5000);
@@ -79,9 +81,9 @@ namespace Babble.Core.NetImpl.TransportImpl
 
             var rpc = new Rpc {Command = args, RespChan = new BufferBlock<RpcResponse>()};
 
-            await peer.Consumer.EnqueueAsync(rpc);
+            await peer.Consumer.SendAsync(rpc);
 
-            var responseTask =  rpc.RespChan.DequeueAsync();
+            var responseTask =  rpc.RespChan.ReceiveAsync();
 
             var timeoutTask = Task.Delay(tmout);
 

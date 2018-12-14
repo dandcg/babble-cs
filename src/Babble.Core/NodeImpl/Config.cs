@@ -27,6 +27,22 @@ namespace Babble.Core.NodeImpl
             StorePath = storePath;
         }
 
+
+        public Config(TimeSpan heartbeatTimeout,
+            TimeSpan tcpTimeout,
+            int cacheSize,
+            int syncLimit
+        )
+
+        {
+            HeartbeatTimeout = heartbeatTimeout;
+            TcpTimeout = tcpTimeout;
+            CacheSize = cacheSize;
+            SyncLimit = syncLimit;
+
+        }
+
+
         protected Config()
         {
         }

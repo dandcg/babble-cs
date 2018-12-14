@@ -1,16 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using Babble.Core.Crypto;
-using Babble.Core.HashgraphImpl.Model;
-using Babble.Core.ProxyImpl.Dummy;
+﻿using System.Threading.Tasks;
 using Babble.Core.ProxyImpl.InMem;
-using Babble.Core.Util;
-using Nito.AsyncEx;
 using Serilog;
 
-namespace Babble.Core.ProxyImpl
+namespace Babble.Core.ProxyImpl.Dummy
 {
     public class InMemDummy : InMemProxy, IAppProxy
     {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Nito.AsyncEx;
 
 namespace Babble.Core.NodeImpl
@@ -59,7 +60,7 @@ namespace Babble.Core.NodeImpl
                     }
                     await Task.Delay(100, ct);
                     //await Task.Delay(dur, ct);
-                    await TickCh.EnqueueAsync(true, ct);
+                    await TickCh.ReceiveAsync( ct);
                     Set = false;
                 }
             }
@@ -68,7 +69,7 @@ namespace Babble.Core.NodeImpl
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    await ResetCh.DequeueAsync(ct);
+                    await ResetCh.ReceiveAsync(ct);
                     Set = true;
                 }
             }
@@ -78,7 +79,7 @@ namespace Babble.Core.NodeImpl
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    await StopCh.DequeueAsync(ct);
+                    await StopCh.ReceiveAsync(ct);
                     Set = false;
                 }
             };

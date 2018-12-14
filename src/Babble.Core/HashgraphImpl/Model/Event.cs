@@ -249,19 +249,9 @@ namespace Babble.Core.HashgraphImpl.Model
             };
         }
 
-        //Sorting
-        //public class EventByTimeStamp : IComparer<Event>
-        //{
-        //    public int Compare(Event x, Event y)
-        //    {
-        //        if (x == null) throw new ArgumentNullException(nameof(x));
-        //        if (y == null) throw new ArgumentNullException(nameof(y));
-        //        return DateTimeOffset.Compare(x.Body.Timestamp, y.Body.Timestamp);
-        //    }
-        //}
-
-
-
+       public static string RootSelfParent(int participantId ) {
+            return $"Root{participantId}";
+       }
 
         public class EventByTopologicalOrder : IComparer<Event>
         {

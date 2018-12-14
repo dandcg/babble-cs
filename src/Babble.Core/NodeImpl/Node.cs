@@ -266,7 +266,7 @@ namespace Babble.Core.NodeImpl
             {
                 var oldState = nodeState.GetState();
 
-                await controlTimer.TickCh.DequeueAsync(ct);
+                await controlTimer.TickCh.ReceiveAsync(ct);
 
                 if (gossip)
                 {
@@ -283,11 +283,11 @@ namespace Babble.Core.NodeImpl
 
                     if (!Controller.NeedGossip())
                     {
-                        await controlTimer.StopCh.EnqueueAsync(true, ct);
+                        await controlTimer.StopCh.ReceiveAsync( ct);
                     }
                     else if (!controlTimer.Set)
                     {
-                        await controlTimer.ResetCh.EnqueueAsync(true, ct);
+                        await controlTimer.ResetCh.SendAsync(true, ct);
                     }
                 }
 

@@ -26,7 +26,7 @@ namespace Babble.Core.PeersImpl
 
             foreach (var peer in source)
             {
-                peers.addPeerRaw(peer);
+                peers.AddPeerRaw(peer);
             }
 
             peers.internalSort();
@@ -40,7 +40,7 @@ namespace Babble.Core.PeersImpl
         // Useful for adding a bunch of peers at the same time
         // This method is private and is not protected by mutex.
         // Handle with care
-        public void addPeerRaw(Peer peer)
+        public void AddPeerRaw(Peer peer)
         {
             if (peer.ID == 0)
             {
@@ -55,7 +55,7 @@ namespace Babble.Core.PeersImpl
         {
             using (await RwMutex.LockAsync())
             {
-                addPeerRaw(peer);
+                AddPeerRaw(peer);
 
                 internalSort();
             }

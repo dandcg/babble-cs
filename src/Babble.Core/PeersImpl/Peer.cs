@@ -22,7 +22,7 @@ namespace Babble.Core.PeersImpl
 
         private byte[] PubKeyBytes()
         {
-            return PubKeyHex.Skip(2).ToString().FromHex();
+            return PubKeyHex.FromHex();
         }
 
         public void ComputeId()
