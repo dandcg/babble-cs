@@ -40,15 +40,20 @@ namespace Babble.Test.Common
             // Evict counter
             Assert.Equal(128, l.Len());
 
+            Assert.Equal(128, evictCounter);
+
+
             i = 0;
             foreach (var k in l.Keys())
             {
-                var (v,_) = l.Get(k);
+      
+                var (v,ok) = l.Get(k);
 
-                Assert.Equal(v, k);
-                Assert.Equal(v, i + 128);
+                //logger.Debug("i={i}, v={v}",i+128,v);
 
-
+                Assert.True(ok);
+                Assert.Equal( k,v);
+                Assert.Equal( i + 128,v);
                 i++;
             }
             
@@ -84,7 +89,7 @@ namespace Babble.Test.Common
             foreach (var k in l.Keys())
             {
 
-                Assert.True((i < 63 && k != i + 193) || (i == 63 && k != 192), $"out of order key: {k}");
+                Assert.False((i < 63 && k != i + 193) || (i == 63 && k != 192), $"out of order key: {k}");
                 i++;
 
             }
@@ -95,6 +100,48 @@ namespace Babble.Test.Common
 
             var ( _ , r)= l.Get(200);
             Assert.False(r, "should contain nothing");
+        }
+
+        [Fact]
+        public void TestLRU_GetOldest_RemoveOldest() 
+        {
+            var l = new LruCache<int, int>(128, null, logger);
+
+            for (var i = 0; i < 256; i++)
+            {
+                l.Add(i, i);
+            }
+
+            var (k, _, ok) = l.GetOldest();
+            
+            Assert.True(ok,"missing");
+            
+            Assert.Equal(128,k);
+ 
+            //if k.(int) != 128 {
+            //    t.Fatalf("bad: %v", k)
+            //}
+
+            (k, _, ok) = l.RemoveOldest();
+
+            Assert.True(ok,"missing");
+
+            Assert.Equal(128,k);
+
+
+            (k, _, ok) = l.RemoveOldest();
+
+            Assert.True(ok,"missing");
+
+            Assert.Equal(129,k);
+
+
+            //if !ok {
+            //    t.Fatalf("missing")
+            //}
+            //if k.(int) != 129 {
+            //    t.Fatalf("bad: %v", k)
+            //}
         }
 
 

@@ -1,47 +1,11 @@
 ﻿<ProjectConfiguration>
   <Settings>
+    <HiddenComponentWarnings>
+      <Value>LongTestTimesWithoutParallelExecution</Value>
+    </HiddenComponentWarnings>
     <IgnoredTests>
       <NamedTestSelector>
-        <TestName>Babble.Test.Crypto.CryptoTests.TestCryptoConsistencyHashing</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Crypto.CryptoTests.TestCryptoConsistencySigning</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Crypto.CryptoTests.TestOut</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Crypto.CryptoTests.TryOutput</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.Crypto.CryptoTests.TryWithRaw</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.BlockTests.TestSignBlock</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.EventTests.TestBigIntegerSignitureEncoding</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.EventTests.TestIsLoaded</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.EventTests.TestMarshallBody</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.EventTests.TestMarshallEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.EventTests.TestSignEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.EventTests.TestWireEvent</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.BenchmarkFindOrder</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestAncestor</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestBootstrap</TestName>
@@ -69,9 +33,6 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
@@ -120,15 +81,6 @@
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestWitness</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.InmemStoreTests.TestInmemBlocks</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.InmemStoreTests.TestInmemEvents</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.InmemStoreTests.TestInmemRounds</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.LocalDbTests.TestBadgerBlocks</TestName>
@@ -182,9 +134,6 @@
         <TestName>Babble.Test.NodeImpl.NodeTests.TestGossip</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.BlockTests.TestAppendSignature</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestEventDiff</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -212,10 +161,31 @@
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestOverSyncLimit</TestName>
       </NamedTestSelector>
       <FixtureTestSelector>
+        <FixtureName>Babble.Test.Common.RollingIndexTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.Crypto.CryptoTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.HashgraphImpl.BlockTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
         <FixtureName>Babble.Test.Common.LruTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Babble.Test.Common.RollingIndexTests</FixtureName>
+        <FixtureName>Babble.Test.HashgraphImpl.CachesTests</FixtureName>
+      </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestKey</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestInit</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.HashgraphImpl.EventTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.HashgraphImpl.InmemStoreTests</FixtureName>
       </FixtureTestSelector>
     </IgnoredTests>
   </Settings>

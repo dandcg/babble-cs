@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -10,15 +8,12 @@ using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.PeersImpl;
 using Babble.Core.Util;
-using Nito.AsyncEx;
 using Serilog;
-using Serilog.Context;
 
 namespace Babble.Core.HashgraphImpl
 {
     public class Hashgraph
     {
-
         public Peers Participants { get; set; } //[public key] => id
         public IStore Store { get; set; } //store of Events and Rounds
         public List<string> UndeterminedEvents { get; set; } //[index] => hash
@@ -31,7 +26,7 @@ namespace Babble.Core.HashgraphImpl
 
         public int LastCommitedRoundEvents { get; set; } //number of evs in round before LastConsensusRound
 
-        public List<BlockSignature> SigPool { get; set; } //Pool of Block signatures that need to be processed
+        public List<BlockSignature> SigPool { get; set; } = new List<BlockSignature>(); //Pool of Block signatures that need to be processed
 
         public int ConsensusTransactions { get; set; } //number of consensus transactions
         public int PendingLoadedEvents { get; set; } //number of loaded evs that are not yet committed
@@ -52,7 +47,7 @@ namespace Babble.Core.HashgraphImpl
         {
             this.logger = logger.AddNamedContext("Hashgraph");
 
-           var superMajority = 2 * participants.Len() / 3 + 1;
+            var superMajority = 2 * participants.Len() / 3 + 1;
             var trustCount = (int) (Math.Ceiling((float) participants.Len()) / 3);
 
             var cacheSize = store.CacheSize();
@@ -77,26 +72,27 @@ namespace Babble.Core.HashgraphImpl
 
             if (ok)
             {
-                return (c,null);
+                logger.Debug("get x={0} y={1} c={2}", x, y, c);
+                return (c, null);
             }
 
-            var (a,err) = await _ancestor(x, y);
+            var (a, err) = await _ancestor(x, y);
 
             if (err != null)
             {
                 return (false, err);
             }
-                
+
             AncestorCache.Add(Key.New(x, y), a);
-            
-            return (a,null);
+
+            return (a, null);
         }
 
         private async Task<(bool, BabbleError)> _ancestor(string x, string y)
         {
             if (x == y)
             {
-                return (true,null);
+                return (true, null);
             }
 
             var (ex, errx) = await Store.GetEvent(x);
@@ -110,7 +106,7 @@ namespace Babble.Core.HashgraphImpl
 
             if (erry != null)
             {
-                return (false,erry);
+                return (false, erry);
             }
 
             var eyCreator = Participants.ByPubKey[ey.Creator()].ID;
@@ -133,33 +129,33 @@ namespace Babble.Core.HashgraphImpl
 
             if (ok)
             {
-                return (c,null);
+                return (c, null);
             }
-            
-            var (a,err) = await _selfAncestor(x, y);
+
+            var (a, err) = await _selfAncestor(x, y);
 
             if (err != null)
             {
                 return (false, err);
             }
-            
+
             SelfAncestorCache.Add(Key.New(x, y), a);
 
-            return (a,null);
+            return (a, null);
         }
 
         private async Task<(bool, BabbleError)> _selfAncestor(string x, string y)
         {
             if (x == y)
             {
-                return (true,null);
+                return (true, null);
             }
 
             var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
-                return (false,errx);
+                return (false, errx);
             }
 
             var exCreator = Participants.ByPubKey[ex.Creator()].ID;
@@ -167,16 +163,16 @@ namespace Babble.Core.HashgraphImpl
             var (ey, erry) = await Store.GetEvent(y);
             if (erry != null)
             {
-                return (false,erry);
+                return (false, erry);
             }
 
             var eyCreator = Participants.ByPubKey[ey.Creator()].ID;
 
-            return (exCreator == eyCreator && ex.Index() >= ey.Index(),null);
+            return (exCreator == eyCreator && ex.Index() >= ey.Index(), null);
         }
 
         //true if x sees y
-        public Task<(bool,BabbleError)> See(string x, string y)
+        public Task<(bool, BabbleError)> See(string x, string y)
         {
             return Ancestor(x, y);
             //it is not necessary to detect forks because we assume that the InsertEvent
@@ -185,15 +181,15 @@ namespace Babble.Core.HashgraphImpl
         }
 
         //true if x strongly sees y
-        public async Task<(bool,BabbleError)> StronglySee(string x, string y)
+        public async Task<(bool, BabbleError)> StronglySee(string x, string y)
         {
             var (c, ok) = StronglySeeCache.Get(Key.New(x, y));
             if (ok)
             {
-                return (c,null);
+                return (c, null);
             }
 
-            var (ss,err) = await _stronglySee(x, y);
+            var (ss, err) = await _stronglySee(x, y);
 
             if (err != null)
             {
@@ -201,61 +197,59 @@ namespace Babble.Core.HashgraphImpl
             }
 
             StronglySeeCache.Add(Key.New(x, y), ss);
-            return (ss,null);
+            return (ss, null);
         }
 
-        public async Task<(bool,BabbleError)> _stronglySee(string x, string y)
+        public async Task<(bool, BabbleError)> _stronglySee(string x, string y)
         {
             var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
-                return (false,errx);
+                return (false, errx);
             }
 
             var (ey, erry) = await Store.GetEvent(y);
 
             if (erry != null)
             {
-                return (false,erry);
+                return (false, erry);
             }
 
             var c = 0;
 
             int i = 0;
-            foreach (var entry in ex.LastAncestors)
+            foreach (var entry in ex.LastAncestors.Values)
             {
-                if (entry.Event.Index >= ey.FirstDescendants[i].Event.Index)
+                if (entry.Event.Index >= ey.FirstDescendants.Values[i].Event.Index)
                 {
-                    c ++ ;
+                    c++;
                 }
 
                 i++;
-
             }
-     
 
-            return (c >= SuperMajority,null);
+            return (c >= SuperMajority, null);
         }
 
-        public async Task<(int,BabbleError)> Round(string x)
+        public async Task<(int, BabbleError)> Round(string x)
         {
             var (c, ok) = RoundCache.Get(x);
             if (ok)
             {
-                return (c,null);
+                return (c, null);
             }
 
-            var (r,err) = await _round(x);
+            var (r, err) = await _round(x);
 
             if (err != null)
             {
                 return (-1, err);
             }
-            
+
             RoundCache.Add(x, r);
 
-            return (r,null);
+            return (r, null);
         }
 
         private async Task<(int round, BabbleError err)> _round(string x)
@@ -271,11 +265,10 @@ namespace Babble.Core.HashgraphImpl
 
             if (ok)
             {
-                return (r.SelfParent.Round,null);
+                return (r.SelfParent.Round, null);
             }
 
-       
-          var (ex, err1) = await Store.GetEvent(x);
+            var (ex, err1) = await Store.GetEvent(x);
 
             if (err1 != null)
             {
@@ -283,7 +276,7 @@ namespace Babble.Core.HashgraphImpl
             }
 
             //We are going to need the Root later
-            
+
             var (root, err2) = await Store.GetRoot(ex.Creator());
 
             if (err2 != null)
@@ -312,13 +305,12 @@ namespace Babble.Core.HashgraphImpl
                 Use the whitepaper formula: parentRound + roundInc
             */
 
-            var (parentRound,err3) = await Round(ex.SelfParent);
+            var (parentRound, err3) = await Round(ex.SelfParent);
 
             if (err3 != null)
             {
                 return (int.MinValue, err3);
             }
-
 
             if (ex.OtherParent != "")
             {
@@ -334,7 +326,7 @@ namespace Babble.Core.HashgraphImpl
                 else
                 {
                     BabbleError err4;
-                    (opRound,err4) = await Round(ex.OtherParent);
+                    (opRound, err4) = await Round(ex.OtherParent);
                     if (err4 != null)
                     {
                         return (int.MinValue, err4);
@@ -350,13 +342,13 @@ namespace Babble.Core.HashgraphImpl
             var c = 0;
             foreach (var w in await Store.RoundWitnesses(parentRound))
             {
-                var (ss,err5) = await StronglySee(x, w);
+                var (ss, err5) = await StronglySee(x, w);
 
                 if (err5 != null)
                 {
                     return (int.MinValue, err5);
                 }
-                
+
                 if (ss)
                 {
                     c++;
@@ -372,45 +364,42 @@ namespace Babble.Core.HashgraphImpl
         }
 
         ////true if x is a witness (first ev of a round for the owner)
-        public async Task<(bool,BabbleError)>  Witness(string x)
+        public async Task<(bool, BabbleError)> Witness(string x)
         {
             var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
-                return (false,errx);
+                return (false, errx);
             }
 
-            var (xRound,err1) = await Round(x);
+            var (xRound, err1) = await Round(x);
 
             if (err1 != null)
             {
-                return (false,err1);
+                return (false, err1);
             }
 
-            var (spRound,err2) = await Round(ex.SelfParent);
+            var (spRound, err2) = await Round(ex.SelfParent);
 
             if (err2 != null)
             {
-                return (false,err2);
+                return (false, err2);
             }
 
-
-
-            return (xRound > spRound,null);
+            return (xRound > spRound, null);
         }
 
-
-        public async Task<(int,BabbleError)> RoundReceived(string x)
+        public async Task<(int, BabbleError)> RoundReceived(string x)
         {
             var (ex, errx) = await Store.GetEvent(x);
 
             if (errx != null)
             {
-                return (-1,errx);
+                return (-1, errx);
             }
 
-            return (ex.GetRoundReceived() ?? -1,null);
+            return (ex.GetRoundReceived() ?? -1, null);
         }
 
         private async Task<(int, StoreError)> LamportTimestamp(string x)
@@ -439,9 +428,9 @@ namespace Babble.Core.HashgraphImpl
                 x is the Root
                 User Root.SelfParent.LamportTimestamp
             */
-            var (rootsBySelfParent, _) =  Store.RootsBySelfParent();
+            var (rootsBySelfParent, _) = Store.RootsBySelfParent();
             {
-                var ok = rootsBySelfParent.TryGetValue(x,out var r);
+                var ok = rootsBySelfParent.TryGetValue(x, out var r);
 
                 if (ok)
                 {
@@ -522,15 +511,14 @@ namespace Babble.Core.HashgraphImpl
         //round(x) - round(y)
         public async Task<(int d, BabbleError err)> RoundDiff(string x, string y)
         {
-            var (xRound,err1) = await Round(x);
-
+            var (xRound, err1) = await Round(x);
 
             if (err1 != null)
             {
                 return (int.MinValue, new HashgraphError($"ev {x} has negative round"));
             }
 
-            var (yRound,err2) = await Round(y);
+            var (yRound, err2) = await Round(y);
 
             if (err2 != null)
             {
@@ -539,8 +527,6 @@ namespace Babble.Core.HashgraphImpl
 
             return (xRound - yRound, null);
         }
-
-
 
         //private async Task RecordBlockSignatures(BlockSignature[] blockSignatures)
         //{
@@ -627,7 +613,7 @@ namespace Babble.Core.HashgraphImpl
                         return errr;
                     }
 
-         var ok = root.Others.TryGetValue(ev.Hex(), out var other);
+                    var ok = root.Others.TryGetValue(ev.Hex(), out var other);
 
                     if (ok && other.Hash == ev.OtherParent)
                     {
@@ -651,14 +637,12 @@ namespace Babble.Core.HashgraphImpl
             int i = 0;
             foreach (var id in await Participants.ToIdSlice())
             {
-                ev.FirstDescendants[i] = new Index
+                ev.FirstDescendants.Values[i] = new Index
                 {
-                    ParticipantId = id, 
-                    Event = new EventCoordinates(){Index=-1}
-
+                    ParticipantId = id,
+                    Event = new EventCoordinates {Index = int.MaxValue}
                 };
                 i++;
-
             }
 
             ev.SetLastAncestors(new OrderedEventCoordinates(members));
@@ -669,28 +653,27 @@ namespace Babble.Core.HashgraphImpl
             if (selfParentError != null && otherParentError != null)
             {
                 i = 0;
-                foreach (var entry in ev.FirstDescendants)
+                foreach (var entry in ev.FirstDescendants.Values)
                 {
-                    ev.LastAncestors[i] = new Index(){
-                        ParticipantId = entry.ParticipantId, 
-                        Event = new EventCoordinates()
+                    ev.LastAncestors.Values[i] = new Index
+                    {
+                        ParticipantId = entry.ParticipantId,
+                        Event = new EventCoordinates
                         {
                             Index = -1
                         }
-                        };
+                    };
 
-                    i ++;
+                    i++;
                 }
             }
             else if (selfParentError != null)
             {
-              ev.SetLastAncestors((OrderedEventCoordinates) otherParent.LastAncestors.ToList());
-               
+                ev.SetLastAncestors(otherParent.LastAncestors);
             }
             else if (otherParentError != null)
             {
-            ev.SetLastAncestors((OrderedEventCoordinates)  selfParent.LastAncestors.ToList());
-          
+                ev.SetLastAncestors(selfParent.LastAncestors);
             }
             else
             {
@@ -698,17 +681,16 @@ namespace Babble.Core.HashgraphImpl
 
                 var otherParentLastAncestors = otherParent.LastAncestors;
 
-                ev.SetLastAncestors((OrderedEventCoordinates)selfParentLastAncestors.ToList());
+                ev.SetLastAncestors(selfParentLastAncestors);
 
                 i = 0;
-                foreach (var la in ev.LastAncestors)
+                foreach (var la in ev.LastAncestors.Values)
                 {
-                    if (ev.LastAncestors[i].Event.Index < otherParentLastAncestors[i].Event.Index) continue;
+                    if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index) continue;
                     {
-
-                        var laev=  ev.LastAncestors[i].Event;
-                      laev.Index = otherParentLastAncestors[i].Event.Index;
-                        laev.Hash = otherParentLastAncestors[i].Event.Hash;
+                        var laev = ev.LastAncestors.Values[i].Event;
+                        laev.Index = otherParentLastAncestors.Values[i].Event.Index;
+                        laev.Hash = otherParentLastAncestors.Values[i].Event.Hash;
                     }
                     i++;
                 }
@@ -730,8 +712,9 @@ namespace Babble.Core.HashgraphImpl
             var ii = ev.FirstDescendants.GetIdIndex(creatorPeer.ID);
             var jj = ev.LastAncestors.GetIdIndex(creatorPeer.ID);
 
-            if (ii == -1) {
-                return new HashgraphError($"Could not find first descendant from creator id ({ creatorPeer.ID})");
+            if (ii == -1)
+            {
+                return new HashgraphError($"Could not find first descendant from creator id ({creatorPeer.ID})");
             }
 
             if (jj == -1)
@@ -739,8 +722,8 @@ namespace Babble.Core.HashgraphImpl
                 return new HashgraphError($"Could not find last ancestor from creator id ({creatorPeer.ID})");
             }
 
-            ev.FirstDescendants[ii].Event = new EventCoordinates {Index = index, Hash = hash};
-            ev.LastAncestors[jj].Event =new  EventCoordinates {Index = index, Hash = hash};
+            ev.FirstDescendants.Values[ii].Event = new EventCoordinates {Index = index, Hash = hash};
+            ev.LastAncestors.Values[jj].Event = new EventCoordinates {Index = index, Hash = hash};
 
             return null;
         }
@@ -758,9 +741,9 @@ namespace Babble.Core.HashgraphImpl
             var index = ev.Index();
             var hash = ev.Hex();
 
-            for (var i = 0; i < ev.LastAncestors.Count; i++)
+            for (var i = 0; i < ev.LastAncestors.Values.Count(); i++)
             {
-                var ah = ev.LastAncestors[i].Event.Hash;
+                var ah = ev.LastAncestors.Values[i].Event.Hash;
 
                 while (!string.IsNullOrEmpty(ah))
                 {
@@ -773,16 +756,14 @@ namespace Babble.Core.HashgraphImpl
 
                     var idx = a.FirstDescendants.GetIdIndex(creatorPeer.ID);
 
-
                     if (idx == -1)
                     {
                         return new HashgraphError($"Could not find first descendant by creator id ({ev.Creator()})");
                     }
 
-
-                    if (a.FirstDescendants[idx].Event.Index == int.MaxValue)
+                    if (a.FirstDescendants.Values[idx].Event.Index == int.MaxValue)
                     {
-                        a.FirstDescendants[idx].Event = new EventCoordinates
+                        a.FirstDescendants.Values[idx].Event = new EventCoordinates
                         {
                             Index = index,
                             Hash = hash
@@ -807,33 +788,33 @@ namespace Babble.Core.HashgraphImpl
             return null;
         }
 
-     private async Task<(RootEvent, BabbleError)> createSelfParentRootEvent( Event ev)
+        private async Task<(RootEvent, BabbleError)> createSelfParentRootEvent(Event ev)
         {
             var sp = ev.SelfParent;
-            var (spLT, err1) =await LamportTimestamp(sp);
+            var (spLT, err1) = await LamportTimestamp(sp);
             if (err1 != null)
             {
-                return (new RootEvent{}, err1);
+                return (new RootEvent(), err1);
             }
-            var (spRound, err2) =await Round(sp);
+
+            var (spRound, err2) = await Round(sp);
             if (err2 != null)
             {
-                return (new RootEvent{}, err2);
+                return (new RootEvent(), err2);
             }
+
             var selfParentRootEvent = new RootEvent
             {
-                
-                Hash=sp,
-                CreatorId=Participants.ByPubKey[ev.Creator()].ID,
-                Index=ev.Index()-1,
-                LamportTimestamp=spLT,
-                Round=spRound
-
+                Hash = sp,
+                CreatorId = Participants.ByPubKey[ev.Creator()].ID,
+                Index = ev.Index() - 1,
+                LamportTimestamp = spLT,
+                Round = spRound
             };
             return (selfParentRootEvent, null);
         }
 
-        private async Task<(RootEvent, BabbleError)> CreateOtherParentRootEvent( Event ev)
+        private async Task<(RootEvent, BabbleError)> CreateOtherParentRootEvent(Event ev)
         {
             var op = ev.OtherParent;
 
@@ -841,8 +822,9 @@ namespace Babble.Core.HashgraphImpl
             var (root, err1) = await Store.GetRoot(ev.Creator());
             if (err1 != null)
             {
-                return (new RootEvent{}, err1);
+                return (new RootEvent(), err1);
             }
+
             {
                 var ok = root.Others.TryGetValue(ev.Hex(), out var other);
 
@@ -850,42 +832,43 @@ namespace Babble.Core.HashgraphImpl
                 {
                     return (other, null);
                 }
-
             }
-            var (otherParent, err2) =await Store.GetEvent(op);
+            var (otherParent, err2) = await Store.GetEvent(op);
             if (err2 != null)
             {
-                return (new RootEvent{}, err2);
+                return (new RootEvent(), err2);
             }
+
             var (opLT, err3) = await LamportTimestamp(op);
             if (err3 != null)
             {
-                return (new RootEvent{}, err3);
+                return (new RootEvent(), err3);
             }
-            var (opRound, err4) =await Round(op);
+
+            var (opRound, err4) = await Round(op);
             if (err4 != null)
             {
-                return (new RootEvent{}, err4);
+                return (new RootEvent(), err4);
             }
+
             var otherParentRootEvent = new RootEvent
             {
-                Hash=op,
-                CreatorId=Participants.ByPubKey[otherParent.Creator()].ID,
-                Index=otherParent.Index(),
-                LamportTimestamp=opLT,
-                Round=opRound
+                Hash = op,
+                CreatorId = Participants.ByPubKey[otherParent.Creator()].ID,
+                Index = otherParent.Index(),
+                LamportTimestamp = opLT,
+                Round = opRound
             };
 
             return (otherParentRootEvent, null);
-
         }
 
-        private async Task<(Root, BabbleError)> createRoot( Event ev)
+        private async Task<(Root, BabbleError)> createRoot(Event ev)
         {
             var (evRound, err1) = await Round(ev.Hex());
             if (err1 != null)
             {
-                return (new Root{}, err1);
+                return (new Root(), err1);
             }
 
             /*
@@ -894,22 +877,23 @@ namespace Babble.Core.HashgraphImpl
             var (selfParentRootEvent, err2) = await createSelfParentRootEvent(ev);
             if (err2 != null)
             {
-                return (new Root{}, err2);
+                return (new Root(), err2);
             }
 
             /*
                 OtherParent
             */
-           RootEvent otherParentRootEvent=null;
+            RootEvent otherParentRootEvent = null;
 
             if (ev.OtherParent != "")
             {
                 var (opre, err3) = await CreateOtherParentRootEvent(ev);
                 if (err3 != null)
                 {
-                    return (new Root{}, err3);
+                    return (new Root(), err3);
                 }
-                otherParentRootEvent =  opre;
+
+                otherParentRootEvent = opre;
             }
 
             var root = new Root
@@ -921,17 +905,16 @@ namespace Babble.Core.HashgraphImpl
 
             if (otherParentRootEvent != null)
             {
-                root.Others[ev.Hex()] = new RootEvent()
+                root.Others[ev.Hex()] = new RootEvent
                 {
                     CreatorId = otherParentRootEvent.CreatorId,
-                    Hash =otherParentRootEvent.Hash,
+                    Hash = otherParentRootEvent.Hash,
                     Index = otherParentRootEvent.Index,
                     LamportTimestamp = otherParentRootEvent.LamportTimestamp,
                     Round = otherParentRootEvent.Round
-
-
                 };
             }
+
             return (root, null);
         }
 
@@ -971,7 +954,6 @@ namespace Babble.Core.HashgraphImpl
 
             if (!string.IsNullOrEmpty(ev.OtherParent))
             {
-
                 var (root, err1) = await Store.GetRoot(ev.Creator());
 
                 if (err1 != null)
@@ -985,8 +967,9 @@ namespace Babble.Core.HashgraphImpl
                 {
                     otherParentCreatorId = other.CreatorId;
                     otherParentIndex = other.Index;
-                } else {
-
+                }
+                else
+                {
                     var (otherParent, err) = await Store.GetEvent(ev.OtherParent);
 
                     if (err != null)
@@ -1007,40 +990,35 @@ namespace Babble.Core.HashgraphImpl
             return null;
         }
 
-
-        private  void updatePendingRounds(Dictionary<int, int> decidedRounds)
+        private void updatePendingRounds(Dictionary<int, int> decidedRounds)
         {
-         foreach (var ur in PendingRounds)
-                    {
-                        var ok = decidedRounds.ContainsKey(ur.Index);
+            foreach (var ur in PendingRounds)
+            {
+                var ok = decidedRounds.ContainsKey(ur.Index);
 
-                        if (ok)
-                        {
-                            ur.Decided = true;
-                        }
-
-                    }
-      
+                if (ok)
+                {
+                    ur.Decided = true;
+                }
+            }
         }
 
         //Remove processed Signatures from SigPool
-        private  void removeProcessedSignatures( Dictionary<int, bool> processedSignatures)
+        private void removeProcessedSignatures(Dictionary<int, bool> processedSignatures)
         {
-            var newSigPool = new List <BlockSignature>();
-            
+            var newSigPool = new List<BlockSignature>();
+
             foreach (var bs in SigPool)
 
-                    {
-                        var ok = processedSignatures.ContainsKey(bs.Index);
+            {
+                var ok = processedSignatures.ContainsKey(bs.Index);
 
-                        if (!ok)
-                        {
-                            newSigPool.Add( bs);
-                        }
-
-               
-
+                if (!ok)
+                {
+                    newSigPool.Add(bs);
+                }
             }
+
             SigPool = newSigPool;
         }
 
@@ -1050,7 +1028,6 @@ namespace Babble.Core.HashgraphImpl
 
         //InsertEvent attempts to insert an Event in the DAG. It verifies the signature,
         //checks the ancestors are known, and prevents the introduction of forks.
-
 
         public async Task<BabbleError> InsertEvent(Event ev, bool setWireInfo)
         {
@@ -1066,16 +1043,16 @@ namespace Babble.Core.HashgraphImpl
             using (var tx = Store.BeginTx())
 
             {
-               var  err2= CheckSelfParent(ev);
+                var err2 = CheckSelfParent(ev);
                 if (err2 != null)
                 {
-                    return new HashgraphError($"CheckSelfParent: {err2.Message}");
+                    return new HashgraphError($"CheckSelfParent: {err2}");
                 }
 
-                var err3= await CheckOtherParent(ev);
+                var err3 = await CheckOtherParent(ev);
                 if (err3 != null)
                 {
-                    return new HashgraphError($"CheckOtherParent: {err3.Message}");
+                    return new HashgraphError($"CheckOtherParent: {err3}");
                 }
 
                 ev.SetTopologicalIndex(TopologicalIndex);
@@ -1086,26 +1063,26 @@ namespace Babble.Core.HashgraphImpl
                     var err4 = await SetWireInfo(ev);
                     if (err4 != null)
                     {
-                        return new HashgraphError($"SetWireInfo: {err4.Message}");
+                        return new HashgraphError($"SetWireInfo: {err4}");
                     }
                 }
 
                 var err5 = await InitEventCoordinates(ev);
                 if (err5 != null)
                 {
-                    return new HashgraphError($"InitEventCoordinates: {err5.Message}");
+                    return new HashgraphError($"InitEventCoordinates: {err5}");
                 }
 
                 var err6 = await Store.SetEvent(ev);
                 if (err6 != null)
                 {
-                    return new HashgraphError($"SetEvent: {err6.Message}");
+                    return new HashgraphError($"SetEvent: {err6}");
                 }
 
                 var err7 = await UpdateAncestorFirstDescendant(ev);
                 if (err7 != null)
                 {
-                    return new HashgraphError($"UpdateAncestorFirstDescendant: {err7.Message}");
+                    return new HashgraphError($"UpdateAncestorFirstDescendant: {err7}");
                 }
 
                 UndeterminedEvents.Add(ev.Hex());
@@ -1135,8 +1112,7 @@ namespace Babble.Core.HashgraphImpl
             foreach (var hash in UndeterminedEvents)
 
             {
-
-                var (ev,err1) = await Store.GetEvent(hash);
+                var (ev, err1) = await Store.GetEvent(hash);
 
                 if (err1 != null)
                 {
@@ -1152,7 +1128,6 @@ namespace Babble.Core.HashgraphImpl
 
                 if (ev.Round == null)
                 {
-
                     var (roundNumber, err2) = await Round(hash);
 
                     if (err2 != null)
@@ -1163,14 +1138,12 @@ namespace Babble.Core.HashgraphImpl
                     ev.SetRound(roundNumber);
                     updateEvent = true;
 
-
                     var (roundInfo, err3) = await Store.GetRound(roundNumber);
 
                     if (err3 != null && err3.StoreErrorType != StoreErrorType.KeyNotFound)
                     {
                         return err3;
                     }
-
 
                     /*
                     Why the lower bound?
@@ -1184,16 +1157,15 @@ namespace Babble.Core.HashgraphImpl
                     other Events to be added on top, but the base layer must not be
                     reprocessed.
                     */
-                    
+
                     if (!roundInfo.Queued() && LastConsensusRound == null || roundNumber >= LastConsensusRound)
                     {
-
                         PendingRounds.Enqueue(new PendingRound {Index = roundNumber, Decided = false});
                         roundInfo.SetQueued();
                     }
 
-                    var (witness, err4) =await Witness(hash);
-                    
+                    var (witness, err4) = await Witness(hash);
+
                     if (err4 != null)
                     {
                         return err4;
@@ -1206,16 +1178,13 @@ namespace Babble.Core.HashgraphImpl
                     {
                         return err5;
                     }
-
                 }
-
 
                 /*
                Compute the Event's LamportTimestamp
            */
                 if (ev.LamportTimestamp == null)
                 {
-
                     var (lamportTimestamp, err6) = await LamportTimestamp(hash);
                     if (err6 != null)
                     {
@@ -1242,163 +1211,153 @@ namespace Babble.Core.HashgraphImpl
 
             var votes = new Dictionary<string, Dictionary<string, bool>>(); //[x][y]=>vote(x,y)
 
-            void SetVote(Dictionary<string, Dictionary<string, bool>> vts, string x, string y ,bool vote)
+            void SetVote(Dictionary<string, Dictionary<string, bool>> vts, string x, string y, bool vote)
             {
-                if (vts[x] == null) {
-                    vts[x] = new Dictionary<string, bool>(); 
+                if (vts[x] == null)
+                {
+                    vts[x] = new Dictionary<string, bool>();
                 }
 
                 votes[x][y] = vote;
             }
 
-
             var decidedRounds = new Dictionary<int, int>(); // [round number] => index in UndecidedRounds
 
-   
-                var pos = 0;
+            var pos = 0;
 
-                foreach (var r in PendingRounds)
+            foreach (var r in PendingRounds)
+            {
+                var roundIndex = r.Index;
+                var (roundInfo, err1) = await Store.GetRound(roundIndex);
+
+                if (err1 != null)
                 {
-                    var roundIndex = r.Index;
-                    var (roundInfo, err1) = await Store.GetRound(roundIndex);
+                    return err1;
+                }
 
-                    if (err1 != null)
+                foreach (var x in roundInfo.Witnesses())
+                {
+                    if (roundInfo.IsDecided(x))
                     {
-                        return err1;
+                        continue;
                     }
 
+                    //X:
 
-                    foreach (var x in roundInfo.Witnesses())
+                    for (var j = roundIndex + 1; j <= Store.LastRound(); j++)
+
                     {
-                        if (roundInfo.IsDecided(x))
+                        foreach (var y in await Store.RoundWitnesses(j))
                         {
-                            continue;
-                        }
+                            var diff = j - roundIndex;
 
-                        VOTE_LOOP:
-
-                        //X:
-
-                        for (var j = roundIndex + 1; j <= Store.LastRound(); j++)
-
-                        {
-                            foreach (var y in await Store.RoundWitnesses(j))
+                            if (diff == 1)
                             {
-                                var diff = j - roundIndex;
-
-                                if (diff == 1)
+                                var (ycx, err2) = await See(y, x);
+                                if (err2 != null)
                                 {
+                                    return err2;
+                                }
 
-                                    var (ycx, err2) = await See(y, x);
-                                    if (err2 != null)
+                                SetVote(votes, y, x, ycx);
+                            }
+                            else
+                            {
+                                //count votes
+                                var ssWitnesses = new List<string>();
+                                foreach (var w in await Store.RoundWitnesses(j - 1))
+                                {
+                                    var (ss, err3) = await StronglySee(y, w);
+                                    if (err3 != null)
                                     {
-                                        return err2;
+                                        return err3;
                                     }
 
-                                    SetVote(votes, y, x, ycx);
+                                    if (ss)
+                                    {
+                                        ssWitnesses.Add(w);
+                                    }
+                                }
+
+                                var yays = 0;
+
+                                var nays = 0;
+
+                                foreach (var w in ssWitnesses)
+                                {
+                                    if (votes[w][x])
+                                    {
+                                        yays++;
+                                    }
+                                    else
+                                    {
+                                        nays++;
+                                    }
+                                }
+
+                                var v = false;
+
+                                var t = nays;
+
+                                if (yays >= nays)
+                                {
+                                    v = true;
+
+                                    t = yays;
+                                }
+
+                                //normal round
+                                if ((float) diff % Participants.Len() > 0)
+                                {
+                                    if (t >= SuperMajority)
+                                    {
+                                        roundInfo.SetFame(x, v);
+
+                                        SetVote(votes, y, x, v);
+
+                                        //break out of j loop
+
+                                        goto X;
+                                    }
+
+                                    SetVote(votes, y, x, v);
                                 }
                                 else
                                 {
-                                    //count votes
-                                    var ssWitnesses = new List<string>();
-                                    foreach (var w in await Store.RoundWitnesses(j - 1))
+                                    //coin round
+                                    if (t >= SuperMajority)
                                     {
-                                        var (ss, err3) = await StronglySee(y, w);
-                                        if (err3 != null)
-                                        {
-                                            return err3;
-                                        }
-
-                                        if (ss)
-                                        {
-                                            ssWitnesses.Add(w);
-                                        }
-                                    }
-
-                                    var yays = 0;
-
-                                    var nays = 0;
-
-                                    foreach (var w in ssWitnesses)
-                                    {
-                                        if (votes[w][x])
-                                        {
-                                            yays++;
-                                        }
-                                        else
-                                        {
-                                            nays++;
-                                        }
-                                    }
-
-                                    var v = false;
-
-                                    var t = nays;
-
-                                    if (yays >= nays)
-                                    {
-                                        v = true;
-
-                                        t = yays;
-                                    }
-
-                                    //normal round
-                                    if ((float) diff % Participants.Len() > 0)
-                                    {
-                                        if (t >= SuperMajority)
-                                        {
-                                            roundInfo.SetFame(x, v);
-
-                                            SetVote(votes, y, x, v);
-
-                                            //break out of j loop
-
-                                            goto X;
-                                        }
-
                                         SetVote(votes, y, x, v);
                                     }
                                     else
                                     {
-                                        //coin round
-                                        if (t >= SuperMajority)
-                                        {
-                                            SetVote(votes, y, x, v);
-                                        }
-                                        else
-                                        {
-                                            SetVote(votes, y, x, MiddleBit(y)); //middle bit of y's hash
-                                        }
+                                        SetVote(votes, y, x, MiddleBit(y)); //middle bit of y's hash
                                     }
                                 }
                             }
                         }
-
-                        X: ;
                     }
 
-
-                    var err4 = await Store.SetRound(roundIndex, roundInfo);
-                    if (err4 != null)
-                    {
-                        return err4;
-                    }
-
-                    //Update decidedRounds and LastConsensusRound if all witnesses have been decided
-                    if (roundInfo.WitnessesDecided())
-                    {
-                        decidedRounds[roundIndex] = pos;
-                    
-                    }
-
-             
-
-                    pos++;
+                    X: ;
                 }
 
+                var err4 = await Store.SetRound(roundIndex, roundInfo);
+                if (err4 != null)
+                {
+                    return err4;
+                }
+
+                //Update decidedRounds and LastConsensusRound if all witnesses have been decided
+                if (roundInfo.WitnessesDecided())
+                {
+                    decidedRounds[roundIndex] = pos;
+                }
+
+                pos++;
+            }
+
             updatePendingRounds(decidedRounds);
-                return null;
-  
+            return null;
         }
 
         ////remove items from UndecidedRounds
@@ -1428,8 +1387,6 @@ namespace Babble.Core.HashgraphImpl
         //assign round received and timestamp to all evs
         public async Task<BabbleError> DecideRoundReceived()
         {
-
-
             var newUndeterminedEvents = new List<string>();
 
             /* From whitepaper - 18/03/18
@@ -1441,7 +1398,7 @@ namespace Babble.Core.HashgraphImpl
             foreach (var x in UndeterminedEvents)
             {
                 var received = false;
-                var (r,err1) = await Round(x);
+                var (r, err1) = await Round(x);
 
                 if (err1 != null)
                 {
@@ -1461,7 +1418,7 @@ namespace Babble.Core.HashgraphImpl
                             received = true;
                             break;
                         }
-                        
+
                         return err2;
                     }
 
@@ -1479,7 +1436,6 @@ namespace Babble.Core.HashgraphImpl
                     var s = new List<string>();
                     foreach (var w in fws)
                     {
-
                         var (see, err3) = await See(w, x);
 
                         if (err3 != null)
@@ -1493,7 +1449,7 @@ namespace Babble.Core.HashgraphImpl
                         }
                     }
 
-                    if (s.Count == fws.Length && s.Count>0)
+                    if (s.Count == fws.Length && s.Count > 0)
                     {
                         received = true;
 
@@ -1521,8 +1477,6 @@ namespace Babble.Core.HashgraphImpl
 
                         //break out of i loop
                         break;
-
-                        
                     }
                 }
 
@@ -1530,16 +1484,14 @@ namespace Babble.Core.HashgraphImpl
                 {
                     newUndeterminedEvents.Add(x);
                 }
-
             }
 
             UndeterminedEvents = newUndeterminedEvents;
-            
+
             return null;
         }
 
-
-           //ProcessDecidedRounds takes Rounds whose witnesses are decided, computes the
+        //ProcessDecidedRounds takes Rounds whose witnesses are decided, computes the
         //corresponding Frames, maps them into Blocks, and commits the Blocks via the
         //commit channel
         public async Task<BabbleError> ProcessDecidedRounds()
@@ -1553,9 +1505,6 @@ namespace Babble.Core.HashgraphImpl
 
             try
             {
-
-
-
                 foreach (var r in PendingRounds)
                 {
                     //Although it is possible for a Round to be 'decided' before a previous
@@ -1588,7 +1537,6 @@ namespace Babble.Core.HashgraphImpl
                         return err2;
                     }
 
-
                     //LogContext.Push()
                     //logger.WithFields(logrus.Fields{"round_received":r.Index,"witnesses":round.FamousWitnesses(),"events":len(frame.Events),"roots":frame.Roots,}).Debugf("Processing Decided Round");
 
@@ -1609,10 +1557,8 @@ namespace Babble.Core.HashgraphImpl
                             }
                         }
 
-
-
                         var lastBlockIndex = await Store.LastBlockIndex();
-                        var (block, err4) =Block.NewBlockFromFrame(lastBlockIndex + 1, frame);
+                        var (block, err4) = Block.NewBlockFromFrame(lastBlockIndex + 1, frame);
                         if (err4 != null)
                         {
                             return err4;
@@ -1641,20 +1587,14 @@ namespace Babble.Core.HashgraphImpl
                             SetLastConsensusRound(r.Index);
                         }
                     }
-
-
                 }
 
                 return null;
-
-
-        }
-        finally
+            }
+            finally
             {
-
-   PendingRounds = new Queue<PendingRound>(PendingRounds.Take(processedIndex));
-        }
-
+                PendingRounds = new Queue<PendingRound>(PendingRounds.Take(processedIndex));
+            }
         }
 
         //GetFrame computes the Frame corresponding to a RoundReceived.
@@ -1662,7 +1602,7 @@ namespace Babble.Core.HashgraphImpl
         {
             //Try to get it from the Store first
             var (frame, err1) = await Store.GetFrame(roundReceived);
-            if (err1 == null || err1.StoreErrorType!= StoreErrorType.KeyNotFound)
+            if (err1 == null || err1.StoreErrorType != StoreErrorType.KeyNotFound)
             {
                 return (frame, err1);
             }
@@ -1671,93 +1611,90 @@ namespace Babble.Core.HashgraphImpl
             var (round, err2) = await Store.GetRound(roundReceived);
             if (err2 != null)
             {
-                return (new Frame{}, err2);
+                return (new Frame(), err2);
             }
-            var events = new List<Event>{};
-            
+
+            var events = new List<Event>();
+
             foreach (var eh in round.ConsensusEvents())
 
-
+            {
+                var (e, err3) = await Store.GetEvent(eh);
+                if (err3 != null)
                 {
-                    var (e, err3) = await Store.GetEvent(eh);
-                    if (err3 != null)
-                    {
-                        return (new Frame{}, err3);
-                    }
-                    events.Add(e);
+                    return (new Frame(), err3);
                 }
 
-    
+                events.Add(e);
+            }
+
             events.Sort(new Event.EventByLamportTimeStamp());
-            
+
             // Get/Create Roots
             var roots = new Dictionary<string, Root>();
             //The events are in topological order. Each time we run into the first Event
             //of a participant, we create a Root for it.
-            
+
             foreach (var ev in events)
             {
-                
-                    var p = ev.Creator();
-           
-                        var ok= roots.ContainsKey(p);
+                var p = ev.Creator();
 
-                        if (!ok)
+                var ok = roots.ContainsKey(p);
+
+                if (!ok)
+                {
+                    var (root, err4) = await createRoot(ev);
+                    if (err4 != null)
+                    {
+                        return (new Frame(), err4);
+                    }
+
+                    roots[ev.Creator()] = root;
+                }
+            }
+
+            //Every participant needs a Root in the Frame. For the participants that
+            //have no Events in this Frame, we create a Root from their last consensus
+            //Event, or their last known Root
+
+            foreach (var p in await Participants.ToPubKeySlice())
+
+            {
+                var ok = roots.ContainsKey(p);
+
+                if (!ok)
+                {
+                    Root root;
+
+                    var (lastConsensusEventHash, isRoot, err5) = Store.LastConsensusEventFrom(p);
+                    if (err5 != null)
+                    {
+                        return (new Frame(), err5);
+                    }
+
+                    if (isRoot)
+                    {
+                        (root, _) = await Store.GetRoot(p);
+                    }
+                    else
+                    {
+                        var (lastConsensusEvent, err6) = await Store.GetEvent(lastConsensusEventHash);
+                        if (err6 != null)
                         {
-                            var (root, err4) = await createRoot(ev);
-                            if (err4 != null)
-                            {
-                                return (new Frame{}, err4);
-                            }
-                            roots[ev.Creator()] = root;
+                            return (new Frame(), err6);
                         }
 
-                    }
-            
-
-                //Every participant needs a Root in the Frame. For the participants that
-                //have no Events in this Frame, we create a Root from their last consensus
-                //Event, or their last known Root
-
-          foreach (var p in await Participants.ToPubKeySlice())
-
-  
-                    {
-                        var  ok = roots.ContainsKey(p);
-
-                        if (!ok)
+                        BabbleError err7;
+                        (root, err7) = await createRoot(lastConsensusEvent);
+                        if (err7 != null)
                         {
-                            Root root;
-
-                            var (lastConsensusEventHash, isRoot, err5) = Store.LastConsensusEventFrom(p);
-                            if (err5 != null)
-                            {
-                                return (new Frame{}, err5);
-                            }
-                            if (isRoot)
-                            {
-                                (root, _) = await Store.GetRoot(p);
-                            }
-                            else
-                            {
-                                var (lastConsensusEvent, err6) = await Store.GetEvent(lastConsensusEventHash);
-                                if (err6 != null)
-                                {
-                                    return (new Frame{}, err6);
-                                }
-
-                                BabbleError err7;
-                                (root, err7) = await createRoot(lastConsensusEvent);
-                                if (err7 != null)
-                                {
-                                    return (new Frame{}, err7);
-                                }
-                            }
-                            roots[p] = root;
-               
-
+                            return (new Frame(), err7);
+                        }
                     }
+
+                    roots[p] = root;
                 }
+            }
 
             //Some Events in the Frame might have other-parents that are outside of the
             //Frame (cf root.go ex 2)
@@ -1767,63 +1704,57 @@ namespace Babble.Core.HashgraphImpl
             var treated = new Dictionary<string, bool>();
             foreach (var ev in events)
             {
-                
-       
-                
-                    treated[ev.Hex()] = true;
-                    var otherParent = ev.OtherParent;
-                    if (otherParent != "")
-                    {
-                        var  ok = treated.TryGetValue(otherParent, out var opt);
-                        if (!opt || !ok)
+                treated[ev.Hex()] = true;
+                var otherParent = ev.OtherParent;
+                if (otherParent != "")
+                {
+                    var ok = treated.TryGetValue(otherParent, out var opt);
+                    if (!opt || !ok)
 
+                    {
+                        if (ev.SelfParent != roots[ev.Creator()].SelfParent.Hash)
                         {
-                            if (ev.SelfParent != roots[ev.Creator()].SelfParent.Hash)
+                            var (other, err7) = await CreateOtherParentRootEvent(ev);
+                            if (err7 != null)
                             {
-                                var (other, err7) =await CreateOtherParentRootEvent(ev);
-                                if (err7 != null)
-                                {
-                                    return (new Frame{}, err7);
-                                }
-                                roots[ev.Creator()].Others[ev.Hex()] = other;
+                                return (new Frame(), err7);
                             }
+
+                            roots[ev.Creator()].Others[ev.Hex()] = other;
                         }
                     }
-             
-                //order roots
+                }
 
+                //order roots
             }
 
             //order roots
-            var orderedRoots =new Root[ Participants.Len()];
+            var orderedRoots = new Root[Participants.Len()];
             {
-                var i=0;
+                var i = 0;
                 foreach (var peer in Participants.ToPeerSlice())
                 {
                     orderedRoots[i] = roots[peer.PubKeyHex];
                     i++;
                 }
-
             }
 
-            var res = new Frame(){Round=roundReceived,Roots=orderedRoots,Events=events.ToArray()};
+            var res = new Frame {Round = roundReceived, Roots = orderedRoots, Events = events.ToArray()};
 
-         
-                var err8 = await Store.SetFrame(res);
+            var err8 = await Store.SetFrame(res);
 
-                if (err8 != null)
-                {
-                    return (new Frame{}, err8);
-                }
+            if (err8 != null)
+            {
+                return (new Frame(), err8);
+            }
 
-        
             return (res, null);
         }
 
         //ProcessSigPool runs through the SignaturePool and tries to map a Signature to
         //a known Block. If a Signature is found to be valid for a known Block, it is
         //appended to the block and removed from the SignaturePool
-        public async  Task<BabbleError> ProcessSigPool()
+        public async Task<BabbleError> ProcessSigPool()
         {
             var processedSignatures = new Dictionary<int, bool>(); //index in SigPool => Processed?
 
@@ -1834,24 +1765,20 @@ namespace Babble.Core.HashgraphImpl
 
                 {
                     //check if validator belongs to list of participants
-                    var validatorHex = $"0x{bs.Validator}";
+                    var validatorHex = $"0x{bs.Validator.ToHex()}";
                     {
-                        var  ok = Participants.ByPubKey.ContainsKey(validatorHex);
+                        var ok = Participants.ByPubKey.ContainsKey(validatorHex);
 
                         if (!ok)
                         {
-
                             logger.Warning("Index={Index}; Validator={Validator} : Verifying Block signature. Unknown validator", bs.Index, validatorHex);
 
                             continue;
                         }
-
                     }
-                    var (block, err1) =await Store.GetBlock(bs.Index);
+                    var (block, err1) = await Store.GetBlock(bs.Index);
                     if (err1 != null)
                     {
-
-                        
                         logger.Warning("Index={Index}; Msg={Msg} : Verifying Block signature. Could not fetch Block", bs.Index, err1.Message);
 
                         continue;
@@ -1860,7 +1787,6 @@ namespace Babble.Core.HashgraphImpl
                     var (valid, err2) = block.Verify(bs);
                     if (err2 != null)
                     {
-
                         logger.Warning("Index={Index}; Msg={Msg} : Verifying Block signature", bs.Index, err2.Message);
 
                         return err2;
@@ -1868,7 +1794,6 @@ namespace Babble.Core.HashgraphImpl
 
                     if (!valid)
                     {
-
                         logger.Warning("Index={Index}; Validator={Validator} : Verifying Block signature. Invalid signature", bs.Index, Participants.ByPubKey[validatorHex]);
 
                         continue;
@@ -1879,55 +1804,30 @@ namespace Babble.Core.HashgraphImpl
                     {
                         var err3 = await Store.SetBlock(block);
 
-                        if (err3!= null)
+                        if (err3 != null)
                         {
                             logger.Warning("Index={Index}; Msg={Msg} : Saving Block", bs.Index, err3.Message);
-
                         }
-
                     }
                     if (block.Signatures.Count > TrustCount && (AnchorBlock == null || block.Index() > AnchorBlock))
                     {
                         SetAnchorBlock(block.Index());
 
-
                         logger.Debug("BlockIndex={BlockIndex};Signatures={Signatures};TrustCount={TrustCount} : Setting AnchorBlock", block.Index(), block.Signatures.Count(), TrustCount);
-                            
-
-                        
                     }
 
                     processedSignatures[i] = true;
 
                     i++;
-
                 }
+
                 return null;
             }
             finally
             {
                 removeProcessedSignatures(processedSignatures);
             }
-       
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         //GetAnchorBlockWithFrame returns the AnchorBlock and the corresponding Frame.
         //This can be used as a base to Reset a Hashgraph
@@ -1935,34 +1835,23 @@ namespace Babble.Core.HashgraphImpl
         {
             if (AnchorBlock == null)
             {
-                return (new Block{}, new Frame{}, new HashgraphError("No Anchor Block"));
+                return (new Block(), new Frame(), new HashgraphError("No Anchor Block"));
             }
-            var (block, err1) = await Store.GetBlock(AnchorBlock??0);
+
+            var (block, err1) = await Store.GetBlock(AnchorBlock ?? 0);
             if (err1 != null)
             {
-                return (new Block{},new Frame{}, err1);
+                return (new Block(), new Frame(), err1);
             }
+
             var (frame, err2) = await GetFrame(block.RoundReceived());
             if (err2 != null)
             {
-                return (new Block{},new Frame{}, err2);
+                return (new Block(), new Frame(), err2);
             }
+
             return (block, frame, null);
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         //public async Task<BabbleError> FindOrder()
         //{
@@ -2096,7 +1985,7 @@ namespace Babble.Core.HashgraphImpl
             //Clear all state
 
             LastConsensusRound = null;
-            FirstConsensusRound=null;
+            FirstConsensusRound = null;
             AnchorBlock = null;
 
             UndeterminedEvents = new List<string>();
@@ -2107,11 +1996,10 @@ namespace Babble.Core.HashgraphImpl
             var cacheSize = Store.CacheSize();
             AncestorCache = new LruCache<string, bool>(cacheSize, null, logger, "AncestorCache");
             SelfAncestorCache = new LruCache<string, bool>(cacheSize, null, logger, "SelfAncestorCache");
-           StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger, "StronglySeeCache");
-           RoundCache = new LruCache<string, int>(cacheSize, null, logger, "RoundCache");
+            StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger, "StronglySeeCache");
+            RoundCache = new LruCache<string, int>(cacheSize, null, logger, "RoundCache");
 
-            var participants =Participants.ToPeerSlice();
-
+            var participants = Participants.ToPeerSlice();
 
             var rootMap = new Dictionary<string, Root>();
             var id = 0;
@@ -2122,13 +2010,13 @@ namespace Babble.Core.HashgraphImpl
                 id++;
             }
 
-            var err1= Store.Reset(rootMap);
+            var err1 = Store.Reset(rootMap);
             if (err1 != null)
             {
                 return err1;
             }
 
-            var err2 =await Store.SetBlock(block);
+            var err2 = await Store.SetBlock(block);
             //Insert Block
             if (err2 != null)
             {
@@ -2147,7 +2035,7 @@ namespace Babble.Core.HashgraphImpl
                     return err3;
                 }
             }
-            
+
             return null;
         }
 
@@ -2293,7 +2181,6 @@ namespace Babble.Core.HashgraphImpl
         //Hashgraph
         public async Task<BabbleError> Bootstrap()
         {
-   
             if (Store is LocalDbStore)
 
             {
@@ -2354,7 +2241,6 @@ namespace Babble.Core.HashgraphImpl
                         return err7;
                     }
 
-
                     tx.Commit();
                 }
             }
@@ -2362,8 +2248,6 @@ namespace Babble.Core.HashgraphImpl
             return null;
         }
 
-
-        
         public async Task<(Event ev, BabbleError err)> ReadWireInfo(WireEvent wev)
         {
             var selfParent = "";
@@ -2372,8 +2256,6 @@ namespace Babble.Core.HashgraphImpl
 
             var creator = Participants.ById[wev.Body.CreatorId];
             var creatorBytes = creator.PubKeyHex.FromHex();
-
-
 
             if (wev.Body.SelfParentIndex >= 0)
             {
@@ -2386,7 +2268,7 @@ namespace Babble.Core.HashgraphImpl
 
             if (wev.Body.OtherParentIndex >= 0)
             {
-                var otherParentCreator =Participants.ById[wev.Body.OtherParentCreatorId];
+                var otherParentCreator = Participants.ById[wev.Body.OtherParentCreatorId];
                 (otherParent, err) = await Store.ParticipantEvent(otherParentCreator.PubKeyHex, wev.Body.OtherParentIndex);
                 if (err != null)
                 {
@@ -2416,7 +2298,6 @@ namespace Babble.Core.HashgraphImpl
             return (ev, null);
         }
 
-
         //CheckBlock returns an error if the Block does not contain valid signatures
         //from MORE than 1/3 of participants
         public BabbleError CheckBlock(Block block)
@@ -2424,19 +2305,19 @@ namespace Babble.Core.HashgraphImpl
             var validSignatures = 0;
             foreach (var s in block.GetSignatures())
             {
-                
-      
-                    var (ok, _) = block.Verify(s);
+                var (ok, _) = block.Verify(s);
                 if (ok)
                 {
                     validSignatures++;
                 }
             }
+
             if (validSignatures <= TrustCount)
             {
                 return new HashgraphError(string.Format("Not enough valid signatures: got {0}, need {1}", validSignatures, TrustCount + 1));
             }
-            logger.Debug("CheckBlock : ValidSignatures = {ValidSignatures}" , validSignatures);
+
+            logger.Debug("CheckBlock : ValidSignatures = {ValidSignatures}", validSignatures);
             return null;
         }
 
@@ -2448,34 +2329,31 @@ namespace Babble.Core.HashgraphImpl
         {
             if (LastConsensusRound == null)
             {
-                LastConsensusRound =default(int);
+                LastConsensusRound = default(int);
             }
+
             LastConsensusRound = i;
 
             if (FirstConsensusRound == null)
             {
                 FirstConsensusRound = default(int);
-                FirstConsensusRound= i;
+                FirstConsensusRound = i;
             }
         }
 
-        private  void SetAnchorBlock( int i)
+        private void SetAnchorBlock(int i)
         {
             if (AnchorBlock == null)
             {
                 AnchorBlock = default(int);
             }
-           AnchorBlock= i;
+
+            AnchorBlock = i;
         }
-
-
-
-
 
         /*******************************************************************************
            Helpers
         *******************************************************************************/
-
 
         public bool MiddleBit(string ehex)
         {
@@ -2487,7 +2365,5 @@ namespace Babble.Core.HashgraphImpl
 
             return true;
         }
-
-
     }
 }

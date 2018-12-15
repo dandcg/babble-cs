@@ -1,27 +1,27 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Babble.Core.HashgraphImpl.Model
 {
-    public class OrderedEventCoordinates : List<Index>
+    public class OrderedEventCoordinates 
     {
-        public OrderedEventCoordinates():base()
-        {
-            
-        }
+        public  Index[] Values { get; private set; }
 
-        public OrderedEventCoordinates(int capacity):base(capacity)
+   
+    
+        public OrderedEventCoordinates(int capacity)
         {
-            
+            Values=new Index[capacity];
         }
         public int GetIdIndex(int id)
         {
-            return FindIndex(a => a.ParticipantId == id);
+            return Array.FindIndex(Values, a => a.ParticipantId == id);
         }
 
         public (Index, bool) GetById(int id)
         {
-            var idx = this.FirstOrDefault(w => w.ParticipantId == id);
+            var idx = Values.FirstOrDefault(w => w.ParticipantId == id);
             if (idx != null)
             {
                 return (idx, true);
@@ -32,9 +32,10 @@ namespace Babble.Core.HashgraphImpl.Model
 
         public void Add(int id, EventCoordinates evt)
         {
-            this.Add(new Index {ParticipantId = id, Event = evt});
+            Values.Append(new Index {ParticipantId = id, Event = evt});
         }
-    }
+
+        }
 
     public class Index
     {

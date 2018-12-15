@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core;
+using Babble.Core.Common;
 using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl;
 using Babble.Core.HashgraphImpl.Model;
@@ -25,7 +26,7 @@ namespace Babble.Test.HashgraphImpl
         {
             this.output = output;
             logger = output.SetupLogging().ForContext("SourceContext", "HashGraphTests");
-         
+
         }
 
         public const int CacheSize = 100;
@@ -65,25 +66,26 @@ namespace Babble.Test.HashgraphImpl
         }
 
 
-       public class ancestryItem 
-       {
-           public ancestryItem(string descendant,string ancestor, bool val, bool err)
-           {
-               Descendant = descendant;
-               Ancestor = ancestor;
-               Val = val;
-               Err = err;
-           }
+        public class ancestryItem
+        {
+            public ancestryItem(string descendant, string ancestor, bool val, bool err)
+            {
+                Descendant = descendant;
+                Ancestor = ancestor;
+                Val = val;
+                Err = err;
+            }
 
-           public string     Descendant { get; set; }
-           public string Ancestor { get; set; }
-           public bool     Val  { get; set; }
-           public bool       Err   { get; set; }
+            public string Descendant { get; set; }
+            public string Ancestor { get; set; }
+            public bool Val { get; set; }
+            public bool Err { get; set; }
         }
 
-        public class roundItem  {
-            public  string Event { get; set; }
-            public int      Round { get; set; }
+        public class roundItem
+        {
+            public string Event { get; set; }
+            public int Round { get; set; }
         }
 
 
@@ -134,7 +136,7 @@ namespace Babble.Test.HashgraphImpl
             var participants = Peers.NewPeers();
 
             int i = 0;
-            for ( i = 0; i < n; i++)
+            for (i = 0; i < n; i++)
             {
                 var key = CryptoUtils.GenerateEcdsaKey();
                 var pub = CryptoUtils.FromEcdsaPub(key);
@@ -145,7 +147,7 @@ namespace Babble.Test.HashgraphImpl
 
             i = 0;
 
-            foreach (var  peer in participants.ToPeerSlice())
+            foreach (var peer in participants.ToPeerSlice())
             {
                 nodes.Add(new TestNode(keys[peer.PubKeyHex], i));
             }
@@ -155,19 +157,25 @@ namespace Babble.Test.HashgraphImpl
 
         }
 
-        private  void playEvents(Play[] plays, TestNode[] nodes, Dictionary<string, string> index, List<Event> orderedEvents)
+        private void playEvents(Play[] plays, TestNode[] nodes, Dictionary<string, string> index, List<Event> orderedEvents)
         {
             foreach (var p in plays)
-                {
-                    var e = new Event(p.TxPayload, p.SigPayload, new string[]{index[p.SelfParent],index[p.OtherParent]}, nodes[p.To].Pub, p.Index);
+            {
+                var selfParentIndex = "";
+                index.TryGetValue(p.SelfParent, out selfParentIndex);
 
-                    nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents.ToList());
-                }
+                var otherParentIndex = "";
+                index.TryGetValue(p.OtherParent, out otherParentIndex);
 
-            
+                var e = new Event(p.TxPayload, p.SigPayload, new string[] {selfParentIndex, otherParentIndex}, nodes[p.To].Pub, p.Index);
+
+                nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents.ToList());
+            }
+
+
         }
 
-        private async Task< Hashgraph> createHashgraph(bool db,List<Event> orderedEvents, Peers participants, ILogger logger)
+        private async Task<Hashgraph> createHashgraph(bool db, List<Event> orderedEvents, Peers participants, ILogger logger)
         {
             IStore store;
 
@@ -175,7 +183,7 @@ namespace Babble.Test.HashgraphImpl
             {
                 BabbleError err1;
 
-                (store, err1) = await LocalDbStore.New(participants, CacheSize,GetPath(),logger);
+                (store, err1) = await LocalDbStore.New(participants, CacheSize, GetPath(), logger);
                 if (err1 != null)
                 {
                     logger.Fatal(err1.Message);
@@ -183,30 +191,30 @@ namespace Babble.Test.HashgraphImpl
             }
             else
             {
-                store = await InmemStore.NewInmemStore(participants, CacheSize,logger);
+                store = await InmemStore.NewInmemStore(participants, CacheSize, logger);
             }
 
             var hashgraph = new Hashgraph(participants, store, null, logger);
 
 
-            int i=0;
+            int i = 0;
 
             foreach (var ev in orderedEvents)
-                    {
-                        var err2 = await hashgraph.InsertEvent(ev, true);
+            {
+                var err2 = await hashgraph.InsertEvent(ev, true);
 
-                        if (err2 != null)
-                        {
-                          output.WriteLine($"ERROR inserting event {i}: {err2.Message}");
-                        }
+                if (err2 != null)
+                {
+                    logger.Debug($"ERROR inserting event {i}: {err2.Message}");
+                }
 
-                        i++;
-                    }
+                i++;
+            }
 
-                    return hashgraph;
+            return hashgraph;
         }
 
-        private async Task< (Hashgraph hashgraph, Dictionary<string, string> index,List<Event> events)> initHashgraphFull(Play[] plays, bool db, int n, ILogger logger)
+        private async Task<(Hashgraph hashgraph, Dictionary<string, string> index, List<Event> events)> initHashgraphFull(Play[] plays, bool db, int n, ILogger logger)
         {
 
 
@@ -214,24 +222,24 @@ namespace Babble.Test.HashgraphImpl
 
             // Needed to have sorted nodes based on participants hash32
 
-            int i  = 0;
+            int i = 0;
 
             foreach (var peer in participants.ToPeerSlice())
 
 
-                {
-                    var ev = new Event(null, null, new string[]{Event.RootSelfParent(peer.ID),""}, nodes[i].Pub, 0);
-                    nodes[i].SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
+            {
+                var ev = new Event(null, null, new string[] {Event.RootSelfParent(peer.ID), ""}, nodes[i].Pub, 0);
+                nodes[i].SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
 
-                    i++;
+                i++;
 
-                }
+            }
 
-       
+
 
             playEvents(plays, nodes, index, orderedEvents);
 
-            var hashgraph =await createHashgraph(db, orderedEvents, participants, logger);
+            var hashgraph = await createHashgraph(db, orderedEvents, participants, logger);
 
             return (hashgraph, index, orderedEvents);
         }
@@ -256,9 +264,9 @@ namespace Babble.Test.HashgraphImpl
         0   1   2
         */
 
-        private async Task <( Hashgraph hashgraph, Dictionary<string, string> index)> InitHashgraph()
+        private async Task<( Hashgraph hashgraph, Dictionary<string, string> index)> InitHashgraph()
         {
-        var plays = new[]
+            var plays = new[]
             {
                 new
                     Play
@@ -323,14 +331,30 @@ namespace Babble.Test.HashgraphImpl
 
             foreach (var ev in orderedEvents)
             {
-                var err1=await h.InitEventCoordinates(ev);
-                Assert.NotNull(err1);
+                var err1 = await h.InitEventCoordinates(ev);
 
-                var err2= await h.Store.SetEvent(ev);
-                Assert.NotNull(err2);
+                if (err1 != null)
+                {
+                    output.WriteLine($"{i}: {err1}");
+                    Assert.Null(err1);
+                }
 
-                var err3=  await h.UpdateAncestorFirstDescendant(ev);
-                Assert.NotNull(err3);
+
+                var err2 = await h.Store.SetEvent(ev);
+                if (err2 != null)
+                {
+                    output.WriteLine($"{i}: {err2}");
+                    Assert.Null(err2);
+                }
+
+
+                var err3 = await h.UpdateAncestorFirstDescendant(ev);
+
+                if (err3 != null)
+                {
+                    output.WriteLine($"{i}: {err3}");
+                    Assert.Null(err3);
+                }
 
                 i++;
 
@@ -388,20 +412,58 @@ namespace Babble.Test.HashgraphImpl
 
             foreach (var exp in expected)
             {
-                var (a, err) = await h.Ancestor(index[exp.Descendant], index[exp.Ancestor]);
+                index.TryGetValue(exp.Descendant, out var indexDescendant);
+
+                index.TryGetValue(exp.Ancestor, out var indexAncestor);
+
+                var (a, err) = await h.Ancestor(indexDescendant, indexAncestor);
 
                 if (err != null && !exp.Err)
                 {
                     output.WriteLine($"Error computing ancestor({exp.Descendant}, {exp.Ancestor}). Err: {err}");
                     Assert.NotNull(err);
                 }
+
                 if (a != exp.Val)
                 {
                     output.WriteLine($"ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
-                    Assert.NotEqual(exp.Val,a);
-                }
+                    Assert.Equal(exp.Val, a);
                 }
             }
+        }
+
+
+        [Fact]
+        public async Task TestKey()
+        {
+
+  
+            var key1 = Key.New("a", "b");
+
+
+
+            var key2 = Key.New("a", "b");
+            Assert.Equal(key1,key2);
+      
+            var ac = new LruCache<string, bool>(100,null,logger);
+            ac.Add(key1, true);
+
+            var (res,ok) = ac.Get(key2);
+
+            Assert.True(ok);
+            Assert.True(res);
+
+            
+            var key3 = Key.New("a", "c");
+
+            var (res2,ok2) = ac.Get(key3);
+
+            Assert.False(ok2);
+            Assert.False(res2);
+
+
+        }
+
 
 //        [Fact]
 //        public async Task TestSelfAncestor()

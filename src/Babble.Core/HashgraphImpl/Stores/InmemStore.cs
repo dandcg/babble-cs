@@ -101,7 +101,7 @@ namespace Babble.Core.HashgraphImpl.Stores
         public Task<(Event evt, StoreError err)> GetEvent(string key)
         {
             var (res, ok ) = eventCache.Get(key);
-            logger.Verbose("GetEvent found={ok}; key={key}", ok, key);
+            //logger.Debug("GetEvent found={ok}; key={key}; res={res}", ok, key,res);
 
             if (!ok)
             {
@@ -131,6 +131,7 @@ namespace Babble.Core.HashgraphImpl.Stores
             }
 
             eventCache.Add(key, ev);
+            //logger.Debug("SetEvent key={key}; ev={ev}", key,ev);
 
             return null;
         }
@@ -167,6 +168,7 @@ namespace Babble.Core.HashgraphImpl.Stores
         {
             //try to get the last event from this participant
             var (last, err) = participantEventsCache.GetLast(participant);
+
             bool isRoot = false;
 
             if (err != null && err.StoreErrorType== StoreErrorType.Empty )
@@ -317,7 +319,7 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public Task<(Root root, StoreError err)> GetRoot(string participant)
         {
-            var ok = Roots.TryGetValue(participant, out var res);
+            var ok = rootsByParticipant.TryGetValue(participant, out var res);
 
             if (!ok)
             {

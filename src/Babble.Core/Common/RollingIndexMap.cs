@@ -60,7 +60,7 @@ namespace Babble.Core.Common
             var (cached, _) = pe.GetLastWindow();
             if (cached.Length == 0)
             {
-                return (default, null);
+                return (default, new StoreError(StoreErrorType.Empty, $"{Name}"));
             }
 
             return (cached[cached.Length - 1], null);

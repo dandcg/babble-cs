@@ -118,7 +118,7 @@ namespace Babble.Test.HashgraphImpl
 
             var known = await store.KnownEvents();
 
-            known.ShouldCompareTo(expectedKnown);
+            known.OrderBy(o=>o.Key).ToList().ShouldCompareTo(expectedKnown.OrderBy(o=>o.Key).ToList());
 
             // Add ConsensusEvents
             foreach (var p in participants)
@@ -127,7 +127,8 @@ namespace Babble.Test.HashgraphImpl
                 foreach (var ev in evs)
 
                 {
-                    store.AddConsensusEvent(ev);
+                  var err=  store.AddConsensusEvent(ev);
+                    Assert.Null(err);
                 }
             }
         }

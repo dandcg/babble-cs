@@ -14,5 +14,10 @@ namespace Babble.Core
             Message = message;
             InnerException = innerException;
         }
+
+        public override string ToString()
+        {
+            return Message;
+        }
     }
 }

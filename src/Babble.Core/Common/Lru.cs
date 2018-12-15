@@ -40,28 +40,42 @@ namespace Babble.Core.Common
         [MethodImpl(MethodImplOptions.Synchronized)]
         public bool Add(TKey key, TValue value)
         {
-            var flag = false;
-            if (items.Count >= size)
+
+            var ok = items.TryGetValue(key, out var ent1);
+
+            if (ok)
             {
-                RemoveFirst();
-                flag = true;
+                evictList.Remove(ent1);
+                evictList.AddFirst(ent1);
+                ent1.Value.Value = value;
             }
 
-            var cacheItem = new LruCacheItem(key, value);
-            var node = new LinkedListNode<LruCacheItem>(cacheItem);
-            evictList.AddLast(node);
-            items[key]= node;
-            return flag;
+            // Add new item
+            var ent = new LruCacheItem(key, value);
+            var node = new LinkedListNode<LruCacheItem>(ent);
+            evictList.AddFirst(node);
+            items[key] = node;
+
+            //logger.Debug("add key={key}, value={value}", key,value);
+
+            var evict = evictList.Count() > size;
+            // Verify size not exceeded
+            if (evict)
+            {
+                removeOldest();
+            }
+
+            return evict;
         }
 
         public (TValue value, bool success) Get(TKey key)
         {
-            if (items.TryGetValue(key, out var node))
+            var ok = items.TryGetValue(key, out var ent);
+            if (ok)
             {
-                var value = node.Value.Value;
-                evictList.Remove(node);
-                evictList.AddLast(node);
-                return (value, true);
+                evictList.Remove(ent);
+                evictList.AddFirst(ent);
+                return (ent.Value.Value, true);
             }
 
             return (default, false);
@@ -94,25 +108,27 @@ namespace Babble.Core.Common
         [MethodImpl(MethodImplOptions.Synchronized)]
         public bool Remove(TKey key)
         {
-            var node = evictList.FirstOrDefault(w => w.Key.Equals(key));
+            var node = evictList.LastOrDefault(w => w.Key.Equals(key));
             evictList.Remove(node);
 
             // Remove from cache
             return items.Remove(key);
         }
 
-        // RemoveOldest removes the oldest item from the cache.
-        private void RemoveFirst()
-        {
-            // Remove from LRUPriority
-            var node = evictList.FirstOrDefault();
 
-            if (node != null)
+        // RemoveOldest removes the oldest item from the cache.
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public (TKey, TValue, bool success) RemoveOldest()
+        {
+            var ent = evictList.Last;
+            if (ent != null)
             {
-                evictList.RemoveFirst();
-                items.Remove(node.Key);
-                evictAction?.Invoke(node.Key, node.Value);
+                RemoveElement(ent);
+                var kv = ent.Value;
+                return (kv.Key, kv.Value, true);
             }
+
+            return (default, default, false);
         }
 
         // GetOldest returns the oldest entry
@@ -120,7 +136,7 @@ namespace Babble.Core.Common
         public (TKey key, TValue value, bool success) GetOldest()
         {
             // Remove from LRUPriority
-            var node = evictList.FirstOrDefault();
+            var node = evictList.LastOrDefault();
 
             if (node != null)
             {
@@ -137,10 +153,44 @@ namespace Babble.Core.Common
             return evictList.Count;
         }
 
+        // removeOldest removes the oldest item from the cache.
+        private void removeOldest()
+        {
+            var ent = evictList.Last;
+
+            
+            //logger.Debug("remove key={key}, value={value}", ent.Value.Key,ent.Value.Value);
+
+            if (ent != null)
+            {
+                RemoveElement(ent);
+            }
+        }
+
+        // removeElement is used to remove a given list element from the cache
+        private void RemoveElement(LinkedListNode<LruCacheItem> e)
+        {
+            evictList.Remove(e);
+            var kv = e.Value;
+            
+            items.Remove(kv.Key);
+            evictAction?.Invoke(kv.Key, kv.Value);
+        }
+
         [MethodImpl(MethodImplOptions.Synchronized)]
         public IEnumerable<TKey> Keys()
         {
-            return items.Keys;
+            var keys = new TKey[items.Count];
+            var i = 0;
+            var ent = evictList.Last;
+            while (ent!=null)
+            {
+                keys[i] = ent.Value.Key;
+                ent = ent.Previous;
+                i++;
+            }
+
+            return keys;
         }
 
         private class LruCacheItem
@@ -152,7 +202,7 @@ namespace Babble.Core.Common
             }
 
             public TKey Key { get; }
-            public TValue Value { get; }
+            public TValue Value { get; set; }
         }
     }
 }
