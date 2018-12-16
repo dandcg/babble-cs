@@ -71,9 +71,6 @@
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestSee</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
-        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
-      </NamedTestSelector>
-      <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestSigningIssue</TestName>
       </NamedTestSelector>
       <NamedTestSelector>
@@ -161,16 +158,10 @@
         <TestName>Babble.Test.NodeImpl.ControllerTests.TestOverSyncLimit</TestName>
       </NamedTestSelector>
       <FixtureTestSelector>
-        <FixtureName>Babble.Test.Common.RollingIndexTests</FixtureName>
-      </FixtureTestSelector>
-      <FixtureTestSelector>
         <FixtureName>Babble.Test.Crypto.CryptoTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
         <FixtureName>Babble.Test.HashgraphImpl.BlockTests</FixtureName>
-      </FixtureTestSelector>
-      <FixtureTestSelector>
-        <FixtureName>Babble.Test.Common.LruTests</FixtureName>
       </FixtureTestSelector>
       <FixtureTestSelector>
         <FixtureName>Babble.Test.HashgraphImpl.CachesTests</FixtureName>
@@ -186,6 +177,15 @@
       </FixtureTestSelector>
       <FixtureTestSelector>
         <FixtureName>Babble.Test.HashgraphImpl.InmemStoreTests</FixtureName>
+      </FixtureTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.Common.RollingIndexTests</FixtureName>
+      </FixtureTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestSelfAncestor</TestName>
+      </NamedTestSelector>
+      <FixtureTestSelector>
+        <FixtureName>Babble.Test.Common.LruTests</FixtureName>
       </FixtureTestSelector>
     </IgnoredTests>
   </Settings>

@@ -88,7 +88,7 @@ namespace Babble.Test.Common
             i = 0;
             foreach (var k in l.Keys())
             {
-
+                logger.Debug(k.ToString());
                 Assert.False((i < 63 && k != i + 193) || (i == 63 && k != 192), $"out of order key: {k}");
                 i++;
 
