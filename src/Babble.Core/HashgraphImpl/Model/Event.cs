@@ -116,9 +116,9 @@ namespace Babble.Core.HashgraphImpl.Model
             Body = body;
         }
 
-        public string SelfParent => Body.Parents[0];
+        public string SelfParent => Body.Parents[0] ?? "";
 
-        public string OtherParent => Body.Parents.Length > 1 ? Body.Parents[1] : "";
+        public string OtherParent =>  Body.Parents[1] ?? "";
 
         public byte[][] Transactions()
         {

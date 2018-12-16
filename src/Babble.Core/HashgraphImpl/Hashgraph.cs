@@ -72,8 +72,7 @@ namespace Babble.Core.HashgraphImpl
 
             if (ok)
             {
-                logger.Debug("get x={0} y={1} c={2}", x, y, c);
-                return (c, null);
+               return (c, null);
             }
 
             var (a, err) = await _ancestor(x, y);

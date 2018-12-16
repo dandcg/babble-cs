@@ -124,6 +124,8 @@ namespace Babble.Core.HashgraphImpl.Stores
             if (err != null && err.StoreErrorType == StoreErrorType.KeyNotFound)
             {
                 err = AddParticpantEvent(ev.Creator(), key, ev.Index());
+
+                //logger.Debug("AddParticipantEvent creator={creator}; key={key}; index={index}", ev.Creator(), key, ev.Index());
                 if (err != null)
                 {
                     return err;
@@ -131,7 +133,7 @@ namespace Babble.Core.HashgraphImpl.Stores
             }
 
             eventCache.Add(key, ev);
-            //logger.Debug("SetEvent key={key}; ev={ev}", key,ev);
+            //logger.Debug("SetEvent key={key}; other={other}; self={self}", key,ev.OtherParent, ev.SelfParent);
 
             return null;
         }

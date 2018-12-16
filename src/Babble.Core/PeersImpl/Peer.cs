@@ -31,8 +31,8 @@ namespace Babble.Core.PeersImpl
             var pubKey = PubKeyBytes();
 
             var hash = new Fnv1a32();
-            hash.ComputeHash(pubKey);
-            ID = BitConverter.ToInt32(hash.Hash, 0);
+            var res = hash.ComputeHash(pubKey);
+            ID = hash.GetHashCode();
         }
 
 
