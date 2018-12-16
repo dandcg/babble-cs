@@ -7,7 +7,7 @@ using Serilog;
 
 namespace Babble.Core.Common
 {
-    public class LruCache<TKey, TValue>
+    public class LruCache2<TKey, TValue>
     {
         private readonly Dictionary<TKey, LinkedListNode<LruCacheItem>> items = new Dictionary<TKey, LinkedListNode<LruCacheItem>>();
         private readonly LinkedList<LruCacheItem> evictList = new LinkedList<LruCacheItem>();
@@ -16,7 +16,7 @@ namespace Babble.Core.Common
         private readonly ILogger logger;
 
         // NewLRU constructs an LRU of the given size
-        public LruCache(int size, Action<TKey, TValue> evictAction, ILogger logger, string instanceName = null)
+        public LruCache2(int size, Action<TKey, TValue> evictAction, ILogger logger, string instanceName = null)
         {
             this.size = size;
             this.evictAction = evictAction;
@@ -41,6 +41,16 @@ namespace Babble.Core.Common
         public bool Add(TKey key, TValue value)
         {
 
+
+
+
+
+
+
+
+
+
+
             var ok = items.TryGetValue(key, out var ent1);
 
             if (ok)
@@ -55,8 +65,6 @@ namespace Babble.Core.Common
             var node = new LinkedListNode<LruCacheItem>(ent);
             evictList.AddFirst(node);
             items[key] = node;
-
-            //logger.Debug("add key={key}, value={value}", key,value);
 
             var evict = evictList.Count() > size;
             // Verify size not exceeded
