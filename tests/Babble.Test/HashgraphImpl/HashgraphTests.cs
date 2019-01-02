@@ -352,17 +352,12 @@ namespace Babble.Test.HashgraphImpl
                 new AncestryItem("e12", "", false, true)
             };
 
-
-
-
+            
             foreach (var exp in expected)
             {
 
-                var indexDescendant = "";
-                var indexAncestor = "";
-
-                index.TryGetValue(exp.Descendant, out indexDescendant);
-                index.TryGetValue(exp.Ancestor, out indexAncestor);
+            var indexDescendant = index.GetOrEmpty(exp.Descendant);
+                var indexAncestor = index.GetOrEmpty(exp.Ancestor);
                 
                 indexDescendant = indexDescendant?? "";
                 indexAncestor =indexAncestor?? "";
@@ -442,15 +437,54 @@ namespace Babble.Test.HashgraphImpl
             foreach (var exp in expected)
             {
      
-                index.TryGetValue(exp.Descendant, out var indexDescendant);
-                index.TryGetValue(exp.Ancestor, out var indexAncestor);
-                
-                indexDescendant = indexDescendant?? "";
-                indexAncestor =indexAncestor?? "";
+                var indexDescendant = index.GetOrEmpty(exp.Descendant);
+                var indexAncestor = index.GetOrEmpty(exp.Ancestor);
 
                // logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
 
                 var (a, err) = await h.SelfAncestor(indexDescendant, indexAncestor);
+
+                if (err != null && !exp.Err)
+                {
+                    logger.Error($"Error computing self ancestor({exp.Descendant}, {exp.Ancestor}). Err: {err}");
+                    Assert.NotNull(err);
+                }
+
+                if (a != exp.Val)
+                {
+                    logger.Error($"self ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
+                    Assert.Equal(exp.Val, a);
+                }
+            }
+        }
+
+
+        [Fact]
+        public async Task TestSee()
+        {
+            var ( h, index) = await InitHashgraph();
+
+            var expected = new[]
+            {
+                new AncestryItem("e01", "e0", true, false),
+                new AncestryItem("e01", "e1", true, false),
+                new AncestryItem("e20", "e0", true, false),
+                new AncestryItem("e20", "e01", true, false),
+                new AncestryItem("e12", "e01", true, false),
+                new AncestryItem("e12", "e0", true, false),
+                new AncestryItem("e12", "e1", true, false),
+                new AncestryItem("e12", "s20", true, false)
+            };
+
+            foreach (var exp in expected)
+            {
+     
+                var indexDescendant = index.GetOrEmpty(exp.Descendant);
+                var indexAncestor = index.GetOrEmpty(exp.Ancestor);
+
+                // logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
+
+                var (a, err) = await h.See(indexDescendant, indexAncestor);
 
                 if (err != null && !exp.Err)
                 {
@@ -484,11 +518,9 @@ namespace Babble.Test.HashgraphImpl
                 {"e20", 3},
                 {"e12", 4}
             };
-
          
             foreach ( var etsd in expectedTimestamps)
             {
-
                 var e = etsd.Key;
                 var ets = etsd.Value;
 
@@ -515,27 +547,6 @@ namespace Babble.Test.HashgraphImpl
 
 
 
-        //        [Fact]
-        //        public async Task TestSee()
-        //        {
-        //            var (h, index) = await InitHashgraph();
-
-        //            Assert.True(await h.See(index["e01"], index["e0"]), "e01 should see e0");
-
-        //            Assert.True(await h.See(index["e01"], index["e1"]), "e01 should see e1");
-
-        //            Assert.True(await h.See(index["e20"], index["e0"]), "e20 should see e0");
-
-        //            Assert.True(await h.See(index["e20"], index["e01"]), "e20 should see e01");
-
-        //            Assert.True(await h.See(index["e12"], index["e01"]), "e12 should see e01");
-
-        //            Assert.True(await h.See(index["e12"], index["e0"]), "e12 should see e0");
-
-        //            Assert.True(await h.See(index["e12"], index["e1"]), "e12 should see e1");
-
-        //            Assert.True(await h.See(index["e12"], index["s20"]), "e12 should see s20");
-        //        }
 
         //        [Fact]
         //        public void TestSigningIssue()
