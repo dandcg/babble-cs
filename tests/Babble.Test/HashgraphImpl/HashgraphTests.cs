@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core;
@@ -63,7 +62,6 @@ namespace Babble.Test.HashgraphImpl
                 Events.Add(ev);
                 index[name] = ev.Hex();
                 orderedEvents.Add(ev);
-
             }
         }
 
@@ -152,20 +150,15 @@ namespace Babble.Test.HashgraphImpl
         {
             foreach (var p in plays)
             {
-      
-
                 index.TryGetValue(p.SelfParent, out var selfParentIndex);
-                selfParentIndex =selfParentIndex?? "";
+                selfParentIndex = selfParentIndex ?? "";
 
-        
                 index.TryGetValue(p.OtherParent, out var otherParentIndex);
-                 otherParentIndex =otherParentIndex?? "";
-
+                otherParentIndex = otherParentIndex ?? "";
 
                 var e = new Event(p.TxPayload, p.SigPayload, new[] {selfParentIndex, otherParentIndex}, nodes[p.To].Pub, p.Index);
 
                 nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
-
             }
         }
 
@@ -194,7 +187,6 @@ namespace Babble.Test.HashgraphImpl
 
             foreach (var ev in orderedEvents)
             {
-
                 //logger.Debug("dd {@e}",ev);
                 var err2 = await hashgraph.InsertEvent(ev, true);
 
@@ -205,7 +197,6 @@ namespace Babble.Test.HashgraphImpl
 
                 i++;
             }
- 
 
             return hashgraph;
         }
@@ -218,7 +209,7 @@ namespace Babble.Test.HashgraphImpl
 
             int i = 0;
 
-            foreach (var peer in (await participants.ToPeerSlice()))
+            foreach (var peer in await participants.ToPeerSlice())
 
             {
                 var ev = new Event(null, null, new[] {Event.RootSelfParent(peer.ID), ""}, nodes[i].Pub, 0);
@@ -227,13 +218,11 @@ namespace Babble.Test.HashgraphImpl
             }
 
             PlayEvents(plays, nodes, index, orderedEvents);
-            
+
             foreach (var j in index)
             {
-                logger.Debug("name={name}, hex={hex}",j.Key, j.Value);
+                logger.Debug("name={name}, hex={hex}", j.Key, j.Value);
             }
-            
-     
 
             var hashgraph = await CreateHashgraph(db, orderedEvents, participants, logger);
 
@@ -315,7 +304,6 @@ namespace Babble.Test.HashgraphImpl
         {
             var ( h, index) = await InitHashgraph();
 
-
             var expected = new[]
             {
                 //first generation
@@ -335,7 +323,7 @@ namespace Babble.Test.HashgraphImpl
                 new AncestryItem("e20", "e2", true, false),
                 new AncestryItem("e12", "e1", true, false),
                 new AncestryItem("e12", "s20", true, false),
-                
+
                 //third generation
                 new AncestryItem("e20", "e0", true, false),
                 new AncestryItem("e20", "e1", true, false),
@@ -352,15 +340,13 @@ namespace Babble.Test.HashgraphImpl
                 new AncestryItem("e12", "", false, true)
             };
 
-            
             foreach (var exp in expected)
             {
-
-            var indexDescendant = index.GetOrEmpty(exp.Descendant);
+                var indexDescendant = index.GetOrEmpty(exp.Descendant);
                 var indexAncestor = index.GetOrEmpty(exp.Ancestor);
-                
-                indexDescendant = indexDescendant?? "";
-                indexAncestor =indexAncestor?? "";
+
+                indexDescendant = indexDescendant ?? "";
+                indexAncestor = indexAncestor ?? "";
 
                 logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
 
@@ -374,16 +360,15 @@ namespace Babble.Test.HashgraphImpl
 
                 if (a != exp.Val)
                 {
-                      logger.Error($"ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
+                    logger.Error($"ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
                     Assert.Equal(exp.Val, a);
                 }
             }
 
             foreach (var j in h.AncestorCache.Keys())
             {
-               logger.Debug("k={k}, v={v}", j, h.AncestorCache.Get(j)); 
+                logger.Debug("k={k}, v={v}", j, h.AncestorCache.Get(j));
             }
-
         }
 
         [Fact]
@@ -436,11 +421,10 @@ namespace Babble.Test.HashgraphImpl
 
             foreach (var exp in expected)
             {
-     
                 var indexDescendant = index.GetOrEmpty(exp.Descendant);
                 var indexAncestor = index.GetOrEmpty(exp.Ancestor);
 
-               // logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
+                // logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
 
                 var (a, err) = await h.SelfAncestor(indexDescendant, indexAncestor);
 
@@ -457,7 +441,6 @@ namespace Babble.Test.HashgraphImpl
                 }
             }
         }
-
 
         [Fact]
         public async Task TestSee()
@@ -478,7 +461,6 @@ namespace Babble.Test.HashgraphImpl
 
             foreach (var exp in expected)
             {
-     
                 var indexDescendant = index.GetOrEmpty(exp.Descendant);
                 var indexAncestor = index.GetOrEmpty(exp.Ancestor);
 
@@ -500,7 +482,6 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
-
         [Fact]
         public async Task TestLamportTimestamp()
         {
@@ -518,8 +499,8 @@ namespace Babble.Test.HashgraphImpl
                 {"e20", 3},
                 {"e12", 4}
             };
-         
-            foreach ( var etsd in expectedTimestamps)
+
+            foreach (var etsd in expectedTimestamps)
             {
                 var e = etsd.Key;
                 var ets = etsd.Value;
@@ -530,6 +511,7 @@ namespace Babble.Test.HashgraphImpl
                     logger.Error($"Error computing LamportTimestamp({e}). Err: {err.Message}");
                     Assert.NotNull(err);
                 }
+
                 if (ts != ets)
                 {
                     logger.Error($"{e} LamportTimestamp should be {ets}, not {ts}");
@@ -537,38 +519,6 @@ namespace Babble.Test.HashgraphImpl
                 }
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-        //        [Fact]
-        //        public void TestSigningIssue()
-        //        {
-        //            var key = CryptoUtils.GenerateEcdsaKey();
-
-        //            var node = new TestNode(key, 1);
-
-        //            var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
-
-        //            ev.Sign(key);
-
-        //            Console.WriteLine(ev.Hex());
-
-        //            var ev2 = new Event(null, null, new[] {"", ""}, node.Pub, 0);
-
-        //            ev2.Body.Timestamp = ev.Body.Timestamp;
-
-        //            Console.WriteLine(ev2.Hex());
-
-        //            Assert.Equal(ev.Hex(), ev2.Hex());
-        //        }
 
         //        /*
         //        |    |    e20
@@ -584,77 +534,77 @@ namespace Babble.Test.HashgraphImpl
         //        e0   e1 (a)e2
         //        0    1     2
 
-        //        Node 2 Forks; events a and e2 are both created by node2, they are not self-parents
-        //        and yet they are both ancestors of event e20
-        //        */
-        //        [Fact]
-        //        public async Task TestFork()
-        //        {
-        //            var index = new Dictionary<string, string>();
+        // Node 2 Forks; events a and e2 are both created by node2, they are not self-parents
+        // and yet they are both ancestors of event e20
 
-        //            var nodes = new List<TestNode>();
+        [Fact]
+        public async Task TestFork()
+        {
+            var index = new Dictionary<string, string>();
 
-        //            var participants = new Dictionary<string, int>();
+            var nodes = new List<TestNode>();
 
-        //            int i = 0;
-        //            for (i = 0; i < N; i++)
-        //            {
-        //                var key = CryptoUtils.GenerateEcdsaKey();
-        //                var node = new TestNode(key, i);
-        //                nodes.Add(node);
-        //                participants.Add(node.Pub.ToHex(), node.Id);
-        //            }
+            var participants = Peers.NewPeers();
 
-        //            var store = new InmemStore(participants, CacheSize, logger);
+            int i = 0;
+            for (i = 0; i < N; i++)
+            {
+                var key = CryptoUtils.GenerateEcdsaKey();
+                var node = new TestNode(key, i);
+                nodes.Add(node);
+                await participants.AddPeer(Peer.New(node.Pub.ToHex(), ""));
+            }
 
-        //            var hashgraph = new Hashgraph(participants, store, null, logger);
+            var store = await InmemStore.NewInmemStore(participants, CacheSize, logger);
 
-        //            i = 0;
-        //            foreach (var node in nodes)
-        //            {
-        //                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
+            var hashgraph = new Hashgraph(participants, store, null, logger);
 
-        //                ev.Sign(node.Key);
+            i = 0;
+            foreach (var node in nodes)
+            {
+                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
 
-        //                index.Add($"e{i}", ev.Hex());
+                ev.Sign(node.Key);
 
-        //                await hashgraph.InsertEvent(ev, true);
+                index.Add($"e{i}", ev.Hex());
 
-        //                i++;
-        //            }
+                await hashgraph.InsertEvent(ev, true);
 
-        //            // ---
+                i++;
+            }
 
-        //            //a and e2 need to have different hashes
+// ---
 
-        //            var eventA = new Event(new[] {"yo".StringToBytes()}, null, new[] {"", ""}, nodes[2].Pub, 0);
-        //            eventA.Sign(nodes[2].Key);
-        //            index["a"] = eventA.Hex();
+//a and e2 need to have different hashes
 
-        //            // "InsertEvent should return error for 'a'"
-        //            var err = hashgraph.InsertEvent(eventA, true);
-        //            Assert.NotNull(err);
+            var eventA = new Event(new[] {"yo".StringToBytes()}, null, new[] {"", ""}, nodes[2].Pub, 0);
+            eventA.Sign(nodes[2].Key);
+            index["a"] = eventA.Hex();
 
-        //            //// ---
+            // "InsertEvent should return error for 'a'"
+            var err = hashgraph.InsertEvent(eventA, true);
+            Assert.NotNull(err);
 
-        //            var event01 = new Event(null, null, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
-        //            event01.Sign(nodes[0].Key);
-        //            index["e01"] = event01.Hex();
+            //// ---
 
-        //            // "InsertEvent should return error for e01";
-        //            err = hashgraph.InsertEvent(event01, true);
-        //            Assert.NotNull(err);
+            var event01 = new Event(null, null, new[] {index["e0"], index["a"]}, nodes[0].Pub, 1); //e0 and a
+            event01.Sign(nodes[0].Key);
+            index["e01"] = event01.Hex();
 
-        //            // ---
+            // "InsertEvent should return error for e01";
+            err = hashgraph.InsertEvent(event01, true);
+            Assert.NotNull(err);
 
-        //            var event20 = new Event(null, null, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
-        //            event20.Sign(nodes[2].Key);
-        //            index["e20"] = event20.Hex();
+            // ---
 
-        //            //"InsertEvent should return error for e20"
-        //            err = hashgraph.InsertEvent(event20, true);
-        //            Assert.NotNull(err);
-        //        }
+            var event20 = new Event(null, null, new[] {index["e2"], index["e01"]}, nodes[2].Pub, 1); //e2 and e01
+            event20.Sign(nodes[2].Key);
+            index["e20"] = event20.Hex();
+
+            //"InsertEvent should return error for e20"
+            err = hashgraph.InsertEvent(event20, true);
+            Assert.NotNull(err);
+        }
 
         //        /*
         //        |  s11  |
