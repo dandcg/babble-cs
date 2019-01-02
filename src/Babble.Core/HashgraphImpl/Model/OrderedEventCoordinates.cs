@@ -41,10 +41,4 @@ namespace Babble.Core.HashgraphImpl.Model
         }
 
         }
-
-    public class Index
-    {
-        public int ParticipantId { get; set; }
-        public EventCoordinates Event { get; set; }
-    }
 }

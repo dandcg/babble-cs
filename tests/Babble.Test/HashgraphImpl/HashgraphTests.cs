@@ -625,247 +625,186 @@ namespace Babble.Test.HashgraphImpl
         //        0   1    2
         //        */
 
-        //        private async Task<(Hashgraph hashgraph, Dictionary<string, string> index)> InitRoundHashgraph()
-        //        {
-        //            var index = new Dictionary<string, string>();
+        private async Task<(Hashgraph hashgraph, Dictionary<string, string> index)> InitRoundHashgraph()
+        {
+            var plays = new[]
+            {
+                        new Play(1, 1, "e1", "e0", "e10", null, null),
+                        new Play(2, 1, "e2", "", "s20", null, null),
+                        new Play(0, 1, "e0", "", "s00", null, null),
+                        new Play(2, 2, "s20", "e10", "e21", null, null),
+                        new Play(0, 2, "s00", "e21", "e02", null, null),
+                        new Play(1, 2, "e10", "", "s10", null, null),
+                        new Play(1, 3, "s10", "e02", "f1", null, null),
+                        new Play(1, 4, "f1", "", "s11", new[] {"abc".StringToBytes()}, null)
+                    };
 
-        //            var nodes = new List<TestNode>();
+            var (h, index, _) = await InitHashgraphFull(plays, false, N, logger);
 
-        //            var orderedEvents = new List<Event>();
+            return (h, index);
+        }
 
-        //            for (var i = 0; i < N; i++)
-        //            {
-        //                var key = CryptoUtils.GenerateEcdsaKey();
-        //                var node = new TestNode(key, i);
+        [Fact]
+        public async Task TestInsertEvent()
+        {
+            var (h, index) = await InitRoundHashgraph();
 
-        //                var ev = new Event(null, null, new[] {"", ""}, node.Pub, 0);
-        //                node.SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
-        //                nodes.Add(node);
-        //            }
 
-        //            var plays = new[]
-        //            {
-        //                new Play(1, 1, "e1", "e0", "e10", null, null),
-        //                new Play(2, 1, "e2", "", "s20", null, null),
-        //                new Play(0, 1, "e0", "", "s00", null, null),
-        //                new Play(2, 2, "s20", "e10", "e21", null, null),
-        //                new Play(0, 2, "s00", "e21", "e02", null, null),
-        //                new Play(1, 2, "e10", "", "s10", null, null),
-        //                new Play(1, 3, "s10", "e02", "f1", null, null),
-        //                new Play(1, 4, "f1", "", "s11", new[] {"abc".StringToBytes()}, null)
-        //            };
+            var participants =await h.Participants.ToPeerSlice();
 
-        //            foreach (var p in plays)
-        //            {
-        //                var parents = new List<string> {index[p.SelfParent]};
+        
 
-        //                index.TryGetValue(p.OtherParent, out var otherParent);
+            //e0
+            var (e0, err) = await h.Store.GetEvent(index["e0"]);
 
-        //                parents.Add(otherParent ?? "");
+            Assert.Null(err);
 
-        //                var e = new Event(
-        //                    p.TxPayload,
-        //                    p.SigPayload,
-        //                    parents.ToArray(),
-        //                    nodes[p.To].Pub,
-        //                    p.Index);
+            Assert.True(e0.Body.GetSelfParentIndex() == -1 &&
+                        e0.Body.GetOtherParentCreatorId() == -1 &&
+                        e0.Body.GetOtherParentIndex() == -1 &&
+                        e0.Body.GetCreatorId() == h.Participants.ByPubKey[e0.Creator()].ID, "Invalid wire info on e0");
 
-        //                nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
-        //            }
 
-        //            var participants = new Dictionary<string, int>();
-        //            foreach (var node in nodes)
-        //            {
-        //                participants.Add(node.Pub.ToHex(), node.Id);
-        //            }
+            var expectedFirstDescendants = new OrderedEventCoordinates(new Index[]
+            {
+                new Index(participants[0].ID, new EventCoordinates(index["e0"], 0)),
+                new Index(participants[1].ID, new EventCoordinates(index["e10"], 1)),
+                new Index(participants[2].ID, new EventCoordinates(index["e21"], 2)),
+            });
 
-        //            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize, logger), null, logger);
 
-        //            foreach (var ev in orderedEvents)
-        //            {
-        //                await hashgraph.InsertEvent(ev, true);
-        //            }
+            var  expectedLastAncestors = new OrderedEventCoordinates(new Index[]
+            {
+                new Index(participants[0].ID, new EventCoordinates(index["e0"], 0)),
+                new Index(participants[1].ID, new EventCoordinates("", -1)),
+                new Index(participants[2].ID, new EventCoordinates("", -1)),
+            });
 
-        //            return (hashgraph, index);
-        //        }
+            e0.FirstDescendants.Values.ShouldCompareTo(expectedFirstDescendants.Values);
+            e0.LastAncestors.Values.ShouldCompareTo(expectedLastAncestors.Values);
 
-        //        [Fact]
-        //        public async Task TestInsertEvent()
-        //        {
-        //            var (h, index) = await InitRoundHashgraph();
+            //e21
+            Event e21;
+            (e21, err) = await h.Store.GetEvent(index["e21"]);
 
-        //            var expectedFirstDescendants = new List<EventCoordinates>(N);
-        //            var expectedLastAncestors = new List<EventCoordinates>(N);
+            Assert.Null(err);
 
-        //            //e0
-        //            var (e0, err) = await h.Store.GetEvent(index["e0"]);
+            Event e10;
+            (e10, err) = await h.Store.GetEvent(index["e10"]);
 
-        //            Assert.Null(err);
+            Assert.Null(err);
 
-        //            Assert.True(e0.Body.GetSelfParentIndex() == -1 &&
-        //                        e0.Body.GetOtherParentCreatorId() == -1 &&
-        //                        e0.Body.GetOtherParentIndex() == -1 &&
-        //                        e0.Body.GetCreatorId() == h.Participants[e0.Creator()], "Invalid wire info on e0");
+            Assert.True(e21.Body.GetSelfParentIndex() == 1 &&
+                        e21.Body.GetOtherParentCreatorId() == h.Participants.ByPubKey[e10.Creator()].ID &&
+                        e21.Body.GetOtherParentIndex() == 1 &&
+                        e21.Body.GetCreatorId() == h.Participants.ByPubKey[e21.Creator()].ID
+                , "Invalid wire info on e21"
+            );
 
-        //            expectedFirstDescendants.Add(new EventCoordinates
-        //            {
-        //                Index = 0,
-        //                Hash = index["e0"]
-        //            });
+            // -------------
 
-        //            expectedFirstDescendants.Add(new EventCoordinates
-        //            {
-        //                Index = 1,
-        //                Hash = index["e10"]
-        //            });
+            //expectedFirstDescendants[0] = new EventCoordinates
+            //{
+            //    Index = 2,
+            //    Hash = index["e02"]
+            //};
 
-        //            expectedFirstDescendants.Add(new EventCoordinates
-        //            {
-        //                Index = 2,
-        //                Hash = index["e21"]
-        //            });
+            //expectedFirstDescendants[1] = new EventCoordinates
+            //{
+            //    Index = 3,
+            //    Hash = index["f1"]
+            //};
 
-        //            expectedLastAncestors.Add(new EventCoordinates
-        //            {
-        //                Index = 0,
-        //                Hash = index["e0"]
-        //            });
+            //expectedFirstDescendants[2] = new EventCoordinates
+            //{
+            //    Index = 2,
+            //    Hash = index["e21"]
+            //};
 
-        //            expectedLastAncestors.Add(new EventCoordinates
-        //            {
-        //                Index = -1
-        //            });
+            //expectedLastAncestors[0] = new EventCoordinates
+            //{
+            //    Index = 0,
+            //    Hash = index["e0"]
+            //};
 
-        //            expectedLastAncestors.Add(new EventCoordinates
-        //            {
-        //                Index = -1
-        //            });
+            //expectedLastAncestors[1] = new EventCoordinates
+            //{
+            //    Index = 1,
+            //    Hash = index["e10"]
+            //};
 
-        //            e0.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
-        //            e0.LastAncestors.ShouldCompareTo(expectedLastAncestors.ToArray());
+            //expectedLastAncestors[2] = new EventCoordinates
+            //{
+            //    Index = 2,
+            //    Hash = index["e21"]
+            //};
 
-        //            //e21
-        //            Event e21;
-        //            (e21, err) = await h.Store.GetEvent(index["e21"]);
+            //// "e21 firstDescendants not good"
+            //e21.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
 
-        //            Assert.Null(err);
+            ////"e21 lastAncestors not good" 
+            //e21.LastAncestors.ShouldCompareTo(expectedLastAncestors.ToArray());
 
-        //            Event e10;
-        //            (e10, err) = await h.Store.GetEvent(index["e10"]);
+            ////f1
+            //Event f1;
+            //(f1, err) = await h.Store.GetEvent(index["f1"]);
 
-        //            Assert.Null(err);
+            //Assert.Null(err);
 
-        //            Assert.True(e21.Body.GetSelfParentIndex() == 1 &&
-        //                        e21.Body.GetOtherParentCreatorId() == h.Participants[e10.Creator()] &&
-        //                        e21.Body.GetOtherParentIndex() == 1 &&
-        //                        e21.Body.GetCreatorId() == h.Participants[e21.Creator()]
-        //                , "Invalid wire info on e21"
-        //            );
+            //Assert.True(f1.Body.GetSelfParentIndex() == 2 &&
+            //            f1.Body.GetOtherParentCreatorId() == h.Participants.ByPubKey[e0.Creator()].ID &&
+            //            f1.Body.GetOtherParentIndex() == 2 &&
+            //            f1.Body.GetCreatorId() == h.Participants.ByPubKey[f1.Creator()].ID, "Invalid wire info on f1");
 
-        //            // -------------
+            //// -------------
 
-        //            expectedFirstDescendants[0] = new EventCoordinates
-        //            {
-        //                Index = 2,
-        //                Hash = index["e02"]
-        //            };
+            //expectedFirstDescendants[0] = new EventCoordinates
+            //{
+            //    Index = int.MaxValue
+            //};
 
-        //            expectedFirstDescendants[1] = new EventCoordinates
-        //            {
-        //                Index = 3,
-        //                Hash = index["f1"]
-        //            };
+            //expectedFirstDescendants[1] = new EventCoordinates
+            //{
+            //    Index = 3,
+            //    Hash = index["f1"]
+            //};
 
-        //            expectedFirstDescendants[2] = new EventCoordinates
-        //            {
-        //                Index = 2,
-        //                Hash = index["e21"]
-        //            };
+            //expectedFirstDescendants[2] = new EventCoordinates
+            //{
+            //    Index = int.MaxValue
+            //};
 
-        //            expectedLastAncestors[0] = new EventCoordinates
-        //            {
-        //                Index = 0,
-        //                Hash = index["e0"]
-        //            };
+            //expectedLastAncestors[0] = new EventCoordinates
+            //{
+            //    Index = 2,
+            //    Hash = index["e02"]
+            //};
 
-        //            expectedLastAncestors[1] = new EventCoordinates
-        //            {
-        //                Index = 1,
-        //                Hash = index["e10"]
-        //            };
+            //expectedLastAncestors[1] = new EventCoordinates
+            //{
+            //    Index = 3,
+            //    Hash = index["f1"]
+            //};
 
-        //            expectedLastAncestors[2] = new EventCoordinates
-        //            {
-        //                Index = 2,
-        //                Hash = index["e21"]
-        //            };
+            //expectedLastAncestors[2] = new EventCoordinates
+            //{
+            //    Index = 2,
+            //    Hash = index["e21"]
+            //};
 
-        //            // "e21 firstDescendants not good"
-        //            e21.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
+            //// "f1 firstDescendants not good"
+            //f1.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
 
-        //            //"e21 lastAncestors not good" 
-        //            e21.LastAncestors.ShouldCompareTo(expectedLastAncestors.ToArray());
+            //// "f1 lastAncestors not good"
+            //f1.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
 
-        //            //f1
-        //            Event f1;
-        //            (f1, err) = await h.Store.GetEvent(index["f1"]);
-
-        //            Assert.Null(err);
-
-        //            Assert.True(f1.Body.GetSelfParentIndex() == 2 &&
-        //                        f1.Body.GetOtherParentCreatorId() == h.Participants[e0.Creator()] &&
-        //                        f1.Body.GetOtherParentIndex() == 2 &&
-        //                        f1.Body.GetCreatorId() == h.Participants[f1.Creator()], "Invalid wire info on f1");
-
-        //            // -------------
-
-        //            expectedFirstDescendants[0] = new EventCoordinates
-        //            {
-        //                Index = int.MaxValue
-        //            };
-
-        //            expectedFirstDescendants[1] = new EventCoordinates
-        //            {
-        //                Index = 3,
-        //                Hash = index["f1"]
-        //            };
-
-        //            expectedFirstDescendants[2] = new EventCoordinates
-        //            {
-        //                Index = int.MaxValue
-        //            };
-
-        //            expectedLastAncestors[0] = new EventCoordinates
-        //            {
-        //                Index = 2,
-        //                Hash = index["e02"]
-        //            };
-
-        //            expectedLastAncestors[1] = new EventCoordinates
-        //            {
-        //                Index = 3,
-        //                Hash = index["f1"]
-        //            };
-
-        //            expectedLastAncestors[2] = new EventCoordinates
-        //            {
-        //                Index = 2,
-        //                Hash = index["e21"]
-        //            };
-
-        //            // "f1 firstDescendants not good"
-        //            f1.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
-
-        //            // "f1 lastAncestors not good"
-        //            f1.FirstDescendants.ShouldCompareTo(expectedFirstDescendants.ToArray());
-
-        //            //Pending loaded Events
-        //            // 3 Events with index 0,
-        //            // 1 Event with non-empty Transactions
-        //            //= 4 Loaded Events
-        //            var ple = h.PendingLoadedEvents;
-        //            Assert.Equal(4, ple);
-        //        }
+            ////Pending loaded Events
+            //// 3 Events with index 0,
+            //// 1 Event with non-empty Transactions
+            ////= 4 Loaded Events
+            //var ple = h.PendingLoadedEvents;
+            //Assert.Equal(4, ple);
+        }
 
         //        [Fact]
         //        public async Task TestReadWireInfo()
