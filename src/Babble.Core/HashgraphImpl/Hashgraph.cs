@@ -402,7 +402,7 @@ namespace Babble.Core.HashgraphImpl
             return (ex.GetRoundReceived() ?? -1, null);
         }
 
-        private async Task<(int, StoreError)> LamportTimestamp(string x)
+        public async Task<(int, StoreError)> LamportTimestamp(string x)
         {
             {
                 var (c, ok) = TimestampCache.Get(x);

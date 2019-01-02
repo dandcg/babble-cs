@@ -373,13 +373,13 @@ namespace Babble.Test.HashgraphImpl
 
                 if (err != null && !exp.Err)
                 {
-                    output.WriteLine($"Error computing ancestor({exp.Descendant}, {exp.Ancestor}). Err: {err}");
+                    logger.Error($"Error computing ancestor({exp.Descendant}, {exp.Ancestor}). Err: {err}");
                     Assert.NotNull(err);
                 }
 
                 if (a != exp.Val)
                 {
-                    output.WriteLine($"ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
+                      logger.Error($"ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
                     Assert.Equal(exp.Val, a);
                 }
             }
@@ -454,17 +454,66 @@ namespace Babble.Test.HashgraphImpl
 
                 if (err != null && !exp.Err)
                 {
-                    output.WriteLine($"Error computing self ancestor({exp.Descendant}, {exp.Ancestor}). Err: {err}");
+                    logger.Error($"Error computing self ancestor({exp.Descendant}, {exp.Ancestor}). Err: {err}");
                     Assert.NotNull(err);
                 }
 
                 if (a != exp.Val)
                 {
-                    output.WriteLine($"self ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
+                    logger.Error($"self ancestor({exp.Descendant}, {exp.Ancestor}) should be {exp.Val}, not {a}");
                     Assert.Equal(exp.Val, a);
                 }
             }
         }
+
+
+        [Fact]
+        public async Task TestLamportTimestamp()
+        {
+            var ( h, index) = await InitHashgraph();
+
+            var expectedTimestamps = new Dictionary<string, int>
+            {
+                {"e0", 0},
+                {"e1", 0},
+                {"e2", 0},
+                {"e01", 1},
+                {"s10", 1},
+                {"s20", 1},
+                {"s00", 2},
+                {"e20", 3},
+                {"e12", 4}
+            };
+
+         
+            foreach ( var etsd in expectedTimestamps)
+            {
+
+                var e = etsd.Key;
+                var ets = etsd.Value;
+
+                var (ts, err) = await h.LamportTimestamp(index[e]);
+                if (err != null)
+                {
+                    logger.Error($"Error computing LamportTimestamp({e}). Err: {err.Message}");
+                    Assert.NotNull(err);
+                }
+                if (ts != ets)
+                {
+                    logger.Error($"{e} LamportTimestamp should be {ets}, not {ts}");
+                    Assert.Equal(ets, ts);
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
 
         //        [Fact]
         //        public async Task TestSee()
