@@ -205,8 +205,7 @@ namespace Babble.Test.HashgraphImpl
 
                 i++;
             }
-            logger.Debug("AncestorCacheCount={AncestorCacheCount}",hashgraph.AncestorCache.Keys().Count());
-
+ 
 
             return hashgraph;
         }
@@ -315,14 +314,6 @@ namespace Babble.Test.HashgraphImpl
         public async Task TestAncestor()
         {
             var ( h, index) = await InitHashgraph();
-
-
-            logger.Debug("AncestorCacheCount={AncestorCacheCount}",h.AncestorCache.Keys().Count());
-
-   
-
-
-
 
 
             var expected = new[]

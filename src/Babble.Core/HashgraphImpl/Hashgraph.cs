@@ -112,16 +112,13 @@ namespace Babble.Core.HashgraphImpl
             var eyCreator = Participants.ByPubKey[ey.Creator()].ID;
             var (entry, ok) = ex.LastAncestors.GetById(eyCreator);
 
-            logger.Debug("cr = {cr}, la={@la}",eyCreator,ex.LastAncestors);
-
-
             if (!ok)
             {
                 return (false, new HashgraphError($"Unknown event id {eyCreator}"));
             }
 
             var lastAncestorKnownFromYCreator = entry.Event.Index;
-            logger.Debug("lastAncestorKnownFromYCreator {c} >= ey.Index() {i}" ,lastAncestorKnownFromYCreator,ey.Index() );
+
             return (lastAncestorKnownFromYCreator >= ey.Index(), null);
         }
 
@@ -691,14 +688,10 @@ namespace Babble.Core.HashgraphImpl
                 i = 0;
                 foreach (var la in ev.LastAncestors.Values)
                 {
-                    if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index) continue;
+                    if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index) 
                     {
-                     
                         ev.LastAncestors.Values[i].Event.Index = otherParentLastAncestors.Values[i].Event.Index;
                         ev.LastAncestors.Values[i].Event.Hash = otherParentLastAncestors.Values[i].Event.Hash;
-
-           
-
                     }
                     i++;
                 }
