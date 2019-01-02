@@ -29,7 +29,7 @@ namespace Babble.Core.PeersImpl
                 peers.AddPeerRaw(peer);
             }
 
-            peers.internalSort();
+            peers.InternalSort();
 
             return peers;
         }
@@ -57,11 +57,11 @@ namespace Babble.Core.PeersImpl
             {
                 AddPeerRaw(peer);
 
-                internalSort();
+                InternalSort();
             }
         }
 
-        private  void internalSort()
+        private  void InternalSort()
         {
             Sorted = ById.Values.OrderBy(o => o.ID).ToList();
         }
@@ -82,7 +82,7 @@ namespace Babble.Core.PeersImpl
                 ByPubKey.Remove(peer.PubKeyHex);
                 ById.Remove(peer.ID);
 
-                internalSort();
+                InternalSort();
             }
         }
 
@@ -98,9 +98,12 @@ namespace Babble.Core.PeersImpl
 
         /* ToSlice Methods */
 
-        public Peer[] ToPeerSlice()
+        public async Task<Peer[]> ToPeerSlice()
         {
-            return Sorted.ToArray();
+            using (await RwMutex.LockAsync())
+            {
+                return Sorted.ToArray();
+            }
         }
 
         public async Task<string[]> ToPubKeySlice()
@@ -121,7 +124,7 @@ namespace Babble.Core.PeersImpl
 
         /* Utilities */
 
-        public  int Len()
+        public int Len()
         {
             using (RwMutex.Lock())
             {

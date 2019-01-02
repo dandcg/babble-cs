@@ -100,10 +100,10 @@ namespace Babble.Core.NodeImpl
             nodeState.SetState(NodeStateEnum.Babbling);
         }
 
-        public Task<BabbleError> Init(bool bootstrap)
+        public async Task<BabbleError> Init(bool bootstrap)
         {
             var peerAddresses = new List<string>();
-            foreach (var p in PeerSelector.Peers().ToPeerSlice())
+            foreach (var p in (await PeerSelector.Peers().ToPeerSlice()))
             {
                 peerAddresses.Add(p.NetAddr);
             }
@@ -112,10 +112,10 @@ namespace Babble.Core.NodeImpl
 
             if (bootstrap)
             {
-                return Controller.Bootstrap();
+               return await Controller.Bootstrap();
             }
 
-            return Controller.SetHeadAndSeq();
+           return await Controller.SetHeadAndSeq();
         }
 
         public Task StartAsync(bool gossip, CancellationToken ct = default)
@@ -274,7 +274,7 @@ namespace Babble.Core.NodeImpl
                     if (proceed && err == null)
                     {
                         logger.Debug("Time to gossip!");
-                        var peer = PeerSelector.Next();
+                        var peer = await PeerSelector.Next();
                         logger.Debug("gossip from {localAddr} to peer {peer}",LocalAddr, peer.NetAddr);
                         await Gossip(peer.NetAddr);
 

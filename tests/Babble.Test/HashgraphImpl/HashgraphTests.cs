@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core;
@@ -62,12 +63,13 @@ namespace Babble.Test.HashgraphImpl
                 Events.Add(ev);
                 index[name] = ev.Hex();
                 orderedEvents.Add(ev);
+
             }
         }
 
-        public class ancestryItem
+        public class AncestryItem
         {
-            public ancestryItem(string descendant, string ancestor, bool val, bool err)
+            public AncestryItem(string descendant, string ancestor, bool val, bool err)
             {
                 Descendant = descendant;
                 Ancestor = ancestor;
@@ -81,7 +83,7 @@ namespace Babble.Test.HashgraphImpl
             public bool Err { get; set; }
         }
 
-        public class roundItem
+        public class RoundItem
         {
             public string Event { get; set; }
             public int Round { get; set; }
@@ -138,7 +140,7 @@ namespace Babble.Test.HashgraphImpl
 
             i = 0;
 
-            foreach (var peer in participants.ToPeerSlice())
+            foreach (var peer in await participants.ToPeerSlice())
             {
                 nodes.Add(new TestNode(keys[peer.PubKeyHex], i));
             }
@@ -146,25 +148,28 @@ namespace Babble.Test.HashgraphImpl
             return (nodes.ToArray(), index, orderedEvents, participants);
         }
 
-        private void playEvents(Play[] plays, TestNode[] nodes, Dictionary<string, string> index, List<Event> orderedEvents)
+        private void PlayEvents(Play[] plays, TestNode[] nodes, Dictionary<string, string> index, List<Event> orderedEvents)
         {
             foreach (var p in plays)
             {
-                logger.Debug("{@p}", p);
+      
 
-                var selfParentIndex = "";
-                index.TryGetValue(p.SelfParent, out selfParentIndex);
+                index.TryGetValue(p.SelfParent, out var selfParentIndex);
+                selfParentIndex =selfParentIndex?? "";
 
-                var otherParentIndex = "";
-                index.TryGetValue(p.OtherParent, out otherParentIndex);
+        
+                index.TryGetValue(p.OtherParent, out var otherParentIndex);
+                 otherParentIndex =otherParentIndex?? "";
+
 
                 var e = new Event(p.TxPayload, p.SigPayload, new[] {selfParentIndex, otherParentIndex}, nodes[p.To].Pub, p.Index);
 
                 nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
+
             }
         }
 
-        private async Task<Hashgraph> createHashgraph(bool db, List<Event> orderedEvents, Peers participants, ILogger logger)
+        private async Task<Hashgraph> CreateHashgraph(bool db, List<Event> orderedEvents, Peers participants, ILogger logger)
         {
             IStore store;
 
@@ -190,7 +195,7 @@ namespace Babble.Test.HashgraphImpl
             foreach (var ev in orderedEvents)
             {
 
-                logger.Debug("dd {@e}",ev);
+                //logger.Debug("dd {@e}",ev);
                 var err2 = await hashgraph.InsertEvent(ev, true);
 
                 if (err2 != null)
@@ -200,11 +205,13 @@ namespace Babble.Test.HashgraphImpl
 
                 i++;
             }
+            logger.Debug("AncestorCacheCount={AncestorCacheCount}",hashgraph.AncestorCache.Keys().Count());
+
 
             return hashgraph;
         }
 
-        private async Task<(Hashgraph hashgraph, Dictionary<string, string> index, List<Event> events)> initHashgraphFull(Play[] plays, bool db, int n, ILogger logger)
+        private async Task<(Hashgraph hashgraph, Dictionary<string, string> index, List<Event> events)> InitHashgraphFull(Play[] plays, bool db, int n, ILogger logger)
         {
             var (nodes, index, orderedEvents, participants) = await InitHashgraphNodes(n);
 
@@ -212,18 +219,24 @@ namespace Babble.Test.HashgraphImpl
 
             int i = 0;
 
-            foreach (var peer in participants.ToPeerSlice())
+            foreach (var peer in (await participants.ToPeerSlice()))
 
             {
                 var ev = new Event(null, null, new[] {Event.RootSelfParent(peer.ID), ""}, nodes[i].Pub, 0);
                 nodes[i].SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
-
                 i++;
             }
 
-            playEvents(plays, nodes, index, orderedEvents);
+            PlayEvents(plays, nodes, index, orderedEvents);
+            
+            foreach (var j in index)
+            {
+                logger.Debug("name={name}, hex={hex}",j.Key, j.Value);
+            }
+            
+     
 
-            var hashgraph = await createHashgraph(db, orderedEvents, participants, logger);
+            var hashgraph = await CreateHashgraph(db, orderedEvents, participants, logger);
 
             return (hashgraph, index, orderedEvents);
         }
@@ -255,7 +268,7 @@ namespace Babble.Test.HashgraphImpl
                 new Play(1, 2, "s10", "e20", "e12", null, null)
             };
 
-            var (h, index, orderedEvents) = await initHashgraphFull(plays, false, N, logger);
+            var (h, index, orderedEvents) = await InitHashgraphFull(plays, false, N, logger);
 
             int i = 0;
 
@@ -303,50 +316,67 @@ namespace Babble.Test.HashgraphImpl
         {
             var ( h, index) = await InitHashgraph();
 
+
+            logger.Debug("AncestorCacheCount={AncestorCacheCount}",h.AncestorCache.Keys().Count());
+
+   
+
+
+
+
+
             var expected = new[]
             {
                 //first generation
-                new ancestryItem("e01", "e0", true, false),
-                new ancestryItem("e01", "e1", true, false),
-                new ancestryItem("s00", "e01", true, false),
-                new ancestryItem("s20", "e2", true, false),
-                new ancestryItem("e20", "s00", true, false),
-                new ancestryItem("e20", "s20", true, false),
-                new ancestryItem("e12", "e20", true, false),
-                new ancestryItem("e12", "s10", true, false),
+                new AncestryItem("e01", "e0", true, false),
+                new AncestryItem("e01", "e1", true, false),
+                new AncestryItem("s00", "e01", true, false),
+                new AncestryItem("s20", "e2", true, false),
+                new AncestryItem("e20", "s00", true, false),
+                new AncestryItem("e20", "s20", true, false),
+                new AncestryItem("e12", "e20", true, false),
+                new AncestryItem("e12", "s10", true, false),
+
                 //second generation
-                new ancestryItem("s00", "e0", true, false),
-                new ancestryItem("s00", "e1", true, false),
-                new ancestryItem("e20", "e01", true, false),
-                new ancestryItem("e20", "e2", true, false),
-                new ancestryItem("e12", "e1", true, false),
-                new ancestryItem("e12", "s20", true, false),
+                new AncestryItem("s00", "e0", true, false),
+                new AncestryItem("s00", "e1", true, false),
+                new AncestryItem("e20", "e01", true, false),
+                new AncestryItem("e20", "e2", true, false),
+                new AncestryItem("e12", "e1", true, false),
+                new AncestryItem("e12", "s20", true, false),
+                
                 //third generation
-                new ancestryItem("e20", "e0", true, false),
-                new ancestryItem("e20", "e1", true, false),
-                new ancestryItem("e20", "e2", true, false),
-                new ancestryItem("e12", "e01", true, false),
-                new ancestryItem("e12", "e0", true, false),
-                new ancestryItem("e12", "e1", true, false),
-                new ancestryItem("e12", "e2", true, false),
+                new AncestryItem("e20", "e0", true, false),
+                new AncestryItem("e20", "e1", true, false),
+                new AncestryItem("e20", "e2", true, false),
+                new AncestryItem("e12", "e01", true, false),
+                new AncestryItem("e12", "e0", true, false),
+                new AncestryItem("e12", "e1", true, false),
+                new AncestryItem("e12", "e2", true, false),
                 //false positive
-                new ancestryItem("e01", "e2", false, false),
-                new ancestryItem("s00", "e2", false, false),
-                new ancestryItem("e0", "", false, true),
-                new ancestryItem("s00", "", false, true),
-                new ancestryItem("e12", "", false, true)
+                new AncestryItem("e01", "e2", false, false),
+                new AncestryItem("s00", "e2", false, false),
+                new AncestryItem("e0", "", false, true),
+                new AncestryItem("s00", "", false, true),
+                new AncestryItem("e12", "", false, true)
             };
+
+
+
 
             foreach (var exp in expected)
             {
+
                 var indexDescendant = "";
                 var indexAncestor = "";
 
                 index.TryGetValue(exp.Descendant, out indexDescendant);
-
                 index.TryGetValue(exp.Ancestor, out indexAncestor);
+                
+                indexDescendant = indexDescendant?? "";
+                indexAncestor =indexAncestor?? "";
 
-                //logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
+                logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
 
                 var (a, err) = await h.Ancestor(indexDescendant, indexAncestor);
 
@@ -362,6 +392,12 @@ namespace Babble.Test.HashgraphImpl
                     Assert.Equal(exp.Val, a);
                 }
             }
+
+            foreach (var j in h.AncestorCache.Keys())
+            {
+               logger.Debug("k={k}, v={v}", j, h.AncestorCache.Get(j)); 
+            }
+
         }
 
         [Fact]
@@ -396,30 +432,30 @@ namespace Babble.Test.HashgraphImpl
             var expected = new[]
             {
                 //first generation
-                new ancestryItem("e01", "e0", true, false),
-                new ancestryItem("s00", "e01", true, false),
+                new AncestryItem("e01", "e0", true, false),
+                new AncestryItem("s00", "e01", true, false),
                 //1 generation false negative
-                new ancestryItem("e01", "e1", false, false),
-                new ancestryItem("e12", "e20", false, false),
-                new ancestryItem("s20", "e1", false, false),
-                new ancestryItem("20", "", false, true),
+                new AncestryItem("e01", "e1", false, false),
+                new AncestryItem("e12", "e20", false, false),
+                new AncestryItem("s20", "e1", false, false),
+                new AncestryItem("s20", "", false, true),
                 //2 generations
-                new ancestryItem("e20", "e2", true, false),
-                new ancestryItem("e12", "e1", true, false),
+                new AncestryItem("e20", "e2", true, false),
+                new AncestryItem("e12", "e1", true, false),
                 //2 generations false negatives
-                new ancestryItem("e20", "e0", false, false),
-                new ancestryItem("e12", "e2", false, false),
-                new ancestryItem("e20", "e01", false, false)
+                new AncestryItem("e20", "e0", false, false),
+                new AncestryItem("e12", "e2", false, false),
+                new AncestryItem("e20", "e01", false, false)
             };
 
             foreach (var exp in expected)
             {
-                var indexDescendant = "";
-                var indexAncestor = "";
-
-                index.TryGetValue(exp.Descendant, out indexDescendant);
-
-                index.TryGetValue(exp.Ancestor, out indexAncestor);
+     
+                index.TryGetValue(exp.Descendant, out var indexDescendant);
+                index.TryGetValue(exp.Ancestor, out var indexAncestor);
+                
+                indexDescendant = indexDescendant?? "";
+                indexAncestor =indexAncestor?? "";
 
                // logger.Debug("{d} {di} {a} {ai}", exp.Descendant, indexDescendant, exp.Ancestor, indexAncestor);
 

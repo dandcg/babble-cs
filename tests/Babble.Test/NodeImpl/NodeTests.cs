@@ -72,7 +72,7 @@ namespace Babble.Test.NodeImpl
 
             //Start two nodes
 
-            var peers = p.ToPeerSlice();
+            var peers = await p.ToPeerSlice();
 
             var router = new InMemRouter();
 
@@ -160,7 +160,7 @@ namespace Babble.Test.NodeImpl
 
             //Start two nodes
 
-            var peers = p.ToPeerSlice();
+            var peers =await p.ToPeerSlice();
 
             var router = new InMemRouter();
             
@@ -226,7 +226,7 @@ namespace Babble.Test.NodeImpl
 
             //Start two nodes
 
-            var peers = p.ToPeerSlice();
+            var peers = await p.ToPeerSlice();
 
             var router = new InMemRouter();
 

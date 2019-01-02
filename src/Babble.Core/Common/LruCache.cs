@@ -17,12 +17,14 @@ namespace Babble.Core.Common
         private int count;
         private readonly bool refreshEntries;
         private readonly Action<TKey, TValue> evictAction;
-        private object logger;
+        private readonly string instanceName;
+        private readonly ILogger logger;
         
         public LruCache(int size, Action<TKey, TValue> evictAction, ILogger logger, string instanceName = null)
         {
             this.capacity = size;
             this.evictAction = evictAction;
+            this.instanceName = instanceName;
             this.logger = logger.AddNamedContext("LruCache", instanceName);
             this.entries = new Dictionary<TKey, CacheNode>(this.capacity);
             this.head = null;
@@ -97,6 +99,7 @@ namespace Babble.Core.Common
         /// <returns>True if the set was successful. False otherwise.</returns>
         public bool Add(TKey key, TValue value)
         {
+
             var evict = false;
             CacheNode entry;
             if (!this.entries.TryGetValue(key, out entry))

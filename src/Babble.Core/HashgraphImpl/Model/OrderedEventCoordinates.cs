@@ -6,8 +6,13 @@ namespace Babble.Core.HashgraphImpl.Model
 {
     public class OrderedEventCoordinates 
     {
+    
         public  Index[] Values { get; private set; }
 
+        public OrderedEventCoordinates(Index[] values)
+        {
+            this.Values = values;
+        }
    
     
         public OrderedEventCoordinates(int capacity)

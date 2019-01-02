@@ -84,6 +84,7 @@ namespace Babble.Core.HashgraphImpl
 
             AncestorCache.Add(Key.New(x, y), a);
 
+            //logger.Debug(a.ToString());
             return (a, null);
         }
 
@@ -111,13 +112,16 @@ namespace Babble.Core.HashgraphImpl
             var eyCreator = Participants.ByPubKey[ey.Creator()].ID;
             var (entry, ok) = ex.LastAncestors.GetById(eyCreator);
 
+            logger.Debug("cr = {cr}, la={@la}",eyCreator,ex.LastAncestors);
+
+
             if (!ok)
             {
                 return (false, new HashgraphError($"Unknown event id {eyCreator}"));
             }
 
             var lastAncestorKnownFromYCreator = entry.Event.Index;
-
+            logger.Debug("lastAncestorKnownFromYCreator {c} >= ey.Index() {i}" ,lastAncestorKnownFromYCreator,ey.Index() );
             return (lastAncestorKnownFromYCreator >= ey.Index(), null);
         }
 
@@ -644,7 +648,7 @@ namespace Babble.Core.HashgraphImpl
                 i++;
             }
 
-            ev.SetLastAncestors(new OrderedEventCoordinates(members));
+            ev.LastAncestors=new OrderedEventCoordinates(members);
 
             var (selfParent, selfParentError) = await Store.GetEvent(ev.SelfParent);
             var (otherParent, otherParentError) = await Store.GetEvent(ev.OtherParent);
@@ -668,28 +672,33 @@ namespace Babble.Core.HashgraphImpl
             }
             else if (selfParentError != null)
             {
-                ev.SetLastAncestors(otherParent.LastAncestors);
+                Array.Copy(otherParent.LastAncestors.Values, 0, ev.LastAncestors.Values, 0, members);
+
             }
             else if (otherParentError != null)
             {
-                ev.SetLastAncestors(selfParent.LastAncestors);
+                Array.Copy(selfParent.LastAncestors.Values, 0, ev.LastAncestors.Values, 0, members);
+
             }
             else
             {
                 var selfParentLastAncestors = selfParent.LastAncestors;
 
                 var otherParentLastAncestors = otherParent.LastAncestors;
-
-                ev.SetLastAncestors(selfParentLastAncestors);
+                
+                Array.Copy(selfParentLastAncestors.Values, 0, ev.LastAncestors.Values, 0, members);
 
                 i = 0;
                 foreach (var la in ev.LastAncestors.Values)
                 {
                     if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index) continue;
                     {
-                        var laev = ev.LastAncestors.Values[i].Event;
-                        laev.Index = otherParentLastAncestors.Values[i].Event.Index;
-                        laev.Hash = otherParentLastAncestors.Values[i].Event.Hash;
+                     
+                        ev.LastAncestors.Values[i].Event.Index = otherParentLastAncestors.Values[i].Event.Index;
+                        ev.LastAncestors.Values[i].Event.Hash = otherParentLastAncestors.Values[i].Event.Hash;
+
+           
+
                     }
                     i++;
                 }
@@ -1731,7 +1740,7 @@ namespace Babble.Core.HashgraphImpl
             var orderedRoots = new Root[Participants.Len()];
             {
                 var i = 0;
-                foreach (var peer in Participants.ToPeerSlice())
+                foreach (var peer in await Participants.ToPeerSlice())
                 {
                     orderedRoots[i] = roots[peer.PubKeyHex];
                     i++;
@@ -1998,7 +2007,7 @@ namespace Babble.Core.HashgraphImpl
             StronglySeeCache = new LruCache<string, bool>(cacheSize, null, logger, "StronglySeeCache");
             RoundCache = new LruCache<string, int>(cacheSize, null, logger, "RoundCache");
 
-            var participants = Participants.ToPeerSlice();
+            var participants = await Participants.ToPeerSlice();
 
             var rootMap = new Dictionary<string, Root>();
             var id = 0;

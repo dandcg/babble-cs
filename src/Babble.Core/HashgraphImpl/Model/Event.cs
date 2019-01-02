@@ -43,14 +43,11 @@ namespace Babble.Core.HashgraphImpl.Model
             return roundReceived;
         }
 
-        public void SetLastAncestors(OrderedEventCoordinates value)
-        {
-            lastAncestors = value;
-        }
 
         public OrderedEventCoordinates LastAncestors
         {
             get { return lastAncestors; }
+            set => lastAncestors = value;
         }
 
         public void SetFirstDescendants(OrderedEventCoordinates value)

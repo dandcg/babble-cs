@@ -48,7 +48,7 @@ namespace Babble.Test.NodeImpl
             }
 
             i = 0;
-            foreach (var peer in participants.ToPeerSlice())
+            foreach (var peer in (await participants.ToPeerSlice()))
             {
                 var core = new Controller(i, participantKeys[i], participants, await InmemStore.NewInmemStore(participants, cacheSize, logger), null, logger);
                 

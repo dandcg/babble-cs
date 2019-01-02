@@ -1,4 +1,5 @@
-﻿using Babble.Core.PeersImpl;
+﻿using System.Threading.Tasks;
+using Babble.Core.PeersImpl;
 
 namespace Babble.Core.NodeImpl.PeerSelector
 {
@@ -6,7 +7,7 @@ namespace Babble.Core.NodeImpl.PeerSelector
 
     {
         Peers Peers();
-        Peer Next();
+        Task<Peer> Next();
         void UpdateLast(string peerAddr);
     }
 }

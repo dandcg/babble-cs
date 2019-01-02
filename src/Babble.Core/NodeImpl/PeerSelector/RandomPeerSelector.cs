@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Babble.Core.PeersImpl;
 
 namespace Babble.Core.NodeImpl.PeerSelector
@@ -22,9 +23,9 @@ namespace Babble.Core.NodeImpl.PeerSelector
         }
 
 
-        public Peer Next()
+        public async Task<Peer> Next()
         {
-            var selectablePeers = peers.ToPeerSlice();
+            var selectablePeers =await peers.ToPeerSlice();
             if (selectablePeers.Length > 1)
             {
                 (_, selectablePeers) = Peer.ExcludePeer(selectablePeers, localAddr);
