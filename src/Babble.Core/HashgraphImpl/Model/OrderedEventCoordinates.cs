@@ -1,27 +1,41 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace Babble.Core.HashgraphImpl.Model
 {
-    public class OrderedEventCoordinates 
+    public class OrderedEventCoordinates
     {
-    
-        public  Index[] Values { get; private set; }
+        public Index[] Values { get; }
 
+        public Index[] CloneValues()
+        {
+           return Values.Select(s => (Index)s.Clone()).ToArray();
+        }
+        
         public OrderedEventCoordinates(Index[] values)
         {
-            this.Values = values;
+            Values = values;
         }
-   
-    
+
         public OrderedEventCoordinates(int capacity)
         {
-            Values=new Index[capacity];
+            Values = new Index[capacity];
         }
+
         public int GetIdIndex(int id)
         {
-            return Array.FindIndex(Values, a => a.ParticipantId == id);
+            var i = 0;
+            foreach (var idx in Values)
+            {
+                if (idx.ParticipantId == id)
+                {
+                    return i;
+                }
+
+                i++;
+            }
+
+            return -1;
         }
 
         public (Index, bool) GetById(int id)
@@ -40,5 +54,6 @@ namespace Babble.Core.HashgraphImpl.Model
             Values.Append(new Index {ParticipantId = id, Event = evt});
         }
 
-        }
+ 
+    }
 }

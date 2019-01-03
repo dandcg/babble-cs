@@ -669,12 +669,12 @@ namespace Babble.Core.HashgraphImpl
             }
             else if (selfParentError != null)
             {
-                Array.Copy(otherParent.LastAncestors.Values, 0, ev.LastAncestors.Values, 0, members);
+                Array.Copy(otherParent.LastAncestors.CloneValues(), 0, ev.LastAncestors.Values, 0, members);
 
             }
             else if (otherParentError != null)
             {
-                Array.Copy(selfParent.LastAncestors.Values, 0, ev.LastAncestors.Values, 0, members);
+                Array.Copy(selfParent.LastAncestors.CloneValues(), 0, ev.LastAncestors.Values, 0, members);
 
             }
             else
@@ -683,15 +683,16 @@ namespace Babble.Core.HashgraphImpl
 
                 var otherParentLastAncestors = otherParent.LastAncestors;
                 
-                Array.Copy(selfParentLastAncestors.Values, 0, ev.LastAncestors.Values, 0, members);
+                Array.Copy(selfParentLastAncestors.CloneValues(), 0, ev.LastAncestors.Values, 0, members);
 
                 i = 0;
                 foreach (var la in ev.LastAncestors.Values)
                 {
                     if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index) 
                     {
-                        ev.LastAncestors.Values[i].Event.Index = otherParentLastAncestors.Values[i].Event.Index;
-                        ev.LastAncestors.Values[i].Event.Hash = otherParentLastAncestors.Values[i].Event.Hash;
+                        var eventCoordinates = ev.LastAncestors.Values[i].Event;
+                        eventCoordinates.Index = otherParentLastAncestors.Values[i].Event.Index;
+                        eventCoordinates.Hash = otherParentLastAncestors.Values[i].Event.Hash;
                     }
                     i++;
                 }

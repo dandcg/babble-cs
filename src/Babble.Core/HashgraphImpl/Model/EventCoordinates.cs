@@ -1,12 +1,13 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 
 namespace Babble.Core.HashgraphImpl.Model
 {
-    public class EventCoordinates
+    public class EventCoordinates:ICloneable
     {
         public EventCoordinates()
         {
-            
+            Hash = "";
         }
 
         public EventCoordinates(string hash, int index)
@@ -18,5 +19,9 @@ namespace Babble.Core.HashgraphImpl.Model
 
         public string Hash { get; set; }
         public int Index { get; set; }
+        public object Clone()
+        {
+            return new EventCoordinates(Hash,Index);
+        }
     }
 }

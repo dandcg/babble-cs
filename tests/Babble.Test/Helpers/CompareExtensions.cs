@@ -9,7 +9,7 @@ namespace Babble.Test.Helpers
         {
             compareLogic = compareLogic ?? new CompareLogic() { Config = new ComparisonConfig() { MaxDifferences = 100 } };
 
-            var result = compareLogic.Compare(actual, expected);
+            var result = compareLogic.Compare(expected, actual);
 
             Assert.True(result.AreEqual,result.DifferencesString);
         }
