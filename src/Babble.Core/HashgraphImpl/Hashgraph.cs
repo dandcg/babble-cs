@@ -2252,8 +2252,9 @@ namespace Babble.Core.HashgraphImpl
 
         public async Task<(Event ev, BabbleError err)> ReadWireInfo(WireEvent wev)
         {
-            var selfParent = "";
+            var selfParent = Event.RootSelfParent(wev.Body.CreatorId);
             var otherParent = "";
+            
             BabbleError err;
 
             var creator = Participants.ById[wev.Body.CreatorId];

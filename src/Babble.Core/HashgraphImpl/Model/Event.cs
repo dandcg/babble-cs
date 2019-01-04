@@ -42,8 +42,7 @@ namespace Babble.Core.HashgraphImpl.Model
         {
             return roundReceived;
         }
-
-
+        
         public OrderedEventCoordinates LastAncestors
         {
             get { return lastAncestors; }
@@ -177,26 +176,18 @@ namespace Babble.Core.HashgraphImpl.Model
 
         public void  SetRound(int r) 
         {
-        
-             
-                round = r;
-            
-
+            round = r;
         }
 
         public int? Round => round;
-
-
-
-
+        
        public void SetLamportTimestamp( int t)
        {
            lamportTimestamp = t;
        }
 
         public int? LamportTimestamp => lamportTimestamp;
-
-
+        
         public void SetWireInfo(int selfParentIndex, int otherParentCreatorId, int otherParentIndex, int creatorId)
         {
             Body.SetSelfParentIndex(selfParentIndex);
@@ -238,7 +229,6 @@ namespace Babble.Core.HashgraphImpl.Model
                     OtherParentCreatorId = Body.GetOtherParentCreatorId(),
                     OtherParentIndex = Body.GetOtherParentIndex(),
                     CreatorId = Body.GetCreatorId(),
-
                     Index = Body.Index,
                     BlockSignatures=WireBlockSignatures()
                 },

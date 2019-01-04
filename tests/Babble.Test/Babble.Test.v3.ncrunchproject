@@ -58,6 +58,15 @@
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestFork</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestInsertEvent</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestReadWireInfo</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestStronglySee</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

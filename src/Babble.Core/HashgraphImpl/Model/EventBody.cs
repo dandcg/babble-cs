@@ -25,7 +25,6 @@ namespace Babble.Core.HashgraphImpl.Model
 
         public void SetSelfParentIndex(int value)
         {
-            
             selfParentIndex = value;
         }
 

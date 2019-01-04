@@ -786,110 +786,87 @@ namespace Babble.Test.HashgraphImpl
             Assert.Equal(4, ple);
         }
 
-        //        [Fact]
-        //        public async Task TestReadWireInfo()
-        //        {
-        //            var (h, index) = await InitRoundHashgraph();
+        [Fact]
+        public async Task TestReadWireInfo()
+        {
+            var (h, index) = await InitRoundHashgraph();
 
-        //            int k = 0;
-        //            foreach (var evh in index)
-        //            {
-        //                //evh.Dump();
+            int k = 0;
+            foreach (var evh in index)
+            {
+    
+               var (ev, err1) = await h.Store.GetEvent(evh.Value);
 
-        //                Exception err;
-        //                Event ev;
-        //                (ev, err) = await h.Store.GetEvent(evh.Value);
+                Assert.Null(err1);
 
-        //                Assert.Null(err);
+                //logger.Debug("ev={ev}",ev.DumpToString());
 
-        //                var evWire = ev.ToWire();
+                var evWire = ev.ToWire();
 
-        //                Event evFromWire;
-        //                (evFromWire, err) = await h.ReadWireInfo(evWire);
-        //                Assert.Null(err);
+                //logger.Debug("evWire={evWire}",evWire.DumpToString());
+       
+                var (evFromWire, err2) = await h.ReadWireInfo(evWire);
+                Assert.Null(err2);
+            
+                //"Error converting %s.Body.BlockSignatures from light wire"
+                evFromWire.Body.BlockSignatures.ShouldCompareTo(ev.Body.BlockSignatures);
 
-        //                //"Error converting %s.Body from light wire"
-        //                //evFromWire.Body.ShouldCompareTo(ev.Body);
+                //"Error converting %s.Body from light wire"
+                evFromWire.Body.ShouldCompareTo(ev.Body);
 
-        //                evFromWire.Signiture.ShouldCompareTo(ev.Signiture);
+                //"Error converting %s.Signature from light wire"
+                evFromWire.Signiture.ShouldCompareTo(ev.Signiture);
+                
+                var (ok, err3) = ev.Verify();
 
-        //                bool ok;
-        //                (ok, err) = ev.Verify();
+                Assert.True(ok, $"Error verifying signature for {k} from light wire: {err3?.Message}");
 
-        //                Assert.True(ok, $"Error verifying signature for {k} from light wire: {err?.Message}");
+                k++;
+            }
+        }
 
-        //                k++;
-        //            }
-        //        }
+        [Fact]
+        public async Task TestStronglySee()
+        {
+            var (h, index) = await InitRoundHashgraph();
 
-        //        [Fact]
-        //        public async Task TestStronglySee()
-        //        {
-        //            var (h, index) = await InitRoundHashgraph();
 
-        //            Assert.True(await h.StronglySee(index["e21"], index["e0"]), "e21 should strongly see e0");
+            var expected = new AncestryItem[]
+            {
+                new AncestryItem("e21", "e0", true, false),
+                new AncestryItem("e02", "e10", true, false),
+                new AncestryItem("e02", "e0", true, false),
+                new AncestryItem("e02", "e1", true, false),
+                new AncestryItem("f1", "e21", true, false),
+                new AncestryItem("f1", "e10", true, false),
+                new AncestryItem("f1", "e0", true, false),
+                new AncestryItem("f1", "e1", true, false),
+                new AncestryItem("f1", "e2", true, false),
+                new AncestryItem("s11", "e2", true, false),
+                //false negatives
+                new AncestryItem("e10", "e0", false, false),
+                new AncestryItem("e21", "e1", false, false),
+                new AncestryItem("e21", "e2", false, false),
+                new AncestryItem("e02", "e2", false, false),
+                new AncestryItem("s11", "e02", false, false),
+                new AncestryItem("s11", "", false, true),
+            };
 
-        //            Assert.True(await h.StronglySee(index["e02"], index["e10"]), "e02 should strongly see e10");
-
-        //            Assert.True(await h.StronglySee(index["e02"], index["e0"]), "e02 should strongly see e0");
-
-        //            Assert.True(await h.StronglySee(index["e02"], index["e1"]), "e02 should strongly see e1");
-
-        //            Assert.True(await h.StronglySee(index["f1"], index["e21"]), "f1 should strongly see e21");
-
-        //            Assert.True(await h.StronglySee(index["f1"], index["e10"]), "f1 should strongly see e10");
-
-        //            Assert.True(await h.StronglySee(index["f1"], index["e0"]), "f1 should strongly see e0");
-
-        //            Assert.True(await h.StronglySee(index["f1"], index["e1"]), "f1 should strongly see e1");
-
-        //            Assert.True(await h.StronglySee(index["f1"], index["e2"]), "f1 should strongly see e2");
-
-        //            Assert.True(await h.StronglySee(index["s11"], index["e2"]), "s11 should strongly see e2");
-
-        //            //false negatives
-        //            Assert.False(await h.StronglySee(index["e10"], index["e0"]), "e12 should not strongly see e2");
-
-        //            Assert.False(await h.StronglySee(index["e21"], index["e1"]), "e21 should not strongly see e1");
-
-        //            Assert.False(await h.StronglySee(index["e21"], index["e2"]), "e21 should not strongly see e2");
-
-        //            Assert.False(await h.StronglySee(index["e02"], index["e2"]), "e02 should not strongly see e2");
-
-        //            Assert.False(await h.StronglySee(index["s11"], index["e02"]), "s11 should not strongly see e02");
-        //        }
-
-        //        [Fact]
-        //        public async Task TestParentRound()
-        //        {
-        //            var (h, index) = await InitRoundHashgraph();
-
-        //            var round0Witnesses = new Dictionary<string, RoundEvent>
-        //            {
-        //                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
-        //                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
-        //                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
-        //            };
-
-        //            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
-
-        //            var round1Witnesses = new Dictionary<string, RoundEvent>();
-
-        //            round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
-        //            await h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
-
-        //            Assert.Equal(-1, (await h.ParentRound(index["e0"])).Round);
-        //            Assert.True((await h.ParentRound(index["e0"])).IsRoot);
-
-        //            Assert.Equal(-1, (await h.ParentRound(index["e1"])).Round);
-        //            Assert.True((await h.ParentRound(index["e1"])).IsRoot);
-
-        //            Assert.Equal(0, (await h.ParentRound(index["f1"])).Round);
-        //            Assert.False((await h.ParentRound(index["f1"])).IsRoot);
-
-        //            Assert.Equal(1, (await h.ParentRound(index["s11"])).Round);
-        //            Assert.False((await h.ParentRound(index["s11"])).IsRoot);
-        //        }
+            foreach (var exp in expected)
+            {
+                var (a, err) = await h.StronglySee(index.GetOrEmpty(exp.Descendant), index.GetOrEmpty(exp.Ancestor));
+                if (err != null && !exp.Err)
+                {
+                    logger.Fatal("Error computing stronglySee({d}, {a}). Err: {err}", exp.Descendant, exp.Ancestor, err);
+                    Assert.False((err != null && !exp.Err));
+                }
+                if (a != exp.Val)
+                {
+                    logger.Fatal("stronglySee(%s, %s) should be %v, not %v", exp.Descendant, exp.Ancestor, exp.Val, a);
+                    Assert.Equal(exp.Val,a);
+                }
+            }
+        }
 
         //        [Fact]
         //        public async Task TestWitness()
@@ -926,6 +903,44 @@ namespace Babble.Test.HashgraphImpl
 
         //            Assert.False(await h.Witness(index["e02"]), "e02 should not be witness");
         //        }
+
+
+
+
+
+        //        [Fact]
+        //        public async Task TestParentRound()
+        //        {
+        //            var (h, index) = await InitRoundHashgraph();
+
+        //            var round0Witnesses = new Dictionary<string, RoundEvent>
+        //            {
+        //                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
+        //                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
+        //                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
+        //            };
+
+        //            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+
+        //            var round1Witnesses = new Dictionary<string, RoundEvent>();
+
+        //            round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
+        //            await h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
+
+        //            Assert.Equal(-1, (await h.ParentRound(index["e0"])).Round);
+        //            Assert.True((await h.ParentRound(index["e0"])).IsRoot);
+
+        //            Assert.Equal(-1, (await h.ParentRound(index["e1"])).Round);
+        //            Assert.True((await h.ParentRound(index["e1"])).IsRoot);
+
+        //            Assert.Equal(0, (await h.ParentRound(index["f1"])).Round);
+        //            Assert.False((await h.ParentRound(index["f1"])).IsRoot);
+
+        //            Assert.Equal(1, (await h.ParentRound(index["s11"])).Round);
+        //            Assert.False((await h.ParentRound(index["s11"])).IsRoot);
+        //        }
+
+
 
         //        [Fact]
         //        public async Task TestRoundInc()
