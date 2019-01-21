@@ -17,7 +17,7 @@ namespace Babble.Core.HashgraphImpl
         public Peers Participants { get; set; } //[public key] => id
         public IStore Store { get; set; } //store of Events and Rounds
         public List<string> UndeterminedEvents { get; set; } //[index] => hash
-        public Queue<PendingRound> PendingRounds { get; set; } //FIFO queue of Rounds which have not attained consensus yet
+        public Queue<PendingRound> PendingRounds { get; set; } = new Queue<PendingRound>(); //FIFO queue of Rounds which have not attained consensus yet
 
         public int? LastConsensusRound { get; set; } //index of last consensus round
         public int? FirstConsensusRound { get; set; } //index of first consensus round (only used in tests)
