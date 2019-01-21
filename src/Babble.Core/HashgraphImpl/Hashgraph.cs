@@ -590,7 +590,12 @@ namespace Babble.Core.HashgraphImpl
 
             var selfParentLegit = selfParent == creatorLastKnown;
 
-            return !selfParentLegit ? new HashgraphError("Self-parent not last known ev by creator") : null;
+            if (!selfParentLegit)
+            {
+                return new HashgraphError("Self-parent not last known ev by creator");
+            }
+
+            return null;
         }
 
         //Check if we know the OtherParent
@@ -1767,7 +1772,7 @@ namespace Babble.Core.HashgraphImpl
 
                 {
                     //check if validator belongs to list of participants
-                    var validatorHex = $"0x{bs.Validator.ToHex()}";
+                    var validatorHex = bs.Validator.ToHex();
                     {
                         var ok = Participants.ByPubKey.ContainsKey(validatorHex);
 

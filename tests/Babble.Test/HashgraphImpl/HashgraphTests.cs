@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core;
@@ -91,6 +89,7 @@ namespace Babble.Test.HashgraphImpl
                 Event = ev;
                 Round = round;
             }
+
             public string Event { get; set; }
             public int Round { get; set; }
         }
@@ -885,14 +884,12 @@ namespace Babble.Test.HashgraphImpl
             round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
             round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
-            
 
             await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
             var round1Witnesses = new Dictionary<string, RoundEvent>();
 
             round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
-       
 
             await h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
@@ -924,7 +921,6 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
-
         [Fact]
         public async Task TestRound()
         {
@@ -932,24 +928,24 @@ namespace Babble.Test.HashgraphImpl
 
             var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-            round0Witnesses[index["e0"]] = new RoundEvent { Witness = true, Famous = null };
-            round0Witnesses[index["e1"]] = new RoundEvent { Witness = true, Famous = null };
-            round0Witnesses[index["e2"]] = new RoundEvent { Witness = true, Famous = null };
-            await h.Store.SetRound(0, new RoundInfo { Events = round0Witnesses });
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
             var expected = new[]
             {
-            new    RoundItem("e0", 0),
-                   new    RoundItem("e1", 0),
-                   new    RoundItem("e2", 0),
-                   new    RoundItem("s00", 0),
-                   new    RoundItem("e10", 0),
-                   new    RoundItem("s20", 0),
-                   new    RoundItem("e21", 0),
-                   new    RoundItem("e02", 0),
-                   new    RoundItem("s10", 0),
-                   new    RoundItem("f1", 1),
-                   new    RoundItem("s11", 1),
+                new RoundItem("e0", 0),
+                new RoundItem("e1", 0),
+                new RoundItem("e2", 0),
+                new RoundItem("s00", 0),
+                new RoundItem("e10", 0),
+                new RoundItem("s20", 0),
+                new RoundItem("e21", 0),
+                new RoundItem("e02", 0),
+                new RoundItem("s10", 0),
+                new RoundItem("f1", 1),
+                new RoundItem("s11", 1)
             };
 
             foreach (var exp in expected)
@@ -958,7 +954,7 @@ namespace Babble.Test.HashgraphImpl
                 if (err != null)
                 {
                     logger.Fatal("Error computing round({d}). Err: {err}", exp.Event, err);
-                    Assert.False(err != null );
+                    Assert.False(err != null);
                 }
 
                 if (r != exp.Round)
@@ -969,7 +965,6 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
-
         [Fact]
         public async Task TestRoundDiff()
         {
@@ -977,10 +972,10 @@ namespace Babble.Test.HashgraphImpl
 
             var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-            round0Witnesses[index["e0"]] = new RoundEvent { Witness = true, Famous = null };
-            round0Witnesses[index["e1"]] = new RoundEvent { Witness = true, Famous = null };
-            round0Witnesses[index["e2"]] = new RoundEvent { Witness = true, Famous = null };
-            await h.Store.SetRound(0, new RoundInfo { Events = round0Witnesses });
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
             var (d, err) = await h.RoundDiff(index["f1"], index["e02"]);
 
@@ -1057,32 +1052,30 @@ namespace Babble.Test.HashgraphImpl
 
             Assert.Contains(index["f1"], round1.Witnesses());
 
-
             var expectedPendingRounds = new[]
             {
                 new PendingRound
                 {
                     Index = 0,
-                    Decided = false,
+                    Decided = false
                 },
                 new PendingRound
                 {
                     Index = 1,
-                    Decided = false,
-                },
+                    Decided = false
+                }
             };
 
             var i = 0;
-            foreach (var pd in h.PendingRounds) {
-
+            foreach (var pd in h.PendingRounds)
+            {
                 pd.ShouldCompareTo(expectedPendingRounds[i]);
                 i++;
-
             }
 
             //[event] => {lamportTimestamp, round}
             (int t, int r) tr;
-            var expectedTimestamps = new Dictionary<string, (int t, int r)>()
+            var expectedTimestamps = new Dictionary<string, (int t, int r)>
             {
                 {"e0", (0, 0)},
                 {"e1", (0, 0)},
@@ -1094,10 +1087,9 @@ namespace Babble.Test.HashgraphImpl
                 {"e02", (3, 0)},
                 {"s10", (2, 0)},
                 {"f1", (4, 1)},
-                {"s11", (5, 1)},
+                {"s11", (5, 1)}
             };
 
- 
             foreach (var ets in expectedTimestamps)
             {
                 var e = ets.Key;
@@ -1106,64 +1098,62 @@ namespace Babble.Test.HashgraphImpl
                 var (ev, err1) = await h.Store.GetEvent(index[e]);
                 if (err1 != null)
                 {
-                    logger.Fatal("Error = {err}",err1);
+                    logger.Fatal("Error = {err}", err1);
                     Assert.Null(err1);
                 }
-                var r = ev.Round; 
-                
+
+                var r = ev.Round;
+
                 if (r == null || r != et.r)
                 {
                     logger.Fatal($"{e} round should be {et.r}, not {r}");
-                    Assert.False((r == null || r != et.r));
+                    Assert.False(r == null || r != et.r);
                 }
 
                 var ts = ev.LamportTimestamp;
-                if ( ts == null || ts != et.t)
+                if (ts == null || ts != et.t)
                 {
                     logger.Fatal($"{e} lamportTimestamp should be {et.t}, not {ts}");
-                    Assert.False(( ts == null || ts != et.t));
+                    Assert.False(ts == null || ts != et.t);
                 }
-         
             }
-
         }
 
-           /*
+        /*
 
 
 
-        e01  e12
-         |   |  \
-         e0  R1  e2
-         |       |
-         R0      R2
+     e01  e12
+      |   |  \
+      e0  R1  e2
+      |       |
+      R0      R2
 
-        */
+     */
         private async Task<(Hashgraph h, Dictionary<string, string> index)> InitDentedHashgraph()
         {
             var (nodes, index, orderedEvents, participants) = await InitHashgraphNodes(N);
 
             var orderedPeers = await participants.ToPeerSlice();
 
-            foreach(var peer in orderedPeers)
+            foreach (var peer in orderedPeers)
             {
                 {
                     index[Event.RootSelfParent(peer.ID)] = Event.RootSelfParent(peer.ID);
                 }
-
             }
 
-            var plays =new []
+            var plays = new[]
             {
-                new Play(0,0,Event.RootSelfParent(orderedPeers[0].ID),"","e0",null,null),
-                new Play(2,0,Event.RootSelfParent(orderedPeers[2].ID),"","e2",null,null),
-            new Play(0,1,"e0","","e01",null,null),
-        new Play(1,0,Event.RootSelfParent(orderedPeers[1].ID),"e2","e12",null,null),
+                new Play(0, 0, Event.RootSelfParent(orderedPeers[0].ID), "", "e0", null, null),
+                new Play(2, 0, Event.RootSelfParent(orderedPeers[2].ID), "", "e2", null, null),
+                new Play(0, 1, "e0", "", "e01", null, null),
+                new Play(1, 0, Event.RootSelfParent(orderedPeers[1].ID), "e2", "e12", null, null)
             };
 
             PlayEvents(plays, nodes, index, orderedEvents);
 
-            var hashgraph = await CreateHashgraph(false, orderedEvents, participants,logger);
+            var hashgraph = await CreateHashgraph(false, orderedEvents, participants, logger);
 
             return (hashgraph, index);
         }
@@ -1175,264 +1165,295 @@ namespace Babble.Test.HashgraphImpl
 
             var participants = await h.Participants.ToPeerSlice();
 
-            var expected = new Dictionary<string,Root> {
-            
-            
-            {"e12", new Root{
-                NextRound=0,
-                SelfParent=RootEvent.NewBaseRootEvent(participants[1].ID), 
-                Others=new Dictionary<string,RootEvent>
+            var expected = new Dictionary<string, Root>
+            {
                 {
-                    {index["e12"], new RootEvent{Hash= index["e2"],CreatorId =   participants[2].ID, Index = 0, Round   = 0,LamportTimestamp = 0}}
+                    "e12", new Root
+                    {
+                        NextRound = 0,
+                        SelfParent = RootEvent.NewBaseRootEvent(participants[1].ID),
+                        Others = new Dictionary<string, RootEvent>
+                        {
+                            {index["e12"], new RootEvent {Hash = index["e2"], CreatorId = participants[2].ID, Index = 0, Round = 0, LamportTimestamp = 0}}
+                        }
+                    }
                 }
-
-            }
-                
-            }
-
             };
-
 
             foreach (var ex in expected)
 
-
             {
-
-                var evh = ex.Key ;
+                var evh = ex.Key;
                 var expRoot = ex.Value;
 
-                    var (ev, err1) = await h.Store.GetEvent(index[evh]);
-                    if (err1 != null)
-                    {
-                        logger.Fatal(err1.ToString());
-                        Assert.Null(err1);
-                    }
-                    var (root, err2) = await h.CreateRoot(ev);
-                    if (err2 != null)
-                    {
+                var (ev, err1) = await h.Store.GetEvent(index[evh]);
+                if (err1 != null)
+                {
+                    logger.Fatal(err1.ToString());
+                    Assert.Null(err1);
+                }
+
+                var (root, err2) = await h.CreateRoot(ev);
+                if (err2 != null)
+                {
                     logger.Fatal($"Error creating {evh} Root: {err2}");
 
-                        Assert.Null(err1);
-                  
-                    }
+                    Assert.Null(err1);
+                }
 
-                    root.ShouldCompareTo(expRoot);
-
-           
-            
+                root.ShouldCompareTo(expRoot);
             }
         }
 
-        ///*
+        /*
 
-        //e0  e1  e2    Block (0, 1)
-        //0   1    2
-        //*/
-        //private static (ref Hashgraph, slice<TestNode>, Dictionary<@string, @string>) initBlockHashgraph(ref testing.T t)
-        //{
-        //    var (nodes, index, orderedEvents, participants) = initHashgraphNodes(n);
+        e0  e1  e2    Block (0, 1)
+        0   1    2
+        */
+        private async Task<( Hashgraph hashgraph, TestNode[] nodes, Dictionary<string, string> index)> InitBlockHashgraph()
+        {
+            var (nodes, index, orderedEvents, participants) = await InitHashgraphNodes(N);
 
-        //    {
-        //        {
-        //            var event = NewEvent(null, null, []string{rootSelfParent(peer.ID),""}, nodes[i].Pub, 0);
-        //            nodes[i].signAndAddEvent(@event, fmt.Sprintf("e%d", i), index, orderedEvents);
-        //        }
+            var i = 0;
 
-        //    }
+            foreach (var peer in await participants.ToPeerSlice())
 
-        //    var hashgraph = NewHashgraph(participants, NewInmemStore(participants, cacheSize), null, testLogger(t));
+            {
+                var ev = new Event(null, null, new[] {Event.RootSelfParent(peer.ID), ""}, nodes[i].Pub, 0);
+                nodes[i].SignAndAddEvent(ev, $"e{i}", index, orderedEvents);
+                i++;
+            }
 
-        //    //create a block and signatures manually
-        //    var block = NewBlock(0, 1, (slice<@byte>)"framehash", [][]byte{[]byte("block tx")});
-        //    var err = hashgraph.Store.SetBlock(block);
-        //    if (err != null)
-        //    {
-        //        t.Fatalf("Error setting block. Err: %s", err);
-        //    }
-        //    {
-        //        {
-        //            {
-        //                var err = hashgraph.InsertEvent(ev, @true);
+            var hashgraph = new Hashgraph(participants, await InmemStore.NewInmemStore(participants, CacheSize, logger), null, logger);
 
-        //                if (err != null)
-        //                {
-        //                    fmt.Printf("ERROR inserting event %d: %s\n", i, err);
-        //                }
+            //create a block and signatures manually
+            var block = new Block(0, 1, "framehash".StringToBytes(), new[] {"block tx".StringToBytes()});
+            var err1 = await hashgraph.Store.SetBlock(block);
+            if (err1 != null)
+            {
+                logger.Fatal($"Error setting block. Err: {err1}");
+                Assert.Null(err1);
+            }
 
-        //            }
-        //        }
+            i = 0;
 
-        //    }
+            foreach (var ev in orderedEvents)
 
-        //    return (hashgraph, nodes, index);
-        //}
+            {
+                var err2 = await hashgraph.InsertEvent(ev, true);
 
-        //public static void TestInsertEventsWithBlockSignatures(ref testing.T t)
-        //{
-        //    var (h, nodes, index) = initBlockHashgraph(t);
+                if (err2 != null)
+                {
+                    logger.Error($"ERROR inserting event {i}: {err2}");
+                    Assert.Null(err1);
+                }
 
-        //    var (block, err) = h.Store.GetBlock(0);
-        //    if (err != null)
-        //    {
-        //        t.Fatalf("Error retrieving block 0. %s", err);
-        //    }
-        //    var blockSigs = make(typeof(slice<BlockSignature>), n);
-        //    {
-        //        {
-        //            (blockSigs[k], err) = block.Sign(n.Key);
-        //            if (err != null)
-        //            {
-        //                t.Fatal(err);
-        //            }
-        //        }
+                i++;
+            }
 
-        //    }
+            return (hashgraph, nodes, index);
+        }
 
-        //    t.Run("Inserting Events with valid signatures", t =>
-        //    {
-        //        /*
-        //            s00 |   |
-        //            |   |   |
-        //            |  e10  s20
-        //            | / |   |
-        //            e0  e1  e2
-        //            0   1    2
-        //        */
-        //        var plays = []play{play{1,1,"e1","e0","e10",null,[]BlockSignature{blockSigs[1]}},play{2,1,"e2","","s20",null,[]BlockSignature{blockSigs[2]}},play{0,1,"e0","","s00",null,[]BlockSignature{blockSigs[0]}},};
+        [Fact]
+        public async Task TestInsertEventsWithBlockSignatures()
+        {
+            var (h, nodes, index) = await InitBlockHashgraph();
 
-        //        {
-        //            {
-        //                var e = NewEvent(p.txPayload, p.sigPayload, []string{index[p.selfParent],index[p.otherParent]}, nodes[p.to].Pub, p.index);
-        //                e.Sign(nodes[p.to].Key);
-        //                index[p.name] = e.Hex();
-        //                {
-        //                    var err = h.InsertEvent(e, @true);
+            var (block, err1) = await h.Store.GetBlock(0);
+            if (err1 != null)
+            {
+                logger.Fatal("Error retrieving block 0. %s", err1);
+                Assert.Null(err1);
+            }
 
-        //                    if (err != null)
-        //                    {
-        //                        t.Fatalf("ERROR inserting event %s: %s\n", p.name, err);
-        //                    }
+            var blockSigs = new BlockSignature[N];
 
-        //                }
-        //            }
+            var k = 0;
+            foreach (var n in nodes)
+            {
+                HashgraphError err2;
+                (blockSigs[k], err2) = block.Sign(n.Key);
+                if (err2 != null)
+                {
+                    logger.Fatal(err2.ToString());
+                    Assert.Null(err2);
+                }
 
-        //            //Check SigPool
+                k++;
+            }
 
-        //        }
+            Play p;
+            Event e;
 
-        //        //Check SigPool
-        //        {
-        //            var l = len(h.SigPool);
+            {
+                logger.Debug("Inserting Events with valid signatures");
 
-        //            if (l != 3)
-        //            {
-        //                t.Fatalf("SigPool should contain 3 signatures, not %d", l);
-        //            }
+                /*
+                    s00 |   |
+                    |   |   |
+                    |  e10  s20
+                    | / |   |
+                    e0  e1  e2
+                    0   1    2
+                */
 
-        //            //Process SigPool
+                var plays = new[]
+                {
+                    new Play(1, 1, "e1", "e0", "e10", null, new[] {blockSigs[1]}),
+                    new Play(2, 1, "e2", "", "s20", null, new[] {blockSigs[2]}),
+                    new Play(0, 1, "e0", "", "s00", null, new[] {blockSigs[0]})
+                };
 
-        //        }
-        //        h.ProcessSigPool();
+                foreach (var p1 in plays)
+                {
+                    p = p1;
+                    e = new Event(p.TxPayload, p.SigPayload, new[] {index.GetOrEmpty(p.SelfParent), index.GetOrEmpty(p.OtherParent)}, nodes[p.To].Pub, p.Index);
+                    e.Sign(nodes[p.To].Key);
+                    index[p.Name] = e.Hex();
 
-        //        //Check that the block contains 3 signatures
-        //        var (block, _) = h.Store.GetBlock(0);
-        //        {
-        //            var l = len(block.Signatures);
+                    var err3 = await h.InsertEvent(e, true);
 
-        //            if (l != 3)
-        //            {
-        //                t.Fatalf("Block 0 should contain 3 signatures, not %d", l);
-        //            }
+                    if (err3 != null)
+                    {
+                        logger.Fatal($"ERROR inserting event {p.Name}:{err3}");
+                        Assert.Null(err3);
+                    }
+                }
 
-        //            //Check that SigPool was cleared
+                //Check SigPool
+                {
+                    var l = h.SigPool.Count;
 
-        //        }
-        //        {
-        //            var l = len(h.SigPool);
+                    if (l != 3)
+                    {
+                        logger.Fatal("SigPool should contain 3 signatures, not %d", l);
+                        Assert.Equal(3, l);
+                    }
+                }
 
-        //            if (l != 0)
-        //            {
-        //                t.Fatalf("SigPool should contain 0 signatures, not %d", l);
-        //            }
+                //Process SigPool
+                await h.ProcessSigPool();
 
-        //        }
-        //    });
+                //Check that the block contains 3 signatures
+                {
+                    (block, _) = await h.Store.GetBlock(0);
 
-        //    t.Run("Inserting Events with signature of unknown block", t =>
-        //    {
-        //        //The Event should be inserted
-        //        //The block signature is simply ignored
+                    var l = block.Signatures.Count;
 
-        //        var block1 = NewBlock(1, 2, (slice<@byte>)"framehash", [][]byte{});
-        //        var (sig, _) = block1.Sign(nodes[2].Key);
+                    if (l != 3)
+                    {
+                        logger.Fatal($"Block 0 should contain 3 signatures, not {l}");
+                        Assert.Equal(3, l);
+                    }
 
-        //        //unknown block
-        //        var unknownBlockSig = BlockSignature{Validator:nodes[2].Pub,Index:1,Signature:sig.Signature,};
-        //        var p = play{2,2,"s20","e10","e21",null,[]BlockSignature{unknownBlockSig}};
+                    //Check that SigPool was cleared
+                }
+                {
+                    var l = h.SigPool.Count;
 
-        //        var e = NewEvent(null, p.sigPayload, []string{index[p.selfParent],index[p.otherParent]}, nodes[p.to].Pub, p.index);
-        //        e.Sign(nodes[p.to].Key);
-        //        index[p.name] = e.Hex();
-        //        {
-        //            var err = h.InsertEvent(e, @true);
+                    if (l != 0)
+                    {
+                        logger.Fatal($"SigPool should contain 0 signatures, not {l}");
+                        Assert.Equal(3, l);
+                    }
+                }
+            }
 
-        //            if (err != null)
-        //            {
-        //                t.Fatalf("ERROR inserting event %s: %s", p.name, err);
-        //            }
+            {
+                logger.Debug("Inserting Events with signature of unknown block");
 
-        //            //check that the event was recorded
+                //The Event should be inserted
+                //The block signature is simply ignored
 
-        //        }
-        //        var (_, err) = h.Store.GetEvent(index["e21"]);
-        //        if (err != null)
-        //        {
-        //            t.Fatalf("ERROR fetching Event e21: %s", err);
-        //        }
-        //    });
+                var block1 = new Block(1, 2, "framehash".StringToBytes(), new byte[][] { });
+                var (sig, _) = block1.Sign(nodes[2].Key);
 
-        //    t.Run("Inserting Events with BlockSignature not from creator", t =>
-        //    {
-        //        //The Event should be inserted
-        //        //The block signature is simply ignored
+                //unknown block
+                var unknownBlockSig = new BlockSignature
+                {
+                    Validator = nodes[2].Pub,
+                    Index = 1,
+                    Signature = sig.Signature
+                };
 
-        //        //wrong validator
-        //        //Validator should be same as Event creator (node 0)
-        //        var (key, _) = crypto.GenerateECDSAKey();
-        //        var badNode = NewTestNode(key, 666);
-        //        var (badNodeSig, _) = block.Sign(badNode.Key);
+                p = new Play(2, 2, "s20", "e10", "e21", null, new[] {unknownBlockSig});
 
-        //        var p = play{0,2,"s00","e21","e02",null,[]BlockSignature{badNodeSig}};
+                e = new Event(null, p.SigPayload,
+                    new[]
+                    {
+                        index.GetOrEmpty(p.SelfParent),
+                        index.GetOrEmpty(p.OtherParent)
+                    },
+                    nodes[p.To].Pub,
+                    p.Index
+                );
 
-        //        var e = NewEvent(null, p.sigPayload, []string{index[p.selfParent],index[p.otherParent]}, nodes[p.to].Pub, p.index);
-        //        e.Sign(nodes[p.to].Key);
-        //        index[p.name] = e.Hex();
-        //        {
-        //            var err = h.InsertEvent(e, @true);
+                e.Sign(nodes[p.To].Key);
+                index[p.Name] = e.Hex();
 
-        //            if (err != null)
-        //            {
-        //                t.Fatalf("ERROR inserting event %s: %s\n", p.name, err);
-        //            }
+                var err4 = await h.InsertEvent(e, true);
 
-        //            //check that the signature was not appended to the block
+                if (err4 != null)
+                {
+                    logger.Fatal($"ERROR inserting event {p.Name}: {err4}");
+                    Assert.Null(err4);
+                }
 
-        //        }
-        //        var (block, _) = h.Store.GetBlock(0);
-        //        {
-        //            var l = len(block.Signatures);
+                //check that the event was recorded
 
-        //            if (l > 3)
-        //            {
-        //                t.Fatalf("Block 0 should contain 3 signatures, not %d", l);
-        //            }
+                var (_, err2) = await h.Store.GetEvent(index["e21"]);
+                if (err2 != null)
+                {
+                    logger.Fatal($"ERROR fetching Event e21: {err2}");
+                    Assert.Null(err2);
+                }
+            }
 
-        //        }
-        //    });
+            {
+                logger.Debug("Inserting Events with BlockSignature not from creator");
 
-        //}
+                //The Event should be inserted
+                //The block signature is simply ignored
 
+                //wrong validator
+                //Validator should be same as Event creator (node 0)
+                var key = CryptoUtils.GenerateEcdsaKey();
+                var badNode = new TestNode(key, 666);
+                var (badNodeSig, _) = block.Sign(badNode.Key);
 
+                p = new Play(0, 2, "s00", "e21", "e02", null, new[] {badNodeSig});
+
+                e = new Event(null,
+                    p.SigPayload,
+                    new[] {index.GetOrEmpty(p.SelfParent), index.GetOrEmpty(p.OtherParent)},
+                    nodes[p.To].Pub,
+                    p.Index);
+
+                e.Sign(nodes[p.To].Key);
+                index[p.Name] = e.Hex();
+                {
+                    var err = await h.InsertEvent(e, true);
+
+                    if (err != null)
+                    {
+                        logger.Fatal($"ERROR inserting event {p.Name}: {err}");
+                        Assert.Null(err);
+                    }
+
+                    //check that the signature was not appended to the block
+                }
+                var (block2, _) = await h.Store.GetBlock(0);
+                {
+                    var l = block2.Signatures.Count;
+
+                    if (l > 3)
+                    {
+                        logger.Fatal($"Block 0 should contain 3 signatures, not {l}");
+                        Assert.True(l > 3);
+                    }
+                }
+            }
+        }
 
         /*
 
