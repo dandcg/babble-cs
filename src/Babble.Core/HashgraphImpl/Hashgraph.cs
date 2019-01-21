@@ -865,7 +865,7 @@ namespace Babble.Core.HashgraphImpl
             return (otherParentRootEvent, null);
         }
 
-        private async Task<(Root, BabbleError)> createRoot(Event ev)
+        public async Task<(Root, BabbleError)> CreateRoot(Event ev)
         {
             var (evRound, err1) = await Round(ev.Hex());
             if (err1 != null)
@@ -1645,7 +1645,7 @@ namespace Babble.Core.HashgraphImpl
 
                 if (!ok)
                 {
-                    var (root, err4) = await createRoot(ev);
+                    var (root, err4) = await CreateRoot(ev);
                     if (err4 != null)
                     {
                         return (new Frame(), err4);
@@ -1687,7 +1687,7 @@ namespace Babble.Core.HashgraphImpl
                         }
 
                         BabbleError err7;
-                        (root, err7) = await createRoot(lastConsensusEvent);
+                        (root, err7) = await CreateRoot(lastConsensusEvent);
                         if (err7 != null)
                         {
                             return (new Frame(), err7);
