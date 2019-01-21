@@ -67,6 +67,12 @@
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestStronglySee</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestWitness</TestName>
+      </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestRound</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

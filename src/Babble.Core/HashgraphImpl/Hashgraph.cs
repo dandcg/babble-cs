@@ -255,9 +255,9 @@ namespace Babble.Core.HashgraphImpl
         private async Task<(int round, BabbleError err)> _round(string x)
         {
             /*
-    x is the Root
-    Use Root.SelfParent.Round
-*/
+                x is the Root
+                Use Root.SelfParent.Round
+            */
 
             var (rootsBySelfParent, _) = Store.RootsBySelfParent();
 
@@ -294,7 +294,7 @@ namespace Babble.Core.HashgraphImpl
 
                 ok = root.Others.TryGetValue(ex.Hex(), out var other);
 
-                if (ok && other.Hash == ex.OtherParent)
+                if (ex.OtherParent=="" || (ok && other.Hash == ex.OtherParent))
                 {
                     return (root.NextRound, null);
                 }
@@ -312,7 +312,7 @@ namespace Babble.Core.HashgraphImpl
                 return (int.MinValue, err3);
             }
 
-            if (ex.OtherParent != "")
+            if ( ex.OtherParent!="")
             {
                 int opRound;
 

@@ -83,6 +83,11 @@ namespace Babble.Test.HashgraphImpl
 
         public class RoundItem
         {
+            public RoundItem(string ev, int round)
+            {
+                Event = ev;
+                Round = round;
+            }
             public string Event { get; set; }
             public int Round { get; set; }
         }
@@ -743,7 +748,7 @@ namespace Babble.Test.HashgraphImpl
 
             // "f1 firstDescendants not good"
             f1.FirstDescendants.Values.ShouldCompareTo(expectedFirstDescendants.Values);
-            
+
             // "f1 lastAncestors not good"
             f1.FirstDescendants.Values.ShouldCompareTo(expectedFirstDescendants.Values);
 
@@ -772,7 +777,7 @@ namespace Babble.Test.HashgraphImpl
                 if (ue != eue)
                 {
                     logger.Fatal("UndeterminedEvents[{i}] should be {eue}, not {ue}", i, eue, ue);
-                    Assert.Equal(eue,ue);
+                    Assert.Equal(eue, ue);
                 }
 
                 i++;
@@ -794,8 +799,7 @@ namespace Babble.Test.HashgraphImpl
             int k = 0;
             foreach (var evh in index)
             {
-    
-               var (ev, err1) = await h.Store.GetEvent(evh.Value);
+                var (ev, err1) = await h.Store.GetEvent(evh.Value);
 
                 Assert.Null(err1);
 
@@ -804,10 +808,10 @@ namespace Babble.Test.HashgraphImpl
                 var evWire = ev.ToWire();
 
                 //logger.Debug("evWire={evWire}",evWire.DumpToString());
-       
+
                 var (evFromWire, err2) = await h.ReadWireInfo(evWire);
                 Assert.Null(err2);
-            
+
                 //"Error converting %s.Body.BlockSignatures from light wire"
                 evFromWire.Body.BlockSignatures.ShouldCompareTo(ev.Body.BlockSignatures);
 
@@ -816,7 +820,7 @@ namespace Babble.Test.HashgraphImpl
 
                 //"Error converting %s.Signature from light wire"
                 evFromWire.Signiture.ShouldCompareTo(ev.Signiture);
-                
+
                 var (ok, err3) = ev.Verify();
 
                 Assert.True(ok, $"Error verifying signature for {k} from light wire: {err3?.Message}");
@@ -830,8 +834,7 @@ namespace Babble.Test.HashgraphImpl
         {
             var (h, index) = await InitRoundHashgraph();
 
-
-            var expected = new AncestryItem[]
+            var expected = new[]
             {
                 new AncestryItem("e21", "e0", true, false),
                 new AncestryItem("e02", "e10", true, false),
@@ -849,7 +852,7 @@ namespace Babble.Test.HashgraphImpl
                 new AncestryItem("e21", "e2", false, false),
                 new AncestryItem("e02", "e2", false, false),
                 new AncestryItem("s11", "e02", false, false),
-                new AncestryItem("s11", "", false, true),
+                new AncestryItem("s11", "", false, true)
             };
 
             foreach (var exp in expected)
@@ -858,53 +861,110 @@ namespace Babble.Test.HashgraphImpl
                 if (err != null && !exp.Err)
                 {
                     logger.Fatal("Error computing stronglySee({d}, {a}). Err: {err}", exp.Descendant, exp.Ancestor, err);
-                    Assert.False((err != null && !exp.Err));
+                    Assert.False(err != null && !exp.Err);
                 }
+
                 if (a != exp.Val)
                 {
                     logger.Fatal("stronglySee(%s, %s) should be %v, not %v", exp.Descendant, exp.Ancestor, exp.Val, a);
-                    Assert.Equal(exp.Val,a);
+                    Assert.Equal(exp.Val, a);
                 }
             }
         }
 
-        //        [Fact]
-        //        public async Task TestWitness()
-        //        {
-        //            var (h, index) = await InitRoundHashgraph();
+        [Fact]
+        public async Task TestWitness()
+        {
+            var (h, index) = await InitRoundHashgraph();
 
-        //            var round0Witnesses = new Dictionary<string, RoundEvent>
-        //            {
-        //                [index["e0"]] = new RoundEvent {Witness = true, Famous = null},
-        //                [index["e1"]] = new RoundEvent {Witness = true, Famous = null},
-        //                [index["e2"]] = new RoundEvent {Witness = true, Famous = null}
-        //            };
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
-        //            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
+            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
+            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
+            
 
-        //            var round1Witnesses = new Dictionary<string, RoundEvent>
-        //            {
-        //                [index["f1"]] = new RoundEvent {Witness = true, Famous = null}
-        //            };
+            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
 
-        //            await h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
+            var round1Witnesses = new Dictionary<string, RoundEvent>();
 
-        //            Assert.True(await h.Witness(index["e0"]), "e0 should be witness");
+            round1Witnesses[index["f1"]] = new RoundEvent {Witness = true, Famous = null};
+       
 
-        //            Assert.True(await h.Witness(index["e1"]), "e1 should be witness");
+            await h.Store.SetRound(1, new RoundInfo {Events = round1Witnesses});
 
-        //            Assert.True(await h.Witness(index["e2"]), "e2 should be witness");
+            var expected = new[]
+            {
+                new AncestryItem("", "e0", true, false),
+                new AncestryItem("", "e1", true, false),
+                new AncestryItem("", "e2", true, false),
+                new AncestryItem("", "f1", true, false),
+                new AncestryItem("", "e10", false, false),
+                new AncestryItem("", "e21", false, false),
+                new AncestryItem("", "e02", false, false)
+            };
 
-        //            Assert.True(await h.Witness(index["f1"]), "f1 should be witness");
+            foreach (var exp in expected)
+            {
+                var (a, err) = await h.Witness(index.GetOrEmpty(exp.Ancestor));
+                if (err != null)
+                {
+                    logger.Fatal("Error computing witness({d}). Err: {err}", exp.Ancestor, err);
+                    Assert.False(err != null && !exp.Err);
+                }
 
-        //            Assert.False(await h.Witness(index["e10"]), "e10 should not be witness");
+                if (a != exp.Val)
+                {
+                    logger.Fatal("witness({d}) should be {val}, not {a}", exp.Ancestor, exp.Val, a);
+                    Assert.Equal(exp.Val, a);
+                }
+            }
+        }
 
-        //            Assert.False(await h.Witness(index["e21"]), "e21 should not be witness");
 
-        //            Assert.False(await h.Witness(index["e02"]), "e02 should not be witness");
-        //        }
+        [Fact]
+        public async Task TestRound()
+        {
+            var (h, index) = await InitRoundHashgraph();
 
+            var round0Witnesses = new Dictionary<string, RoundEvent>();
 
+            round0Witnesses[index["e0"]] = new RoundEvent { Witness = true, Famous = null };
+            round0Witnesses[index["e1"]] = new RoundEvent { Witness = true, Famous = null };
+            round0Witnesses[index["e2"]] = new RoundEvent { Witness = true, Famous = null };
+            await h.Store.SetRound(0, new RoundInfo { Events = round0Witnesses });
+
+            var expected = new[]
+            {
+            new    RoundItem("e0", 0),
+                   new    RoundItem("e1", 0),
+                   new    RoundItem("e2", 0),
+                   new    RoundItem("s00", 0),
+                   new    RoundItem("e10", 0),
+                   new    RoundItem("s20", 0),
+                   new    RoundItem("e21", 0),
+                   new    RoundItem("e02", 0),
+                   new    RoundItem("s10", 0),
+                   new    RoundItem("f1", 1),
+                   new    RoundItem("s11", 1),
+            };
+
+            foreach (var exp in expected)
+            {
+                var (r, err) = await h.Round(index.GetOrEmpty(exp.Event));
+                if (err != null)
+                {
+                    logger.Fatal("Error computing round({d}). Err: {err}", exp.Event, err);
+                    Assert.False(err != null );
+                }
+
+                if (r != exp.Round)
+                {
+                    logger.Fatal("round({d}) should be {val}, not {a}", exp.Event, exp.Round, r);
+                    Assert.Equal(exp.Round, r);
+                }
+            }
+        }
 
 
 
@@ -940,8 +1000,6 @@ namespace Babble.Test.HashgraphImpl
         //            Assert.False((await h.ParentRound(index["s11"])).IsRoot);
         //        }
 
-
-
         //        [Fact]
         //        public async Task TestRoundInc()
         //        {
@@ -959,22 +1017,7 @@ namespace Babble.Test.HashgraphImpl
         //            Assert.False(await h.RoundInc(index["e02"]), "RoundInc e02 should be false because it doesnt strongly see e2");
         //        }
 
-        //        [Fact]
-        //        public async Task TestRound()
-        //        {
-        //            var (h, index) = await InitRoundHashgraph();
 
-        //            var round0Witnesses = new Dictionary<string, RoundEvent>();
-
-        //            round0Witnesses[index["e0"]] = new RoundEvent {Witness = true, Famous = null};
-        //            round0Witnesses[index["e1"]] = new RoundEvent {Witness = true, Famous = null};
-        //            round0Witnesses[index["e2"]] = new RoundEvent {Witness = true, Famous = null};
-        //            await h.Store.SetRound(0, new RoundInfo {Events = round0Witnesses});
-
-        //            Assert.Equal(1, await h.Round(index["f1"]));
-
-        //            Assert.Equal(0, await h.Round(index["e02"]));
-        //        }
 
         //        [Fact]
         //        public async Task TestRoundDiff()
