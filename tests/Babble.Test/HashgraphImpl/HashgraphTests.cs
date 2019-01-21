@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core;
@@ -1455,6 +1456,1101 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
+
+        
+
+        /*
+                          Round 4
+		        i0  |   i2
+		        | \ | / |
+		        |   i1  |
+        ------- |  /|   | --------------------------------
+		        h02 |   | Round 3
+		        | \ |   |
+		        |   \   |
+		        |   | \ |
+		        |   |  h21
+		        |   | / |
+		        |  h10  |
+		        | / |   |
+		        h0  |   h2
+		        | \ | / |
+		        |   h1  |
+        ------- |  /|   | --------------------------------
+		        g02 |   | Round 2
+		        | \ |   |
+		        |   \   |
+		        |   | \ |
+	            |   |  g21
+		        |   | / |
+		        |  g10  |
+		        | / |   |
+		        g0  |   g2
+		        | \ | / |
+		        |   g1  |
+        ------- |  /|   | -------------------------------
+		        f02b|   |  Round 1           +---------+
+		        |   |   |                    | Block 1 |
+		        f02 |   |                    | RR    2 |
+		        | \ |   |                    | Evs   9 |
+		        |   \   |                    +---------+
+		        |   | \ |
+	        ---f0x  |   f21 //f0x's other-parent is e21b. This situation can happen with concurrency
+	        |	|   | / |
+	        |	|  f10  |
+	        |	| / |   |
+	        |	f0  |   f2
+	        |	| \ | / |
+	        |	|  f1b  |
+	        |	|   |   |
+	        |	|   f1  |
+        ---	| -	|  /|   | ------------------------------
+	        |	e02 |   |  Round 0          +---------+
+	        |	| \ |   |                   | Block 0 |
+	        |	|   \   |                   | RR    1 |
+	        |	|   | \ |                   | Evs   7 |
+	        |   |   | e21b                  +---------+
+	        |	|   |   |
+	        ---------- e21
+		        |   | / |
+		        |  e10  |
+	            | / |   |
+		        e0  e1  e2
+		        0   1    2
+        */
+
+        private async Task< ( Hashgraph h, Dictionary<string, string> index)> InitConsensusHashgraph(bool db)
+        {
+            var plays = new[]{
+                new Play(1,1,"e1","e0","e10",null,null),
+                new Play(2,1,"e2","e10","e21",new byte[][]{"e21".StringToBytes()},null),
+                new Play(2,2,"e21","","e21b",null,null),
+                new Play(0,1,"e0","e21b","e02",null,null),
+                new  Play(1,2,"e10","e02","f1",null,null),
+                new Play(1,3,"f1","","f1b",new byte[][]{"f1b".StringToBytes()},null),
+                new Play(0,2,"e02","f1b","f0",null,null),
+                new Play(2,3,"e21b","f1b","f2",null,null),
+                new Play(1,4,"f1b","f0","f10",null,null),
+                new Play(0,3,"f0","e21","f0x",null,null),
+                new Play(2,4,"f2","f10","f21",null,null),
+                new Play(0,4,"f0x","f21","f02",null,null),
+                new Play(0,5,"f02","","f02b",new byte[][]{"f02b".StringToBytes()},null),
+                new Play(1,5,"f10","f02b","g1",null,null),
+                new Play(0,6,"f02b","g1","g0",null,null),
+                new Play(2,5,"f21","g1","g2",null,null),
+                new Play(1,6,"g1","g0","g10",new byte[][]{"g10".StringToBytes()},null),
+                new Play(2,6,"g2","g10","g21",null,null),
+                new Play(0,7,"g0","g21","g02",new byte[][]{"g02".StringToBytes()},null),
+                new Play(1,7,"g10","g02","h1",null,null),
+                new Play(0,8,"g02","h1","h0",null,null),
+                new Play(2,7,"g21","h1","h2",null,null),
+                new Play(1,8,"h1","h0","h10",null,null),
+                new Play(2,8,"h2","h10","h21",null,null),
+                new Play(0,9,"h0","h21","h02",null,null),
+                new Play(1,9,"h10","h02","i1",null,null),
+                new Play(0,10,"h02","i1","i0",null,null),
+                new Play(2,9,"h21","i1","i2",null,null),};
+
+            var (hashgraph, index, _) = await InitHashgraphFull(plays, db, N, logger);
+
+            return (hashgraph, index);
+        }
+
+        [Fact]
+        public async Task TestDivideRoundsBis()
+        {
+            var (h, index) = await InitConsensusHashgraph(false);
+
+
+            var err1 = await h.DivideRounds();
+
+            if (err1 != null)
+            {
+                logger.Fatal(err1.ToString());
+                Assert.Null(err1);
+            }
+
+            //[event] => {lamportTimestamp, round}
+
+
+            var expectedTimestamps = new Dictionary<string, (int t, int r)>
+            {
+                {"e0", (0, 0)},
+                {"e1", (0, 0)},
+                {"e2", (0, 0)},
+                {"e10", (1, 0)},
+                {"e21", (2, 0)},
+                {"e21b", (3, 0)},
+                {"e02", (4, 0)},
+                {"f1", (5, 1)},
+                {"f1b", (6, 1)},
+                {"f0", (7, 1)},
+                {"f2", (7, 1)},
+                {"f10", (8, 1)},
+                {"f0x", (8, 1)},
+                {"f21", (9, 1)},
+                {"f02", (10, 1)},
+                {"f02b", (11, 1)},
+                {"g1", (12, 2)},
+                {"g0", (13, 2)},
+                {"g2", (13, 2)},
+                {"g10", (14, 2)},
+                {"g21", (15, 2)},
+                {"g02", (16, 2)},
+                {"h1", (17, 3)},
+                {"h0", (18, 3)},
+                {"h2", (18, 3)},
+                {"h10", (19, 3)},
+                {"h21", (20, 3)},
+                {"h02", (21, 3)},
+                {"i1", (22, 4)},
+                {"i0", (23, 4)},
+                {"i2", (23, 4)}
+            };
+
+            foreach (var ets in expectedTimestamps)
+            {
+                var e = ets.Key;
+                var et = ets.Value;
+
+                var (ev, err) = await h.Store.GetEvent(index[e]);
+                if (err != null)
+                {
+                    logger.Fatal(err.ToString());
+                }
+
+                {
+                    var r = ev.Round;
+
+                    if (r == null || r != et.r)
+                    {
+                        logger.Fatal("%s round should be %d, not %d", e, et.r, r);
+                    }
+
+                }
+                {
+                    var ts = ev.LamportTimestamp;
+
+                    if (ts == null || ts != et.t)
+                    {
+                        logger.Fatal("%s lamportTimestamp should be %d, not %d", e, et.t, ts);
+                    }
+
+                }
+            }
+
+
+        }
+
+
+        [Fact]
+        public async Task TestDecideFame()
+        {
+            var (h, index) = await InitConsensusHashgraph(false);
+
+           await h.DivideRounds();
+            {
+                var err1 = await h.DecideFame();
+
+                if (err1 != null)
+                {
+                    logger.Fatal(err1.ToString());
+                }
+
+            }
+            var (round0, err2) = await h.Store.GetRound(0);
+            if (err2 != null)
+            {
+                logger.Fatal(err2.ToString());
+            }
+            {
+                var f = round0.Events[index["e0"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("e0 should be famous; got %v", f);
+                }
+
+            }
+            {
+                var f = round0.Events[index["e1"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("e1 should be famous; got %v", f);
+                }
+
+            }
+            {
+                var f = round0.Events[index["e2"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("e2 should be famous; got %v", f);
+                }
+
+            }
+            var (round1, err3) = await h.Store.GetRound(1);
+            if (err3 != null)
+            {
+                logger.Fatal(err3.ToString());
+            }
+            {
+                var f = round1.Events[index["f0"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("f0 should be famous; got %v", f);
+                }
+
+            }
+            {
+                var f = round1.Events[index["f1"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("f1 should be famous; got %v", f);
+                }
+
+            }
+            {
+                var f = round1.Events[index["f2"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("f2 should be famous; got %v", f);
+                }
+
+            }
+            var (round2, err4) = await h.Store.GetRound(2);
+            if (err4 != null)
+            {
+                logger.Fatal(err4.ToString());
+            }
+            {
+                var f = round2.Events[index["g0"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("g0 should be famous; got %v", f);
+                }
+
+            }
+            {
+                var f = round2.Events[index["g1"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("g1 should be famous; got %v", f);
+                }
+
+            }
+            {
+                var f = round2.Events[index["g2"]];
+
+                if (!(f.Witness && f.Famous == true))
+                {
+                    logger.Fatal("g2 should be famous; got %v", f);
+                }
+
+            }
+            var expectedpendingRounds = new []
+            {
+                new PendingRound{Index=0,Decided=true,},
+                new PendingRound{Index=1,Decided=true,},
+                new PendingRound{Index=2,Decided=true,},
+                new PendingRound{Index=3,Decided=false,},
+                new PendingRound{Index=4,Decided=false,},
+            };
+
+            var i = 0;
+            foreach (var pd in h.PendingRounds)
+            {
+                pd.ShouldCompareTo( expectedpendingRounds[i]);
+           
+                    //    t.Fatalf("pendingRounds[%d] should be %v, not %v", i, expectedpendingRounds[i], pd.Deref);
+                    i++;
+            }
+
+            
+        }
+            /*
+        public static void TestDecideRoundReceived(ref testing.T t)
+        {
+            var (h, index) = initConsensusHashgraph(@false, t);
+
+            h.DivideRounds();
+            h.DecideFame();
+            {
+                var err = h.DecideRoundReceived();
+
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+
+            }
+            {
+                {
+                    var (e, _) = h.Store.GetEvent(hash);
+                    if (rune(name[0]) == rune('e'))
+                    {
+                        {
+                            var r = e.roundReceived.Deref;
+
+                            if (r != 1)
+                            {
+                                t.Fatalf("%s round received should be 1 not %d", name, r);
+                            }
+
+                        }
+                    }
+                    else if (rune(name[0]) == rune('f'))
+                    {
+                        {
+                            var r = e.roundReceived.Deref;
+
+                            if (r != 2)
+                            {
+                                t.Fatalf("%s round received should be 2 not %d", name, r);
+                            }
+
+                        }
+                    }
+                    else if (e.roundReceived != null)
+                    {
+                        t.Fatalf("%s round received should be null not %d", name, e.roundReceived.Deref);
+                    }
+                }
+
+            }
+
+            var (round0, err) = h.Store.GetRound(0);
+            if (err != null)
+            {
+                t.Fatalf("Could not retrieve Round 0. %s", err);
+            }
+            {
+                var ce = len(round0.ConsensusEvents());
+
+                if (ce != 0)
+                {
+                    t.Fatalf("Round 0 should contain 0 ConsensusEvents, not %d", ce);
+                }
+
+            }
+            var (round1, err) = h.Store.GetRound(1);
+            if (err != null)
+            {
+                t.Fatalf("Could not retrieve Round 1. %s", err);
+            }
+            {
+                var ce = len(round1.ConsensusEvents());
+
+                if (ce != 7)
+                {
+                    t.Fatalf("Round 1 should contain 7 ConsensusEvents, not %d", ce);
+                }
+
+            }
+            var (round2, err) = h.Store.GetRound(2);
+            if (err != null)
+            {
+                t.Fatalf("Could not retrieve Round 2. %s", err);
+            }
+            {
+                var ce = len(round2.ConsensusEvents());
+
+                if (ce != 9)
+                {
+                    t.Fatalf("Round 1 should contain 9 ConsensusEvents, not %d", ce);
+                }
+
+            }
+            var expectedUndeterminedEvents = []string{index["g1"],index["g0"],index["g2"],index["g10"],index["g21"],index["g02"],index["h1"],index["h0"],index["h2"],index["h10"],index["h21"],index["h02"],index["i1"],index["i0"],index["i2"],};
+
+            {
+                {
+                    {
+                        var ue = h.UndeterminedEvents[i];
+
+                        if (ue != eue)
+                        {
+                            t.Fatalf("UndeterminedEvents[%d] should be %s, not %s", i, eue, ue);
+                        }
+
+                    }
+                }
+
+            }
+        }
+
+        public static void TestProcessDecidedRounds(ref testing.T t)
+        {
+            var (h, index) = initConsensusHashgraph(@false, t);
+
+            h.DivideRounds();
+            h.DecideFame();
+            h.DecideRoundReceived();
+            {
+                var err = h.ProcessDecidedRounds();
+
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+
+                //--------------------------------------------------------------------------
+
+            }
+            var consensusEvents = h.Store.ConsensusEvents();
+
+            {
+                {
+                    t.Logf("consensus[%d]: %s\n", i, getName(index, e));
+                }
+
+            }
+
+            {
+                var l = len(consensusEvents);
+
+                if (l != 16)
+                {
+                    t.Fatalf("length of consensus should be 16 not %d", l);
+                }
+
+            }
+            {
+                var ple = h.PendingLoadedEvents;
+
+                if (ple != 2)
+                {
+                    t.Fatalf("PendingLoadedEvents should be 2, not %d", ple);
+                }
+
+                //Block 0 ------------------------------------------------------------------
+
+            }
+            var (block0, err) = h.Store.GetBlock(0);
+            if (err != null)
+            {
+                t.Fatalf("Store should contain a block with Index 0: %v", err);
+            }
+            {
+                var ind = block0.Index();
+
+                if (ind != 0)
+                {
+                    t.Fatalf("Block0's Index should be 0, not %d", ind);
+                }
+
+            }
+            {
+                var rr = block0.RoundReceived();
+
+                if (rr != 1)
+                {
+                    t.Fatalf("Block0's RoundReceived should be 1, not %d", rr);
+                }
+
+            }
+            {
+                var l = len(block0.Transactions());
+
+                if (l != 1)
+                {
+                    t.Fatalf("Block0 should contain 1 transaction, not %d", l);
+                }
+
+            }
+            {
+                var tx = block0.Transactions()[0];
+
+                if (!reflect.DeepEqual(tx, (slice<@byte>)"e21"))
+                {
+                    t.Fatalf("Block0.Transactions[0] should be 'e21', not %s", tx);
+                }
+
+            }
+            var (frame1, err) = h.GetFrame(block0.RoundReceived());
+            var (frame1Hash, err) = frame1.Hash();
+            if (!reflect.DeepEqual(block0.FrameHash(), frame1Hash))
+            {
+                t.Fatalf("Block0.FrameHash should be %v, not %v", frame1Hash, block0.FrameHash());
+            }
+
+            //Block 1 ------------------------------------------------------------------
+            var (block1, err) = h.Store.GetBlock(1);
+            if (err != null)
+            {
+                t.Fatalf("Store should contain a block with Index 1: %v", err);
+            }
+            {
+                var ind = block1.Index();
+
+                if (ind != 1)
+                {
+                    t.Fatalf("Block1's Index should be 1, not %d", ind);
+                }
+
+            }
+            {
+                var rr = block1.RoundReceived();
+
+                if (rr != 2)
+                {
+                    t.Fatalf("Block1's RoundReceived should be 2, not %d", rr);
+                }
+
+            }
+            {
+                var l = len(block1.Transactions());
+
+                if (l != 2)
+                {
+                    t.Fatalf("Block1 should contain 2 transactions, not %d", l);
+                }
+
+            }
+            {
+                var tx = block1.Transactions()[1];
+
+                if (!reflect.DeepEqual(tx, (slice<@byte>)"f02b"))
+                {
+                    t.Fatalf("Block1.Transactions[1] should be 'f02b', not %s", tx);
+                }
+
+            }
+            var (frame2, err) = h.GetFrame(block1.RoundReceived());
+            var (frame2Hash, err) = frame2.Hash();
+            if (!reflect.DeepEqual(block1.FrameHash(), frame2Hash))
+            {
+                t.Fatalf("Block1.FrameHash should be %v, not %v", frame2Hash, block1.FrameHash());
+            }
+
+            // pendingRounds -----------------------------------------------------------
+            var expectedpendingRounds = []pendingRound{pendingRound{Index:3,Decided:false,},pendingRound{Index:4,Decided:false,},};
+            {
+                {
+                    if (!reflect.DeepEqual(pd.Deref, expectedpendingRounds[i]))
+                    {
+                        t.Fatalf("pendingRounds[%d] should be %v, not %v", i, expectedpendingRounds[i], pd.Deref);
+                    }
+                }
+
+                //Anchor -------------------------------------------------------------------
+
+            }
+
+            //Anchor -------------------------------------------------------------------
+            {
+                var v = h.AnchorBlock;
+
+                if (v != null)
+                {
+                    t.Fatalf("AnchorBlock should be null, not %v", v);
+                }
+
+            }
+        }
+
+        public static void BenchmarkConsensus(ref testing.B b)
+        {
+            for (var n = 0; n < b.N; n++)
+            {
+                //we do not want to benchmark the initialization code
+                b.StopTimer();
+                var (h, _) = initConsensusHashgraph(@false, b);
+                b.StartTimer();
+
+                h.DivideRounds();
+                h.DecideFame();
+                h.DecideRoundReceived();
+                h.ProcessDecidedRounds();
+            }
+
+        }
+
+        public static void TestKnown(ref testing.T t)
+        {
+            var (h, _) = initConsensusHashgraph(@false, t);
+
+            var participants = h.Participants.ToPeerSlice();
+
+            var expectedKnown = map[int]int{participants[0].ID:10,participants[1].ID:9,participants[2].ID:9,};
+
+            var known = h.Store.KnownEvents();
+            {
+                {
+                    {
+                        var l = known[i];
+
+                        if (l != expectedKnown[i])
+                        {
+                            t.Fatalf("Known[%d] should be %d, not %d", i, expectedKnown[i], l);
+                        }
+
+                    }
+                }
+
+            }
+        }
+
+        public static void TestGetFrame(ref testing.T t)
+        {
+            var (h, index) = initConsensusHashgraph(@false, t);
+
+            var participants = h.Participants.ToPeerSlice();
+
+            h.DivideRounds();
+            h.DecideFame();
+            h.DecideRoundReceived();
+            h.ProcessDecidedRounds();
+
+            t.Run("Round 1", t =>
+            {
+                var expectedRoots = make(typeof(slice<Root>), n);
+                expectedRoots[0] = NewBaseRoot(participants[0].ID);
+                expectedRoots[1] = NewBaseRoot(participants[1].ID);
+                expectedRoots[2] = NewBaseRoot(participants[2].ID);
+
+                var (frame, err) = h.GetFrame(1);
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+                {
+                    {
+                        var er = expectedRoots[p];
+                        {
+                            var x = r.SelfParent;
+
+                            if (!reflect.DeepEqual(x, er.SelfParent))
+                            {
+                                t.Fatalf("Roots[%d].SelfParent should be %v, not %v", p, er.SelfParent, x);
+                            }
+
+                        }
+                        {
+                            var others = r.Others;
+
+                            if (!reflect.DeepEqual(others, er.Others))
+                            {
+                                t.Fatalf("Roots[%d].Others should be %v, not %vv", p, er.Others, others);
+                            }
+
+                        }
+                    }
+
+                }
+
+                var expectedEventsHashes = []string{index["e0"],index["e1"],index["e2"],index["e10"],index["e21"],index["e21b"],index["e02"]};
+                var expectedEvents = []Event{};
+                {
+                    {
+                        var (e, err) = h.Store.GetEvent(eh);
+                        if (err != null)
+                        {
+                            t.Fatal(err);
+                        }
+                        expectedEvents = append(expectedEvents, e);
+                    }
+
+                }
+                sort.Sort(ByLamportTimestamp(expectedEvents));
+                if (!reflect.DeepEqual(expectedEvents, frame.Events))
+                {
+                    t.Fatal("Frame.Events is not good");
+                }
+                var (block0, err) = h.Store.GetBlock(0);
+                if (err != null)
+                {
+                    t.Fatalf("Store should contain a block with Index 1: %v", err);
+                }
+                var (frame1Hash, err) = frame.Hash();
+                if (err != null)
+                {
+                    t.Fatalf("Error computing Frame hash, %v", err);
+                }
+                if (!reflect.DeepEqual(block0.FrameHash(), frame1Hash))
+                {
+                    t.Fatalf("Block0.FrameHash (%v) and Frame1.Hash (%v) differ", block0.FrameHash(), frame1Hash);
+                }
+            });
+
+            t.Run("Round 2", t =>
+            {
+                var expectedRoots = make(typeof(slice<Root>), n);
+                expectedRoots[0] = Root{NextRound:1,SelfParent:RootEvent{index["e02"],participants[0].ID,1,4,0},Others:map[string]RootEvent{index["f0"]:RootEvent{Hash:index["f1b"],CreatorID:participants[1].ID,Index:3,LamportTimestamp:6,Round:1,},index["f0x"]:RootEvent{Hash:index["e21"],CreatorID:participants[2].ID,Index:1,LamportTimestamp:2,Round:0,},},};
+                expectedRoots[1] = Root{NextRound:1,SelfParent:RootEvent{index["e10"],participants[1].ID,1,1,0},Others:map[string]RootEvent{index["f1"]:RootEvent{Hash:index["e02"],CreatorID:participants[0].ID,Index:1,LamportTimestamp:4,Round:0,},},};
+                expectedRoots[2] = Root{NextRound:1,SelfParent:RootEvent{index["e21b"],participants[2].ID,2,3,0},Others:map[string]RootEvent{index["f2"]:RootEvent{Hash:index["f1b"],CreatorID:participants[1].ID,Index:3,LamportTimestamp:6,Round:1,},},};
+
+                var (frame, err) = h.GetFrame(2);
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+                {
+                    {
+                        var er = expectedRoots[p];
+                        {
+                            var x = r.SelfParent;
+
+                            if (!reflect.DeepEqual(x, er.SelfParent))
+                            {
+                                t.Fatalf("Roots[%d].SelfParent should be %v, not %v", p, er.SelfParent, x);
+                            }
+
+                        }
+                        {
+                            var others = r.Others;
+
+                            if (!reflect.DeepEqual(others, er.Others))
+                            {
+                                t.Fatalf("Roots[%d].Others should be %v, not %v", p, er.Others, others);
+                            }
+
+                        }
+                    }
+
+                }
+
+                var expectedEventsHashes = []string{index["f1"],index["f1b"],index["f0"],index["f2"],index["f10"],index["f0x"],index["f21"],index["f02"],index["f02b"]};
+                var expectedEvents = []Event{};
+                {
+                    {
+                        var (e, err) = h.Store.GetEvent(eh);
+                        if (err != null)
+                        {
+                            t.Fatal(err);
+                        }
+                        expectedEvents = append(expectedEvents, e);
+                    }
+
+                }
+                sort.Sort(ByLamportTimestamp(expectedEvents));
+                if (!reflect.DeepEqual(expectedEvents, frame.Events))
+                {
+                    t.Fatal("Frame.Events is not good");
+                }
+            });
+
+        }
+
+        public static void TestResetFromFrame(ref testing.T t)
+        {
+            var (h, index) = initConsensusHashgraph(@false, t);
+
+            var participants = h.Participants.ToPeerSlice();
+
+            h.DivideRounds();
+            h.DecideFame();
+            h.DecideRoundReceived();
+            h.ProcessDecidedRounds();
+
+            var (block, err) = h.Store.GetBlock(1);
+            if (err != null)
+            {
+                t.Fatal(err);
+            }
+            var (frame, err) = h.GetFrame(block.RoundReceived());
+            if (err != null)
+            {
+                t.Fatal(err);
+            }
+
+            //This operation clears the private fields which need to be recomputed
+            //in the Events (round, roundReceived,etc)
+            var (marshalledFrame, _) = frame.Marshal();
+            var unmarshalledFrame = @new(Frame);
+            unmarshalledFrame.Unmarshal(marshalledFrame);
+
+            var h2 = NewHashgraph(h.Participants, NewInmemStore(h.Participants, cacheSize), null, testLogger(t));
+            err = h2.Reset(block, unmarshalledFrame.Deref);
+            if (err != null)
+            {
+                t.Fatal(err);
+            }
+
+            /*
+                The hashgraph should now look like this:
+
+                          f02b|   |
+                          |   |   |
+                          f02 |   |
+                          | \ |   |
+                          |   \   |
+                          |   | \ |
+                   +--f0x  |   f21 //f0x's other-parent is e21b; contained in R0
+                   |   |   | / |
+                   |   |  f10  |
+                   |   | / |   |
+                   |   f0  |   f2
+                   |   | \ | / |
+                   |   |  f1b  |
+                   |   |   |   |
+                   |   |   f1  |
+                   |   |   |   |
+                   +-- R0  R1  R2
+            */
+
+        /*
+            //Test Known
+            var expectedKnown = map[int]int{participants[0].ID:5,participants[1].ID:4,participants[2].ID:4,};
+
+            var known = h2.Store.KnownEvents();
+            {
+                {
+                    {
+                        var l = known[peer.ID];
+
+                        if (l != expectedKnown[peer.ID])
+                        {
+                            t.Fatalf("Known[%d] should be %d, not %d", peer.ID, expectedKnown[peer.ID], l);
+                        }
+
+                    }
+                }
+
+                /***************************************************************************
+                 Test DivideRounds
+                ***************************************************************************/
+
+            }
+
+            /***************************************************************************
+             Test DivideRounds
+            ***************************************************************************/
+            
+            /*
+            {
+                var err = h2.DivideRounds();
+
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+
+            }
+            var (hRound1, err) = h.Store.GetRound(1);
+            if (err != null)
+            {
+                t.Fatal(err);
+            }
+            var (h2Round1, err) = h2.Store.GetRound(1);
+            if (err != null)
+            {
+                t.Fatal(err);
+            }
+
+            //Check Round1 Witnesses
+            var hWitnesses = hRound1.Witnesses();
+            var h2Witnesses = h2Round1.Witnesses();
+            sort.Strings(hWitnesses);
+            sort.Strings(h2Witnesses);
+            if (!reflect.DeepEqual(hWitnesses, h2Witnesses))
+            {
+                t.Fatalf("Reset Hg Round 1 witnesses should be %v, not %v", hWitnesses, h2Witnesses);
+            }
+
+            //check Event Rounds and LamportTimestamps
+            {
+                {
+                    var (h2r, err) = h2.round(ev.Hex());
+                    if (err != null)
+                    {
+                        t.Fatalf("Error computing %s Round: %d", getName(index, ev.Hex()), h2r);
+                    }
+                    var (hr, _) = h.round(ev.Hex());
+                    if (h2r != hr)
+                    {
+                        t.Fatalf("h2[%v].Round should be %d, not %d", getName(index, ev.Hex()), hr, h2r);
+                    }
+                    var (h2s, err) = h2.lamportTimestamp(ev.Hex());
+                    if (err != null)
+                    {
+                        t.Fatalf("Error computing %s LamportTimestamp: %d", getName(index, ev.Hex()), h2s);
+                    }
+                    var (hs, _) = h.lamportTimestamp(ev.Hex());
+                    if (h2s != hs)
+                    {
+                        t.Fatalf("h2[%v].LamportTimestamp should be %d, not %d", getName(index, ev.Hex()), hs, h2s);
+                    }
+                }
+
+                /***************************************************************************
+                Test Consensus
+                ***************************************************************************/
+
+            //}
+
+            /***************************************************************************
+            Test Consensus
+            ***************************************************************************/
+           
+            /*
+            
+            h2.DecideFame();
+            h2.DecideRoundReceived();
+            h2.ProcessDecidedRounds();
+
+            {
+                var lbi = h2.Store.LastBlockIndex();
+
+                if (lbi != block.Index())
+                {
+                    t.Fatalf("LastBlockIndex should be %d, not %d", block.Index(), lbi);
+                }
+
+            }
+            {
+                var r = h2.LastConsensusRound;
+
+                if (r == null || r.Deref != block.RoundReceived())
+                {
+                    t.Fatalf("LastConsensusRound should be %d, not %d", block.RoundReceived(), r.Deref);
+                }
+
+            }
+            {
+                var v = h2.AnchorBlock;
+
+                if (v != null)
+                {
+                    t.Fatalf("AnchorBlock should be null, not %v", v);
+                }
+
+                /***************************************************************************
+                Test continue after Reset
+                ***************************************************************************/
+                //Insert remaining Events into the Reset hashgraph
+/*
+            }
+            for (var r = 2; r <= 4; r++)
+            {
+                var (round, err) = h.Store.GetRound(r);
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+                var events = []Event{};
+                {
+                    {
+                        var (ev, err) = h.Store.GetEvent(e);
+                        if (err != null)
+                        {
+                            t.Fatal(err);
+                        }
+                        events = append(events, ev);
+                        t.Logf("R%d %s", r, getName(index, e));
+                    }
+
+                }
+
+                sort.Sort(ByTopologicalOrder(events));
+
+                {
+                    {
+                        var (marshalledEv, _) = ev.Marshal();
+                        var unmarshalledEv = @new(Event);
+                        unmarshalledEv.Unmarshal(marshalledEv);
+
+                        err = h2.InsertEvent(unmarshalledEv.Deref, @true);
+                        if (err != null)
+                        {
+                            t.Fatalf("ERR Inserting Event %s: %v", getName(index, ev.Hex()), err);
+                        }
+                    }
+
+                }
+            }
+
+
+            h2.DivideRounds();
+            h2.DecideFame();
+            h2.DecideRoundReceived();
+            h2.ProcessDecidedRounds();
+
+            for (var r = 1; r <= 4; r++)
+            {
+                var (hRound, err) = h.Store.GetRound(r);
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+                var (h2Round, err) = h2.Store.GetRound(r);
+                if (err != null)
+                {
+                    t.Fatal(err);
+                }
+                var hWitnesses = hRound.Witnesses();
+                var h2Witnesses = h2Round.Witnesses();
+                sort.Strings(hWitnesses);
+                sort.Strings(h2Witnesses);
+
+                if (!reflect.DeepEqual(hWitnesses, h2Witnesses))
+                {
+                    t.Fatalf("Reset Hg Round %d witnesses should be %v, not %v", r, hWitnesses, h2Witnesses);
+                }
+            }
+
+        }
+
+        public static void TestBootstrap(ref testing.T _t) => func(_t, (ref testing.T t, Defer defer, Panic _, Recover _) =>
+        {
+            //Initialize a first Hashgraph with a DB backend
+            //Add events and run consensus methods on it
+            var (h, _) = initConsensusHashgraph(@true, t);
+            h.DivideRounds();
+            h.DecideFame();
+            h.DecideRoundReceived();
+            h.ProcessDecidedRounds();
+
+            h.Store.Close();
+            defer(os.RemoveAll(badgerDir));
+
+            //Now we want to create a new Hashgraph based on the database of the previous
+            //Hashgraph and see if we can boostrap it to the same state.
+            var (recycledStore, err) = LoadBadgerStore(cacheSize, badgerDir);
+            var nh = NewHashgraph(recycledStore.participants, recycledStore, null, logrus.New().WithField("id", "bootstrapped"));
+            err = nh.Bootstrap();
+            if (err != null)
+            {
+                t.Fatal(err);
+            }
+            var hConsensusEvents = h.Store.ConsensusEvents();
+            var nhConsensusEvents = nh.Store.ConsensusEvents();
+            if (len(hConsensusEvents) != len(nhConsensusEvents))
+            {
+                t.Fatalf("Bootstrapped hashgraph should contain %d consensus events,not %d", len(hConsensusEvents), len(nhConsensusEvents));
+            }
+            var hKnown = h.Store.KnownEvents();
+            var nhKnown = nh.Store.KnownEvents();
+            if (!reflect.DeepEqual(hKnown, nhKnown))
+            {
+                t.Fatalf("Bootstrapped hashgraph's Known should be %#v, not %#v", hKnown, nhKnown);
+            }
+            if (h.LastConsensusRound.Deref != nh.LastConsensusRound.Deref)
+            {
+                t.Fatalf("Bootstrapped hashgraph's LastConsensusRound should be %#v, not %#v", h.LastConsensusRound.Deref, nh.LastConsensusRound.Deref);
+            }
+            if (h.LastCommitedRoundEvents != nh.LastCommitedRoundEvents)
+            {
+                t.Fatalf("Bootstrapped hashgraph's LastCommitedRoundEvents should be %#v, not %#v", h.LastCommitedRoundEvents, nh.LastCommitedRoundEvents);
+            }
+            if (h.ConsensusTransactions != nh.ConsensusTransactions)
+            {
+                t.Fatalf("Bootstrapped hashgraph's ConsensusTransactions should be %#v, not %#v", h.ConsensusTransactions, nh.ConsensusTransactions);
+            }
+            if (h.PendingLoadedEvents != nh.PendingLoadedEvents)
+            {
+                t.Fatalf("Bootstrapped hashgraph's PendingLoadedEvents should be %#v, not %#v", h.PendingLoadedEvents, nh.PendingLoadedEvents);
+            }
+        });
+
+*/
+
         /*
 
 //        [Fact]
@@ -2586,5 +3682,5 @@ namespace Babble.Test.HashgraphImpl
 
         //            return string.Join(" ", names);
         //        }
-    }
+
 }

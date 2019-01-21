@@ -72,7 +72,7 @@ namespace Babble.Core.HashgraphImpl
 
             if (ok)
             {
-               return (c, null);
+                return (c, null);
             }
 
             var (a, err) = await _ancestor(x, y);
@@ -294,7 +294,7 @@ namespace Babble.Core.HashgraphImpl
 
                 ok = root.Others.TryGetValue(ex.Hex(), out var other);
 
-                if (ex.OtherParent=="" || (ok && other.Hash == ex.OtherParent))
+                if (ex.OtherParent == "" || ok && other.Hash == ex.OtherParent)
                 {
                     return (root.NextRound, null);
                 }
@@ -312,7 +312,7 @@ namespace Babble.Core.HashgraphImpl
                 return (int.MinValue, err3);
             }
 
-            if ( ex.OtherParent!="")
+            if (ex.OtherParent != "")
             {
                 int opRound;
 
@@ -650,7 +650,7 @@ namespace Babble.Core.HashgraphImpl
                 i++;
             }
 
-            ev.LastAncestors=new OrderedEventCoordinates(members);
+            ev.LastAncestors = new OrderedEventCoordinates(members);
 
             var (selfParent, selfParentError) = await Store.GetEvent(ev.SelfParent);
             var (otherParent, otherParentError) = await Store.GetEvent(ev.OtherParent);
@@ -675,30 +675,29 @@ namespace Babble.Core.HashgraphImpl
             else if (selfParentError != null)
             {
                 Array.Copy(otherParent.LastAncestors.CloneValues(), 0, ev.LastAncestors.Values, 0, members);
-
             }
             else if (otherParentError != null)
             {
                 Array.Copy(selfParent.LastAncestors.CloneValues(), 0, ev.LastAncestors.Values, 0, members);
-
             }
             else
             {
                 var selfParentLastAncestors = selfParent.LastAncestors;
 
                 var otherParentLastAncestors = otherParent.LastAncestors;
-                
+
                 Array.Copy(selfParentLastAncestors.CloneValues(), 0, ev.LastAncestors.Values, 0, members);
 
                 i = 0;
                 foreach (var la in ev.LastAncestors.Values)
                 {
-                    if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index) 
+                    if (ev.LastAncestors.Values[i].Event.Index < otherParentLastAncestors.Values[i].Event.Index)
                     {
                         var eventCoordinates = ev.LastAncestors.Values[i].Event;
                         eventCoordinates.Index = otherParentLastAncestors.Values[i].Event.Index;
                         eventCoordinates.Hash = otherParentLastAncestors.Values[i].Event.Hash;
                     }
+
                     i++;
                 }
             }
@@ -1220,7 +1219,7 @@ namespace Babble.Core.HashgraphImpl
 
             void SetVote(Dictionary<string, Dictionary<string, bool>> vts, string x, string y, bool vote)
             {
-                if (vts[x] == null)
+                if (!vts.ContainsKey(x) || vts[x] == null)
                 {
                     vts[x] = new Dictionary<string, bool>();
                 }
@@ -2259,7 +2258,7 @@ namespace Babble.Core.HashgraphImpl
         {
             var selfParent = Event.RootSelfParent(wev.Body.CreatorId);
             var otherParent = "";
-            
+
             BabbleError err;
 
             var creator = Participants.ById[wev.Body.CreatorId];
