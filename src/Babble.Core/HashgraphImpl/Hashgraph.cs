@@ -1599,12 +1599,12 @@ namespace Babble.Core.HashgraphImpl
             }
             finally
             {
-                PendingRounds = new Queue<PendingRound>(PendingRounds.Take(processedIndex));
+                PendingRounds = new Queue<PendingRound>(PendingRounds.Skip(processedIndex+1));
             }
         }
 
         //GetFrame computes the Frame corresponding to a RoundReceived.
-        private async Task<(Frame, BabbleError)> GetFrame(int roundReceived)
+        public async Task<(Frame, BabbleError)> GetFrame(int roundReceived)
         {
             //Try to get it from the Store first
             var (frame, err1) = await Store.GetFrame(roundReceived);
