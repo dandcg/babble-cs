@@ -39,7 +39,7 @@ namespace Babble.Core.HashgraphImpl.Model
             if (Events.TryGetValue(x, out var e))
             {
 
-                e.Consensus = true;
+                
      
 
               
@@ -48,7 +48,7 @@ namespace Babble.Core.HashgraphImpl.Model
 
             else
             {
-                Events.Add(x, new RoundEvent());
+                Events.Add(x, new RoundEvent(){Consensus = true});
             }
 
 
