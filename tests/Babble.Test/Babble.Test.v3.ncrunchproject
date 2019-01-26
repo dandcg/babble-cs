@@ -97,6 +97,9 @@
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestDecideRoundReceived</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestProcessDecidedRounds</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

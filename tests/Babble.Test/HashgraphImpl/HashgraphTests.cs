@@ -2057,246 +2057,275 @@ namespace Babble.Test.HashgraphImpl
                 }
             }
         }
+
+
+        //   [Fact]
+        //public async Task BenchmarkConsensus()
+        //{
+        //    for (var n = 0; n < N; n++)
+        //    {
+        //        //we do not want to benchmark the initialization code
+        //        b.StopTimer();
+        //        var (h, _) = initConsensusHashgraph(@false, b);
+        //        b.StartTimer();
+
+        //        h.DivideRounds();
+        //        h.DecideFame();
+        //        h.DecideRoundReceived();
+        //        h.ProcessDecidedRounds();
+        //    }
+
+        //}
+
+        [Fact]
+        public async Task TestKnown()
+        {
+            var (h, _) = await InitConsensusHashgraph(false);
+
+            var participants = await h.Participants.ToPeerSlice();
+
+            var expectedKnown = new Dictionary<int, int>
+                 {
+                     {participants[0].ID, 10},
+                     {participants[1].ID, 9},
+                     {participants[2].ID, 9}
+                 };
+
+            var known = await h.Store.KnownEvents();
+
+            foreach (var i in await h.Participants.ToIdSlice())
+            {
+                var l = known[i];
+
+                Assert.True(l == expectedKnown[i], $"KnownEvents[{i}] should be {expectedKnown[i]}, not {l}");
+            }
+        }
+
+
+
         /*
-     public static void BenchmarkConsensus(ref testing.B b)
-     {
-         for (var n = 0; n < b.N; n++)
-         {
-             //we do not want to benchmark the initialization code
-             b.StopTimer();
-             var (h, _) = initConsensusHashgraph(@false, b);
-             b.StartTimer();
-
-             h.DivideRounds();
-             h.DecideFame();
-             h.DecideRoundReceived();
-             h.ProcessDecidedRounds();
-         }
-
-     }
-
-     public static void TestKnown(ref testing.T t)
-     {
-         var (h, _) = initConsensusHashgraph(@false, t);
-
-         var participants = h.Participants.ToPeerSlice();
-
-         var expectedKnown = map[int]int{participants[0].ID:10,participants[1].ID:9,participants[2].ID:9,};
-
-         var known = h.Store.KnownEvents();
-         {
+             public static void TestKnown(ref testing.T t)
              {
-                 {
-                     var l = known[i];
+                 var (h, _) = initConsensusHashgraph(@false, t);
 
-                     if (l != expectedKnown[i])
+                 var participants = h.Participants.ToPeerSlice();
+
+                 var expectedKnown = map[int]int{participants[0].ID:10,participants[1].ID:9,participants[2].ID:9,};
+
+                 var known = h.Store.KnownEvents();
+                 {
                      {
-                         t.Fatalf("Known[%d] should be %d, not %d", i, expectedKnown[i], l);
+                         {
+                             var l = known[i];
+
+                             if (l != expectedKnown[i])
+                             {
+                                 t.Fatalf("Known[%d] should be %d, not %d", i, expectedKnown[i], l);
+                             }
+
+                         }
                      }
 
                  }
              }
 
-         }
-     }
-
-     public static void TestGetFrame(ref testing.T t)
-     {
-         var (h, index) = initConsensusHashgraph(@false, t);
-
-         var participants = h.Participants.ToPeerSlice();
-
-         h.DivideRounds();
-         h.DecideFame();
-         h.DecideRoundReceived();
-         h.ProcessDecidedRounds();
-
-         t.Run("Round 1", t =>
-         {
-             var expectedRoots = make(typeof(slice<Root>), n);
-             expectedRoots[0] = NewBaseRoot(participants[0].ID);
-             expectedRoots[1] = NewBaseRoot(participants[1].ID);
-             expectedRoots[2] = NewBaseRoot(participants[2].ID);
-
-             var (frame, err) = h.GetFrame(1);
-             if (err != null)
+             public static void TestGetFrame(ref testing.T t)
              {
-                 t.Fatal(err);
-             }
-             {
+                 var (h, index) = initConsensusHashgraph(@false, t);
+
+                 var participants = h.Participants.ToPeerSlice();
+
+                 h.DivideRounds();
+                 h.DecideFame();
+                 h.DecideRoundReceived();
+                 h.ProcessDecidedRounds();
+
+                 t.Run("Round 1", t =>
                  {
-                     var er = expectedRoots[p];
-                     {
-                         var x = r.SelfParent;
+                     var expectedRoots = make(typeof(slice<Root>), n);
+                     expectedRoots[0] = NewBaseRoot(participants[0].ID);
+                     expectedRoots[1] = NewBaseRoot(participants[1].ID);
+                     expectedRoots[2] = NewBaseRoot(participants[2].ID);
 
-                         if (!reflect.DeepEqual(x, er.SelfParent))
-                         {
-                             t.Fatalf("Roots[%d].SelfParent should be %v, not %v", p, er.SelfParent, x);
-                         }
-
-                     }
-                     {
-                         var others = r.Others;
-
-                         if (!reflect.DeepEqual(others, er.Others))
-                         {
-                             t.Fatalf("Roots[%d].Others should be %v, not %vv", p, er.Others, others);
-                         }
-
-                     }
-                 }
-
-             }
-
-             var expectedEventsHashes = []string{index["e0"],index["e1"],index["e2"],index["e10"],index["e21"],index["e21b"],index["e02"]};
-             var expectedEvents = []Event{};
-             {
-                 {
-                     var (e, err) = h.Store.GetEvent(eh);
+                     var (frame, err) = h.GetFrame(1);
                      if (err != null)
                      {
                          t.Fatal(err);
                      }
-                     expectedEvents = append(expectedEvents, e);
-                 }
-
-             }
-             sort.Sort(ByLamportTimestamp(expectedEvents));
-             if (!reflect.DeepEqual(expectedEvents, frame.Events))
-             {
-                 t.Fatal("Frame.Events is not good");
-             }
-             var (block0, err) = h.Store.GetBlock(0);
-             if (err != null)
-             {
-                 t.Fatalf("Store should contain a block with Index 1: %v", err);
-             }
-             var (frame1Hash, err) = frame.Hash();
-             if (err != null)
-             {
-                 t.Fatalf("Error computing Frame hash, %v", err);
-             }
-             if (!reflect.DeepEqual(block0.FrameHash(), frame1Hash))
-             {
-                 t.Fatalf("Block0.FrameHash (%v) and Frame1.Hash (%v) differ", block0.FrameHash(), frame1Hash);
-             }
-         });
-
-         t.Run("Round 2", t =>
-         {
-             var expectedRoots = make(typeof(slice<Root>), n);
-             expectedRoots[0] = Root{NextRound:1,SelfParent:RootEvent{index["e02"],participants[0].ID,1,4,0},Others:map[string]RootEvent{index["f0"]:RootEvent{Hash:index["f1b"],CreatorID:participants[1].ID,Index:3,LamportTimestamp:6,Round:1,},index["f0x"]:RootEvent{Hash:index["e21"],CreatorID:participants[2].ID,Index:1,LamportTimestamp:2,Round:0,},},};
-             expectedRoots[1] = Root{NextRound:1,SelfParent:RootEvent{index["e10"],participants[1].ID,1,1,0},Others:map[string]RootEvent{index["f1"]:RootEvent{Hash:index["e02"],CreatorID:participants[0].ID,Index:1,LamportTimestamp:4,Round:0,},},};
-             expectedRoots[2] = Root{NextRound:1,SelfParent:RootEvent{index["e21b"],participants[2].ID,2,3,0},Others:map[string]RootEvent{index["f2"]:RootEvent{Hash:index["f1b"],CreatorID:participants[1].ID,Index:3,LamportTimestamp:6,Round:1,},},};
-
-             var (frame, err) = h.GetFrame(2);
-             if (err != null)
-             {
-                 t.Fatal(err);
-             }
-             {
-                 {
-                     var er = expectedRoots[p];
                      {
-                         var x = r.SelfParent;
-
-                         if (!reflect.DeepEqual(x, er.SelfParent))
                          {
-                             t.Fatalf("Roots[%d].SelfParent should be %v, not %v", p, er.SelfParent, x);
+                             var er = expectedRoots[p];
+                             {
+                                 var x = r.SelfParent;
+
+                                 if (!reflect.DeepEqual(x, er.SelfParent))
+                                 {
+                                     t.Fatalf("Roots[%d].SelfParent should be %v, not %v", p, er.SelfParent, x);
+                                 }
+
+                             }
+                             {
+                                 var others = r.Others;
+
+                                 if (!reflect.DeepEqual(others, er.Others))
+                                 {
+                                     t.Fatalf("Roots[%d].Others should be %v, not %vv", p, er.Others, others);
+                                 }
+
+                             }
                          }
 
                      }
-                     {
-                         var others = r.Others;
 
-                         if (!reflect.DeepEqual(others, er.Others))
+                     var expectedEventsHashes = []string{index["e0"],index["e1"],index["e2"],index["e10"],index["e21"],index["e21b"],index["e02"]};
+                     var expectedEvents = []Event{};
+                     {
                          {
-                             t.Fatalf("Roots[%d].Others should be %v, not %v", p, er.Others, others);
+                             var (e, err) = h.Store.GetEvent(eh);
+                             if (err != null)
+                             {
+                                 t.Fatal(err);
+                             }
+                             expectedEvents = append(expectedEvents, e);
                          }
 
                      }
-                 }
+                     sort.Sort(ByLamportTimestamp(expectedEvents));
+                     if (!reflect.DeepEqual(expectedEvents, frame.Events))
+                     {
+                         t.Fatal("Frame.Events is not good");
+                     }
+                     var (block0, err) = h.Store.GetBlock(0);
+                     if (err != null)
+                     {
+                         t.Fatalf("Store should contain a block with Index 1: %v", err);
+                     }
+                     var (frame1Hash, err) = frame.Hash();
+                     if (err != null)
+                     {
+                         t.Fatalf("Error computing Frame hash, %v", err);
+                     }
+                     if (!reflect.DeepEqual(block0.FrameHash(), frame1Hash))
+                     {
+                         t.Fatalf("Block0.FrameHash (%v) and Frame1.Hash (%v) differ", block0.FrameHash(), frame1Hash);
+                     }
+                 });
 
-             }
-
-             var expectedEventsHashes = []string{index["f1"],index["f1b"],index["f0"],index["f2"],index["f10"],index["f0x"],index["f21"],index["f02"],index["f02b"]};
-             var expectedEvents = []Event{};
-             {
+                 t.Run("Round 2", t =>
                  {
-                     var (e, err) = h.Store.GetEvent(eh);
+                     var expectedRoots = make(typeof(slice<Root>), n);
+                     expectedRoots[0] = Root{NextRound:1,SelfParent:RootEvent{index["e02"],participants[0].ID,1,4,0},Others:map[string]RootEvent{index["f0"]:RootEvent{Hash:index["f1b"],CreatorID:participants[1].ID,Index:3,LamportTimestamp:6,Round:1,},index["f0x"]:RootEvent{Hash:index["e21"],CreatorID:participants[2].ID,Index:1,LamportTimestamp:2,Round:0,},},};
+                     expectedRoots[1] = Root{NextRound:1,SelfParent:RootEvent{index["e10"],participants[1].ID,1,1,0},Others:map[string]RootEvent{index["f1"]:RootEvent{Hash:index["e02"],CreatorID:participants[0].ID,Index:1,LamportTimestamp:4,Round:0,},},};
+                     expectedRoots[2] = Root{NextRound:1,SelfParent:RootEvent{index["e21b"],participants[2].ID,2,3,0},Others:map[string]RootEvent{index["f2"]:RootEvent{Hash:index["f1b"],CreatorID:participants[1].ID,Index:3,LamportTimestamp:6,Round:1,},},};
+
+                     var (frame, err) = h.GetFrame(2);
                      if (err != null)
                      {
                          t.Fatal(err);
                      }
-                     expectedEvents = append(expectedEvents, e);
+                     {
+                         {
+                             var er = expectedRoots[p];
+                             {
+                                 var x = r.SelfParent;
+
+                                 if (!reflect.DeepEqual(x, er.SelfParent))
+                                 {
+                                     t.Fatalf("Roots[%d].SelfParent should be %v, not %v", p, er.SelfParent, x);
+                                 }
+
+                             }
+                             {
+                                 var others = r.Others;
+
+                                 if (!reflect.DeepEqual(others, er.Others))
+                                 {
+                                     t.Fatalf("Roots[%d].Others should be %v, not %v", p, er.Others, others);
+                                 }
+
+                             }
+                         }
+
+                     }
+
+                     var expectedEventsHashes = []string{index["f1"],index["f1b"],index["f0"],index["f2"],index["f10"],index["f0x"],index["f21"],index["f02"],index["f02b"]};
+                     var expectedEvents = []Event{};
+                     {
+                         {
+                             var (e, err) = h.Store.GetEvent(eh);
+                             if (err != null)
+                             {
+                                 t.Fatal(err);
+                             }
+                             expectedEvents = append(expectedEvents, e);
+                         }
+
+                     }
+                     sort.Sort(ByLamportTimestamp(expectedEvents));
+                     if (!reflect.DeepEqual(expectedEvents, frame.Events))
+                     {
+                         t.Fatal("Frame.Events is not good");
+                     }
+                 });
+
+             }
+
+             public static void TestResetFromFrame(ref testing.T t)
+             {
+                 var (h, index) = initConsensusHashgraph(@false, t);
+
+                 var participants = h.Participants.ToPeerSlice();
+
+                 h.DivideRounds();
+                 h.DecideFame();
+                 h.DecideRoundReceived();
+                 h.ProcessDecidedRounds();
+
+                 var (block, err) = h.Store.GetBlock(1);
+                 if (err != null)
+                 {
+                     t.Fatal(err);
+                 }
+                 var (frame, err) = h.GetFrame(block.RoundReceived());
+                 if (err != null)
+                 {
+                     t.Fatal(err);
                  }
 
-             }
-             sort.Sort(ByLamportTimestamp(expectedEvents));
-             if (!reflect.DeepEqual(expectedEvents, frame.Events))
-             {
-                 t.Fatal("Frame.Events is not good");
-             }
-         });
+                 //This operation clears the private fields which need to be recomputed
+                 //in the Events (round, roundReceived,etc)
+                 var (marshalledFrame, _) = frame.Marshal();
+                 var unmarshalledFrame = @new(Frame);
+                 unmarshalledFrame.Unmarshal(marshalledFrame);
 
-     }
+                 var h2 = NewHashgraph(h.Participants, NewInmemStore(h.Participants, cacheSize), null, testLogger(t));
+                 err = h2.Reset(block, unmarshalledFrame.Deref);
+                 if (err != null)
+                 {
+                     t.Fatal(err);
+                 }
 
-     public static void TestResetFromFrame(ref testing.T t)
-     {
-         var (h, index) = initConsensusHashgraph(@false, t);
+                 /*
+                     The hashgraph should now look like this:
 
-         var participants = h.Participants.ToPeerSlice();
-
-         h.DivideRounds();
-         h.DecideFame();
-         h.DecideRoundReceived();
-         h.ProcessDecidedRounds();
-
-         var (block, err) = h.Store.GetBlock(1);
-         if (err != null)
-         {
-             t.Fatal(err);
-         }
-         var (frame, err) = h.GetFrame(block.RoundReceived());
-         if (err != null)
-         {
-             t.Fatal(err);
-         }
-
-         //This operation clears the private fields which need to be recomputed
-         //in the Events (round, roundReceived,etc)
-         var (marshalledFrame, _) = frame.Marshal();
-         var unmarshalledFrame = @new(Frame);
-         unmarshalledFrame.Unmarshal(marshalledFrame);
-
-         var h2 = NewHashgraph(h.Participants, NewInmemStore(h.Participants, cacheSize), null, testLogger(t));
-         err = h2.Reset(block, unmarshalledFrame.Deref);
-         if (err != null)
-         {
-             t.Fatal(err);
-         }
-
-         /*
-             The hashgraph should now look like this:
-
-                       f02b|   |
-                       |   |   |
-                       f02 |   |
-                       | \ |   |
-                       |   \   |
-                       |   | \ |
-                +--f0x  |   f21 //f0x's other-parent is e21b; contained in R0
-                |   |   | / |
-                |   |  f10  |
-                |   | / |   |
-                |   f0  |   f2
-                |   | \ | / |
-                |   |  f1b  |
-                |   |   |   |
-                |   |   f1  |
-                |   |   |   |
-                +-- R0  R1  R2
-         */
+                               f02b|   |
+                               |   |   |
+                               f02 |   |
+                               | \ |   |
+                               |   \   |
+                               |   | \ |
+                        +--f0x  |   f21 //f0x's other-parent is e21b; contained in R0
+                        |   |   | / |
+                        |   |  f10  |
+                        |   | / |   |
+                        |   f0  |   f2
+                        |   | \ | / |
+                        |   |  f1b  |
+                        |   |   |   |
+                        |   |   f1  |
+                        |   |   |   |
+                        +-- R0  R1  R2
+                 */
 
         /*
             //Test Known
