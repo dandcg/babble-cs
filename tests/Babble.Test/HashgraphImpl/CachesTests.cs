@@ -6,7 +6,7 @@ using Babble.Core.Common;
 using Babble.Core.HashgraphImpl;
 using Babble.Core.PeersImpl;
 using Babble.Core.Util;
-using Babble.Test.Helpers;
+using Babble.Test.Utils;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;

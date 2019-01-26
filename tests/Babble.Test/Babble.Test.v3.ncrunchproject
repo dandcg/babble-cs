@@ -100,6 +100,9 @@
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestProcessDecidedRounds</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestKnown</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

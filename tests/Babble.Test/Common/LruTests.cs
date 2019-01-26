@@ -1,6 +1,6 @@
 ﻿using System;
 using Babble.Core.Common;
-using Babble.Test.Helpers;
+using Babble.Test.Utils;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;

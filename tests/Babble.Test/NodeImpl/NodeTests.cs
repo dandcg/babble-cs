@@ -16,7 +16,7 @@ using Babble.Core.PeersImpl;
 using Babble.Core.ProxyImpl;
 using Babble.Core.ProxyImpl.Dummy;
 using Babble.Core.Util;
-using Babble.Test.Helpers;
+using Babble.Test.Utils;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;

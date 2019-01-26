@@ -2,7 +2,7 @@
 using Serilog.Events;
 using Xunit.Abstractions;
 
-namespace Babble.Test.Helpers
+namespace Babble.Test.Utils
 {
     public static class TestLoggingExtensions
     {

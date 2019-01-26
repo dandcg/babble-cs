@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Babble.Test.Helpers
+namespace Babble.Test.Utils
 {
     public static class DebugExtensions
     {

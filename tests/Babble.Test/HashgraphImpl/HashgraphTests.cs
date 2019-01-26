@@ -10,7 +10,7 @@ using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.HashgraphImpl.Stores;
 using Babble.Core.PeersImpl;
 using Babble.Core.Util;
-using Babble.Test.Helpers;
+using Babble.Test.Utils;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;
@@ -2058,7 +2058,6 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
-
         //   [Fact]
         //public async Task BenchmarkConsensus()
         //{
@@ -2085,11 +2084,11 @@ namespace Babble.Test.HashgraphImpl
             var participants = await h.Participants.ToPeerSlice();
 
             var expectedKnown = new Dictionary<int, int>
-                 {
-                     {participants[0].ID, 10},
-                     {participants[1].ID, 9},
-                     {participants[2].ID, 9}
-                 };
+            {
+                {participants[0].ID, 10},
+                {participants[1].ID, 9},
+                {participants[2].ID, 9}
+            };
 
             var known = await h.Store.KnownEvents();
 
@@ -2101,34 +2100,550 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
+        [Fact]
+        public async Task TestGetFrame()
+        {
+            var (h, index) = await InitConsensusHashgraph(false);
 
+            var participants = await h.Participants.ToPeerSlice();
+
+            await h.DivideRounds();
+
+            await h.DecideFame();
+
+            await h.DecideRoundReceived();
+
+            await h.ProcessDecidedRounds();
+
+            // Round1
+
+            var expectedRoots = new Root[N];
+            for (int i = 0; i < 3; i++)
+            {
+                expectedRoots[i] = Root.NewBaseRoot(participants[i].ID);
+            }
+
+            var (frame, err1) = await h.GetFrame(1);
+            err1.IsNotError();
+
+            var p = 0;
+            foreach (var r in frame.Roots)
+            {
+                var er = expectedRoots[p];
+
+                r.SelfParent.ShouldCompareTo(er.SelfParent);
+                r.Others.ShouldCompareTo(er.Others);
+
+                p++;
+            }
+
+            var expectedEventsHashes = new[]
+            {
+                index["e0"],
+                index["e1"],
+                index["e2"], index["e10"],
+                index["e21"],
+                index["e21b"],
+                index["e02"]
+            };
+
+            var expectedEvents = new List<Event>();
+
+            foreach (var eh in expectedEventsHashes)
+            {
+                var (e, err2) = await h.Store.GetEvent(eh);
+                err2.IsNotError();
+                expectedEvents.Add(e);
+            }
+
+            expectedEvents.Sort(new Event.EventByLamportTimeStamp());
+
+            frame.Events.ShouldCompareTo(expectedEvents.ToArray(), "Frame.Events is not good");
+
+            var (block0, err3) = await h.Store.GetBlock(0);
+
+            err3.IsNotError($"Store should contain a block with Index 1: {err3}");
+
+            var frame1Hash = frame.Hash();
+            frame1Hash.ShouldCompareTo(block0.FrameHash(), $"Block0.FrameHash ({block0.FrameHash()}) and Frame1.Hash ({frame1Hash}) differ");
+
+            // Round 2
+
+            expectedRoots = new Root[N];
+
+            expectedRoots[0] = new Root
+            {
+                NextRound = 1,
+                SelfParent = new RootEvent
+                {
+                    Hash = index["e02"],
+                    CreatorId = participants[0].ID,
+                    Index = 1,
+                    LamportTimestamp = 4,
+                    Round = 0
+                },
+                Others = new Dictionary<string, RootEvent>
+                {
+                    {
+                        index["f0"], new RootEvent
+                        {
+                            Hash = index["f1b"],
+                            CreatorId = participants[1].ID,
+                            Index = 3,
+                            LamportTimestamp = 6,
+                            Round = 1
+                        }
+                    },
+                    {
+                        index["f0x"], new RootEvent
+                        {
+                            Hash = index["e21"],
+                            CreatorId = participants[2].ID,
+                            Index = 1,
+                            LamportTimestamp = 2,
+                            Round = 0
+                        }
+                    }
+                }
+            };
+
+            expectedRoots[1] = new Root
+            {
+                NextRound = 1,
+                SelfParent = new RootEvent {Hash = index["e10"],
+                    CreatorId = participants[1].ID, 
+                    Index = 1, 
+                    LamportTimestamp = 1, 
+                    Round = 0},
+                Others = new Dictionary<string, RootEvent>
+                {
+                    {
+                        index["f1"], new RootEvent
+                        {
+                            Hash = index["e02"],
+                            CreatorId = participants[0].ID,
+                            Index = 1,
+                            LamportTimestamp = 4,
+                            Round = 0
+                        }
+                    }
+                }
+            };
+
+            expectedRoots[2] = new Root
+            {
+                NextRound = 1,
+                SelfParent = new RootEvent {Hash = index["e21b"], 
+                    CreatorId = participants[2].ID, 
+                    Index = 2, 
+                    LamportTimestamp = 3, 
+                    Round = 0},
+                Others = new Dictionary<string, RootEvent>
+                {
+                    {
+                        index["f2"], new RootEvent
+                        {
+                            Hash = index["f1b"],
+                            CreatorId = participants[1].ID,
+                            Index = 3,
+                            LamportTimestamp = 6,
+                            Round = 1
+                        }
+                    }
+                }
+            };
+
+            BabbleError err4;
+            (frame, err4) = await h.GetFrame(2);
+            err4.IsNotError();
+
+            p = 0;
+            foreach (var r in frame.Roots)
+            {
+                var er = expectedRoots[p];
+
+                r.SelfParent.ShouldCompareTo(er.SelfParent);
+                r.Others.ShouldCompareTo(er.Others);
+
+                p++;
+            }
+
+           expectedEventsHashes = new string[]
+           {
+               index["f1"],
+               index["f1b"],
+               index["f0"],
+               index["f2"],
+               index["f10"],
+               index["f0x"],
+               index["f21"],
+               index["f02"],
+               index["f02b"]
+           };
+
+
+            expectedEvents = new List<Event>();
+
+            foreach (var eh in expectedEventsHashes)
+            {
+                var (e, err5) = await h.Store.GetEvent(eh);
+                err5.IsNotError();
+                expectedEvents.Add(e);
+            }
+
+            expectedEvents.Sort(new Event.EventByLamportTimeStamp());
+
+            frame.Events.ShouldCompareTo(expectedEvents.ToArray(), "Frame.Events is not good");
+        }
+
+        //        [Fact]
+        //        public async Task TestResetFromFrame()
+        //        {
+        //            var (h, _) = await InitConsensusHashgraph(false, GetPath(), logger);
+
+        //            await h.DivideRounds();
+
+        //            await h.DecideFame();
+
+        //            await h.FindOrder();
+
+        //            var (frame, err) = await h.GetFrame();
+
+        //            Assert.Null(err);
+
+        //            err = h.Reset(frame.Roots);
+
+        //            Assert.Null(err);
+
+        //            foreach (var ev in frame.Events)
+        //            {
+        //                err = await h.InsertEvent(ev, false);
+        //                if (err != null)
+        //                {
+        //                    Console.WriteLine($"Error inserting {ev.Hex()} in reset Hashgraph: {err}");
+        //                }
+
+        //                Assert.Null(err);
+        //            }
+
+        //            var expectedKnown = new Dictionary<int, int>
+        //            {
+        //                {0, 8},
+        //                {1, 7},
+        //                {2, 7}
+        //            };
+
+        //            var known = await h.KnownEvents();
+
+        //            foreach (var p in h.Participants)
+        //            {
+        //                var id = p.Value;
+        //                var l = known[id];
+
+        //                Assert.True(l == expectedKnown[id], $"KnownEvents[{id}] should be {expectedKnown[id]}, not {l}");
+        //            }
+
+        //            await h.DivideRounds();
+
+        //            await h.DecideFame();
+
+        //            await h.FindOrder();
+
+        //            var r = h.LastConsensusRound;
+        //            if (r == null || r != 1)
+        //            {
+        //                var disp = "null";
+
+        //                if (r != null)
+        //                {
+        //                    disp = r.ToString();
+        //                }
+
+        //                Assert.True(false, $"LastConsensusRound should be 1, not {disp}");
+        //            }
+        //        }
+
+        //        [Fact]
+        //        public async Task TestBootstrap()
+        //        {
+        //            var dbPath = GetPath();
+
+        //            //Initialize a first Hashgraph with a DB backend
+        //            //Set events and run consensus methods on it
+        //            var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);
+
+        //            using (var tx = h.Store.BeginTx())
+        //            {
+        //                await h.DivideRounds();
+
+        //                await h.DecideFame();
+
+        //                await h.FindOrder();
+
+        //                tx.Commit();
+        //            }
+
+        //            h.Store.Close();
+
+        //            Exception err;
+
+        //            logger.Debug("------- RecycledStore -------");
+
+        //            //Now we want to create a new Hashgraph based on the database of the previous
+        //            //Hashgraph and see if we can boostrap it to the same state.
+        //            IStore recycledStore;
+        //            (recycledStore, err) = await LocalDbStore.Load(CacheSize, dbPath, logger);
+
+        //            Assert.Null(err);
+
+        //            Assert.Equal(h.Store.Participants().participants.Count, recycledStore.Participants().participants.Count);
+
+        //            foreach (var p in h.Store.Participants().participants)
+        //            {
+        //                Assert.Equal(recycledStore.Participants().participants[p.Key], p.Value);
+        //            }
+
+        //            var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
+
+        //            err = await nh.Bootstrap();
+
+        //            Assert.Null(err);
+
+        //            var hConsensusEvents = h.ConsensusEvents();
+
+        //            var nhConsensusEvents = nh.ConsensusEvents();
+
+        //            Assert.Equal(hConsensusEvents.Length, nhConsensusEvents.Length);
+
+        //            var hKnown = await h.KnownEvents();
+
+        //            var nhKnown = await nh.KnownEvents();
+
+        //            Assert.Equal(hKnown.Count, nhKnown.Count);
+
+        //            foreach (var p in hKnown)
+        //            {
+        //                Assert.Equal(nhKnown[p.Key], p.Value);
+        //            }
+
+        //            Assert.Equal(h.LastConsensusRound, nh.LastConsensusRound);
+
+        //            Assert.Equal(h.LastCommitedRoundEvents, nh.LastCommitedRoundEvents);
+
+        //            Assert.Equal(h.ConsensusTransactions, nh.ConsensusTransactions);
+
+        //            Assert.Equal(h.PendingLoadedEvents, nh.PendingLoadedEvents);
+        //        }
+
+        //        /*
+        //            |    |    |    |
+        //        	|    |    |    |w51 collects votes from w40, w41, w42 and w43.
+        //            |   w51   |    |IT DECIDES YES
+        //            |    |  \ |    |
+        //        	|    |   e23   |
+        //            |    |    | \  |------------------------
+        //            |    |    |   w43
+        //            |    |    | /  | Round 4 is a Coin Round. No decision will be made.
+        //            |    |   w42   |
+        //            |    | /  |    | w40 collects votes from w33, w32 and w31. It votes yes.
+        //            |   w41   |    | w41 collects votes from w33, w32 and w31. It votes yes.
+        //        	| /  |    |    | w42 collects votes from w30, w31, w32 and w33. It votes yes.
+        //           w40   |    |    | w43 collects votes from w30, w31, w32 and w33. It votes yes.
+        //            | \  |    |    |------------------------
+        //            |   d13   |    | w30 collects votes from w20, w21, w22 and w23. It votes yes
+        //            |    |  \ |    | w31 collects votes from w21, w22 and w23. It votes no
+        //           w30   |    \    | w32 collects votes from w20, w21, w22 and w23. It votes yes
+        //            | \  |    | \  | w33 collects votes from w20, w21, w22 and w23. It votes yes
+        //            |   \     |   w33
+        //            |    | \  |  / |Again, none of the witnesses in round 3 are able to decide.
+        //            |    |   w32   |However, a strong majority votes yes
+        //            |    |  / |    |
+        //        	|   w31   |    |
+        //            |  / |    |    |--------------------------
+        //           w20   |    |    | w23 collects votes from w11, w12 and w13. It votes no
+        //            |  \ |    |    | w21 collects votes from w11, w12, and w13. It votes no
+        //            |    \    |    | w22 collects votes from w11, w12, w13 and w14. It votes yes
+        //            |    | \  |    | w20 collects votes from w11, w12, w13 and w14. It votes yes
+        //            |    |   w22   |
+        //            |    | /  |    | None of the witnesses in round 2 were able to decide.
+        //            |   c10   |    | They voted according to the majority of votes they observed
+        //            | /  |    |    | in round 1. The vote is split 2-2
+        //           b00  w21   |    |
+        //            |    |  \ |    |
+        //            |    |    \    |
+        //            |    |    | \  |
+        //            |    |    |   w23
+        //            |    |    | /  |------------------------
+        //           w10   |   b21   |
+        //        	| \  | /  |    | w10 votes yes (it can see w00)
+        //            |   w11   |    | w11 votes yes
+        //            |    |  \ |    | w12 votes no  (it cannot see w00)
+        //        	|    |   w12   | w13 votes no
+        //            |    |    | \  |
+        //            |    |    |   w13
+        //            |    |    | /  |------------------------
+        //            |   a10  a21   | We want to decide the fame of w00
+        //            |  / |  / |    |
+        //            |/  a12   |    |
+        //           a00   |  \ |    |
+        //        	|    |   a23   |
+        //            |    |    | \  |
+        //           w00  w01  w02  w03
+        //        	0	 1	  2	   3
+        //        */
+
+        //        public async Task<(Hashgraph h, Dictionary<string, string> index)> InitFunkyHashgraph()
+
+        //        {
+        //            var index = new Dictionary<string, string>();
+
+        //            var nodes = new List<TestNode>();
+        //            var orderedEvents = new List<Event>();
+
+        //            int i = 0;
+        //            var n = 4;
+        //            for (i = 0; i < n; i++)
+        //            {
+        //                var key = CryptoUtils.GenerateEcdsaKey();
+        //                var node = new TestNode(key, i);
+        //                var name = $"w0{i}";
+        //                var ev = new Event(new [] {name.StringToBytes() }, null, new[] {"", ""}, node.Pub, 0);
+
+        //                node.SignAndAddEvent(ev, name, index, orderedEvents);
+        //                nodes.Add(node);
+        //            }
+
+        //            var plays = new[]
+        //            {
+        //                new Play(2, 1, "w02", "w03", "a23", new[] {"a23".StringToBytes()}, null),
+        //                new Play(1, 1, "w01", "a23", "a12", new[] {"a12".StringToBytes()}, null),
+        //                new Play(0, 1, "w00", "", "a00", new[] {"a00".StringToBytes()}, null),
+        //                new Play(1, 2, "a12", "a00", "a10", new[] {"a10".StringToBytes()}, null),
+        //                new Play(2, 2, "a23", "a12", "a21", new[] {"a21".StringToBytes()}, null),
+        //                new Play(3, 1, "w03", "a21", "w13", new[] {"w13".StringToBytes()}, null),
+        //                new Play(2, 3, "a21", "w13", "w12", new[] {"w12".StringToBytes()}, null),
+        //                new Play(1, 3, "a10", "w12", "w11", new[] {"w11".StringToBytes()}, null),
+        //                new Play(0, 2, "a00", "w11", "w10", new[] {"w10".StringToBytes()}, null),
+        //                new Play(2, 4, "w12", "w11", "b21", new[] {"b21".StringToBytes()}, null),
+        //                new Play(3, 2, "w13", "b21", "w23", new[] {"w32".StringToBytes()}, null),
+        //                new Play(1, 4, "w11", "w23", "w21", new[] {"w21".StringToBytes()}, null),
+        //                new Play(0, 3, "w10", "", "b00", new[] {"b00".StringToBytes()}, null),
+        //                new Play(1, 5, "w21", "b00", "c10", new[] {"c10".StringToBytes()}, null),
+        //                new Play(2, 5, "b21", "c10", "w22", new[] {"w22".StringToBytes()}, null),
+        //                new Play(0, 4, "b00", "w22", "w20", new[] {"w20".StringToBytes()}, null),
+        //                new Play(1, 6, "c10", "w20", "w31", new[] {"w31".StringToBytes()}, null),
+        //                new Play(2, 6, "w22", "w31", "w32", new[] {"w32".StringToBytes()}, null),
+        //                new Play(0, 5, "w20", "w32", "w30", new[] {"w30".StringToBytes()}, null),
+        //                new Play(3, 3, "w23", "w32", "w33", new[] {"w33".StringToBytes()}, null),
+        //                new Play(1, 7, "w31", "w33", "d13", new[] {"d13".StringToBytes()}, null),
+        //                new Play(0, 6, "w30", "d13", "w40", new[] {"w40".StringToBytes()}, null),
+        //                new Play(1, 8, "d13", "w40", "w41", new[] {"w41".StringToBytes()}, null),
+        //                new Play(2, 7, "w32", "w41", "w42", new[] {"w42".StringToBytes()}, null),
+        //                new Play(3, 4, "w33", "w42", "w43", new[] {"w43".StringToBytes()}, null),
+        //                new Play(2, 8, "w42", "w43", "e23", new[] {"e23".StringToBytes()}, null),
+        //                new Play(1, 9, "w41", "e23", "w51", new[] {"w51".StringToBytes()}, null)
+        //            };
+
+        //            foreach (var p in plays)
+        //            {
+        //                var parents = new List<string> {index[p.SelfParent]};
+        //                index.TryGetValue(p.OtherParent, out var otherParent);
+        //                parents.Add(otherParent ?? "");
+
+        //                var e = new Event(p.TxPayload, p.SigPayload, parents.ToArray(),
+        //                    nodes[p.To].Pub,
+        //                    p.Index);
+
+        //                nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
+        //            }
+
+        //            var participants = new Dictionary<string, int>();
+        //            foreach (var node in nodes)
+        //            {
+        //                participants[node.Pub.ToHex()] = node.Id;
+        //            }
+
+        //            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize, logger), null, logger);
+
+        //            i = 0;
+        //            foreach (var ev in orderedEvents)
+        //            {
+        //                var err = await hashgraph.InsertEvent(ev, true);
+
+        //                if (err != null)
+        //                {
+        //                    Console.WriteLine($"ERROR inserting event {i}: {err.Message} ");
+        //                }
+        //            }
+
+        //            return (hashgraph, index);
+        //        }
+
+        //        [Fact]
+        //        public async Task TestFunkyHashgraphFame()
+        //        {
+        //            var ( h, index) = await InitFunkyHashgraph();
+
+        //            await h.DivideRounds();
+
+        //            var l = h.Store.LastRound();
+        //            Assert.Equal(5, l);
+
+        //            for (var r = 0; r < 6; r++)
+        //            {
+        //                var ( round, err) = await h.Store.GetRound(r);
+
+        //                Assert.Null(err);
+
+        //                var witnessNames = new List<string>();
+        //                foreach (var w in round.Witnesses())
+        //                {
+        //                    witnessNames.Add(GetName(index, w));
+        //                }
+
+        //                Console.WriteLine("Round {0} witnesses: {1}", r, string.Join(", ", witnessNames));
+        //            }
+
+        //            await h.DecideFame();
+
+        //            //rounds 0,1, 2 and 3 should be decided
+        //            var expectedUndecidedRounds = new List<int> {4, 5};
+
+        //            h.UndecidedRounds.ToArray().ShouldCompareTo(expectedUndecidedRounds.ToArray());
+        //        }
+
+        //        [Fact]
+        //        public async Task TestFunkyHashgraphBlocks()
+        //        {
+        //            var (h, _ ) = await InitFunkyHashgraph();
+        //            await h.DivideRounds();
+        //            await h.DecideFame();
+        //            await h.FindOrder();
+
+        //            var expectedBlockTxCounts = new Dictionary<int, int>
+        //            {
+        //                {0, 6},
+        //                {1, 7},
+        //                {2, 7}
+        //            };
+
+        //            for (var bi = 0; bi < 3; bi++)
+        //            {
+        //                var (b, err) = await h.Store.GetBlock(bi);
+        //                Assert.Null(err);
+
+        //                var i = 0;
+        //                foreach (var tx in b.Transactions())
+        //                {
+        //                    logger.Debug(string.Format("block {0}, tx {1}: {2}", bi, i, tx.BytesToString()));
+        //                    i++;
+        //                }
+
+        //                Assert.Equal(expectedBlockTxCounts[bi], b.Transactions().Length);
+        //            }
+        //        }
 
         /*
-             public static void TestKnown(ref testing.T t)
-             {
-                 var (h, _) = initConsensusHashgraph(@false, t);
-
-                 var participants = h.Participants.ToPeerSlice();
-
-                 var expectedKnown = map[int]int{participants[0].ID:10,participants[1].ID:9,participants[2].ID:9,};
-
-                 var known = h.Store.KnownEvents();
-                 {
-                     {
-                         {
-                             var l = known[i];
-
-                             if (l != expectedKnown[i])
-                             {
-                                 t.Fatalf("Known[%d] should be %d, not %d", i, expectedKnown[i], l);
-                             }
-
-                         }
-                     }
-
-                 }
-             }
-
              public static void TestGetFrame(ref testing.T t)
              {
                  var (h, index) = initConsensusHashgraph(@false, t);
@@ -3233,458 +3748,6 @@ namespace Babble.Test.HashgraphImpl
         //                var id = it.Value;
         //                var l = known[id];
         //                Assert.True(l == expectedKnown[id], $"KnownEvents[{id}] should be {expectedKnown[id]}, not {l}");
-        //            }
-        //        }
-
-        //        [Fact]
-        //        public async Task TestGetFrame()
-        //        {
-        //            var (h, index) = await InitConsensusHashgraph(false, GetPath(), logger);
-
-        //            await h.DivideRounds();
-
-        //            await h.DecideFame();
-
-        //            await h.FindOrder();
-
-        //            var expectedRoots = new Dictionary<string, Root>();
-        //            expectedRoots[h.ReverseParticipants[0]] = new Root
-        //            {
-        //                X = index["e02"],
-        //                Y = index["f1b"],
-        //                Index = 1,
-        //                Round = 0,
-        //                Others = new Dictionary<string, string>()
-        //            };
-        //            expectedRoots[h.ReverseParticipants[1]] = new Root
-        //            {
-        //                X = index["e10"],
-        //                Y = index["e02"],
-        //                Index = 1,
-        //                Round = 0,
-        //                Others = new Dictionary<string, string>()
-        //            };
-        //            expectedRoots[h.ReverseParticipants[2]] = new Root
-        //            {
-        //                X = index["e21b"],
-        //                Y = index["f1b"],
-        //                Index = 2,
-        //                Round = 0,
-        //                Others = new Dictionary<string, string>()
-        //            };
-
-        //            Exception err;
-        //            Frame frame;
-        //            (frame, err) = await h.GetFrame();
-
-        //            Assert.Null(err);
-
-        //            foreach (var rs in frame.Roots)
-        //            {
-        //                var p = rs.Key;
-        //                var r = rs.Value;
-
-        //                var ok = expectedRoots.TryGetValue(p, out var er);
-
-        //                Assert.True(ok, $"No Root returned for {p}");
-
-        //                var x = r.X;
-
-        //                Assert.True(x == er.X, $"Roots[{p}].X should be {er.X}, not {x}");
-
-        //                var y = r.Y;
-        //                Assert.True(y == er.Y, $"Roots[{p}].Y should be {er.Y}, not {y}");
-
-        //                var ind = r.Index;
-        //                Assert.True(ind == er.Index, $"Roots[{p}].Index should be {er.Index}, not {ind}");
-
-        //                var ro = r.Round;
-        //                Assert.True(ro == er.Round, $"Roots[{p}].Round should be {er.Round}, not {ro}");
-
-        //                var others = r.Others;
-
-        //                er.Others.ShouldCompareTo(others);
-        //            }
-
-        //            var skip = new Dictionary<string, int>
-        //            {
-        //                {h.ReverseParticipants[0], 1},
-
-        //                {h.ReverseParticipants[1], 1},
-        //                {h.ReverseParticipants[2], 2}
-        //            };
-
-        //            var expectedEvents = new List<Event>();
-        //            foreach (var rs in frame.Roots)
-        //            {
-        //                var p = rs.Key;
-        //                var r = rs.Value;
-
-        //                string[] ee;
-        //                (ee, err) = await h.Store.ParticipantEvents(p, skip[p]);
-
-        //                Assert.Null(err);
-
-        //                foreach (var e in ee)
-        //                {
-        //                    Event ev;
-        //                    (ev, err) = await h.Store.GetEvent(e);
-
-        //                    Assert.Null(err);
-
-        //                    expectedEvents.Add(ev);
-        //                }
-        //            }
-
-        //            expectedEvents.Sort(new Event.EventByTopologicalOrder());
-
-        //            frame.Events.ShouldCompareTo(expectedEvents.ToArray());
-        //        }
-
-        //        [Fact]
-        //        public async Task TestResetFromFrame()
-        //        {
-        //            var (h, _) = await InitConsensusHashgraph(false, GetPath(), logger);
-
-        //            await h.DivideRounds();
-
-        //            await h.DecideFame();
-
-        //            await h.FindOrder();
-
-        //            var (frame, err) = await h.GetFrame();
-
-        //            Assert.Null(err);
-
-        //            err = h.Reset(frame.Roots);
-
-        //            Assert.Null(err);
-
-        //            foreach (var ev in frame.Events)
-        //            {
-        //                err = await h.InsertEvent(ev, false);
-        //                if (err != null)
-        //                {
-        //                    Console.WriteLine($"Error inserting {ev.Hex()} in reset Hashgraph: {err}");
-        //                }
-
-        //                Assert.Null(err);
-        //            }
-
-        //            var expectedKnown = new Dictionary<int, int>
-        //            {
-        //                {0, 8},
-        //                {1, 7},
-        //                {2, 7}
-        //            };
-
-        //            var known = await h.KnownEvents();
-
-        //            foreach (var p in h.Participants)
-        //            {
-        //                var id = p.Value;
-        //                var l = known[id];
-
-        //                Assert.True(l == expectedKnown[id], $"KnownEvents[{id}] should be {expectedKnown[id]}, not {l}");
-        //            }
-
-        //            await h.DivideRounds();
-
-        //            await h.DecideFame();
-
-        //            await h.FindOrder();
-
-        //            var r = h.LastConsensusRound;
-        //            if (r == null || r != 1)
-        //            {
-        //                var disp = "null";
-
-        //                if (r != null)
-        //                {
-        //                    disp = r.ToString();
-        //                }
-
-        //                Assert.True(false, $"LastConsensusRound should be 1, not {disp}");
-        //            }
-        //        }
-
-        //        [Fact]
-        //        public async Task TestBootstrap()
-        //        {
-        //            var dbPath = GetPath();
-
-        //            //Initialize a first Hashgraph with a DB backend
-        //            //Set events and run consensus methods on it
-        //            var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);
-
-        //            using (var tx = h.Store.BeginTx())
-        //            {
-        //                await h.DivideRounds();
-
-        //                await h.DecideFame();
-
-        //                await h.FindOrder();
-
-        //                tx.Commit();
-        //            }
-
-        //            h.Store.Close();
-
-        //            Exception err;
-
-        //            logger.Debug("------- RecycledStore -------");
-
-        //            //Now we want to create a new Hashgraph based on the database of the previous
-        //            //Hashgraph and see if we can boostrap it to the same state.
-        //            IStore recycledStore;
-        //            (recycledStore, err) = await LocalDbStore.Load(CacheSize, dbPath, logger);
-
-        //            Assert.Null(err);
-
-        //            Assert.Equal(h.Store.Participants().participants.Count, recycledStore.Participants().participants.Count);
-
-        //            foreach (var p in h.Store.Participants().participants)
-        //            {
-        //                Assert.Equal(recycledStore.Participants().participants[p.Key], p.Value);
-        //            }
-
-        //            var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
-
-        //            err = await nh.Bootstrap();
-
-        //            Assert.Null(err);
-
-        //            var hConsensusEvents = h.ConsensusEvents();
-
-        //            var nhConsensusEvents = nh.ConsensusEvents();
-
-        //            Assert.Equal(hConsensusEvents.Length, nhConsensusEvents.Length);
-
-        //            var hKnown = await h.KnownEvents();
-
-        //            var nhKnown = await nh.KnownEvents();
-
-        //            Assert.Equal(hKnown.Count, nhKnown.Count);
-
-        //            foreach (var p in hKnown)
-        //            {
-        //                Assert.Equal(nhKnown[p.Key], p.Value);
-        //            }
-
-        //            Assert.Equal(h.LastConsensusRound, nh.LastConsensusRound);
-
-        //            Assert.Equal(h.LastCommitedRoundEvents, nh.LastCommitedRoundEvents);
-
-        //            Assert.Equal(h.ConsensusTransactions, nh.ConsensusTransactions);
-
-        //            Assert.Equal(h.PendingLoadedEvents, nh.PendingLoadedEvents);
-        //        }
-
-        //        /*
-        //            |    |    |    |
-        //        	|    |    |    |w51 collects votes from w40, w41, w42 and w43.
-        //            |   w51   |    |IT DECIDES YES
-        //            |    |  \ |    |
-        //        	|    |   e23   |
-        //            |    |    | \  |------------------------
-        //            |    |    |   w43
-        //            |    |    | /  | Round 4 is a Coin Round. No decision will be made.
-        //            |    |   w42   |
-        //            |    | /  |    | w40 collects votes from w33, w32 and w31. It votes yes.
-        //            |   w41   |    | w41 collects votes from w33, w32 and w31. It votes yes.
-        //        	| /  |    |    | w42 collects votes from w30, w31, w32 and w33. It votes yes.
-        //           w40   |    |    | w43 collects votes from w30, w31, w32 and w33. It votes yes.
-        //            | \  |    |    |------------------------
-        //            |   d13   |    | w30 collects votes from w20, w21, w22 and w23. It votes yes
-        //            |    |  \ |    | w31 collects votes from w21, w22 and w23. It votes no
-        //           w30   |    \    | w32 collects votes from w20, w21, w22 and w23. It votes yes
-        //            | \  |    | \  | w33 collects votes from w20, w21, w22 and w23. It votes yes
-        //            |   \     |   w33
-        //            |    | \  |  / |Again, none of the witnesses in round 3 are able to decide.
-        //            |    |   w32   |However, a strong majority votes yes
-        //            |    |  / |    |
-        //        	|   w31   |    |
-        //            |  / |    |    |--------------------------
-        //           w20   |    |    | w23 collects votes from w11, w12 and w13. It votes no
-        //            |  \ |    |    | w21 collects votes from w11, w12, and w13. It votes no
-        //            |    \    |    | w22 collects votes from w11, w12, w13 and w14. It votes yes
-        //            |    | \  |    | w20 collects votes from w11, w12, w13 and w14. It votes yes
-        //            |    |   w22   |
-        //            |    | /  |    | None of the witnesses in round 2 were able to decide.
-        //            |   c10   |    | They voted according to the majority of votes they observed
-        //            | /  |    |    | in round 1. The vote is split 2-2
-        //           b00  w21   |    |
-        //            |    |  \ |    |
-        //            |    |    \    |
-        //            |    |    | \  |
-        //            |    |    |   w23
-        //            |    |    | /  |------------------------
-        //           w10   |   b21   |
-        //        	| \  | /  |    | w10 votes yes (it can see w00)
-        //            |   w11   |    | w11 votes yes
-        //            |    |  \ |    | w12 votes no  (it cannot see w00)
-        //        	|    |   w12   | w13 votes no
-        //            |    |    | \  |
-        //            |    |    |   w13
-        //            |    |    | /  |------------------------
-        //            |   a10  a21   | We want to decide the fame of w00
-        //            |  / |  / |    |
-        //            |/  a12   |    |
-        //           a00   |  \ |    |
-        //        	|    |   a23   |
-        //            |    |    | \  |
-        //           w00  w01  w02  w03
-        //        	0	 1	  2	   3
-        //        */
-
-        //        public async Task<(Hashgraph h, Dictionary<string, string> index)> InitFunkyHashgraph()
-
-        //        {
-        //            var index = new Dictionary<string, string>();
-
-        //            var nodes = new List<TestNode>();
-        //            var orderedEvents = new List<Event>();
-
-        //            int i = 0;
-        //            var n = 4;
-        //            for (i = 0; i < n; i++)
-        //            {
-        //                var key = CryptoUtils.GenerateEcdsaKey();
-        //                var node = new TestNode(key, i);
-        //                var name = $"w0{i}";
-        //                var ev = new Event(new [] {name.StringToBytes() }, null, new[] {"", ""}, node.Pub, 0);
-
-        //                node.SignAndAddEvent(ev, name, index, orderedEvents);
-        //                nodes.Add(node);
-        //            }
-
-        //            var plays = new[]
-        //            {
-        //                new Play(2, 1, "w02", "w03", "a23", new[] {"a23".StringToBytes()}, null),
-        //                new Play(1, 1, "w01", "a23", "a12", new[] {"a12".StringToBytes()}, null),
-        //                new Play(0, 1, "w00", "", "a00", new[] {"a00".StringToBytes()}, null),
-        //                new Play(1, 2, "a12", "a00", "a10", new[] {"a10".StringToBytes()}, null),
-        //                new Play(2, 2, "a23", "a12", "a21", new[] {"a21".StringToBytes()}, null),
-        //                new Play(3, 1, "w03", "a21", "w13", new[] {"w13".StringToBytes()}, null),
-        //                new Play(2, 3, "a21", "w13", "w12", new[] {"w12".StringToBytes()}, null),
-        //                new Play(1, 3, "a10", "w12", "w11", new[] {"w11".StringToBytes()}, null),
-        //                new Play(0, 2, "a00", "w11", "w10", new[] {"w10".StringToBytes()}, null),
-        //                new Play(2, 4, "w12", "w11", "b21", new[] {"b21".StringToBytes()}, null),
-        //                new Play(3, 2, "w13", "b21", "w23", new[] {"w32".StringToBytes()}, null),
-        //                new Play(1, 4, "w11", "w23", "w21", new[] {"w21".StringToBytes()}, null),
-        //                new Play(0, 3, "w10", "", "b00", new[] {"b00".StringToBytes()}, null),
-        //                new Play(1, 5, "w21", "b00", "c10", new[] {"c10".StringToBytes()}, null),
-        //                new Play(2, 5, "b21", "c10", "w22", new[] {"w22".StringToBytes()}, null),
-        //                new Play(0, 4, "b00", "w22", "w20", new[] {"w20".StringToBytes()}, null),
-        //                new Play(1, 6, "c10", "w20", "w31", new[] {"w31".StringToBytes()}, null),
-        //                new Play(2, 6, "w22", "w31", "w32", new[] {"w32".StringToBytes()}, null),
-        //                new Play(0, 5, "w20", "w32", "w30", new[] {"w30".StringToBytes()}, null),
-        //                new Play(3, 3, "w23", "w32", "w33", new[] {"w33".StringToBytes()}, null),
-        //                new Play(1, 7, "w31", "w33", "d13", new[] {"d13".StringToBytes()}, null),
-        //                new Play(0, 6, "w30", "d13", "w40", new[] {"w40".StringToBytes()}, null),
-        //                new Play(1, 8, "d13", "w40", "w41", new[] {"w41".StringToBytes()}, null),
-        //                new Play(2, 7, "w32", "w41", "w42", new[] {"w42".StringToBytes()}, null),
-        //                new Play(3, 4, "w33", "w42", "w43", new[] {"w43".StringToBytes()}, null),
-        //                new Play(2, 8, "w42", "w43", "e23", new[] {"e23".StringToBytes()}, null),
-        //                new Play(1, 9, "w41", "e23", "w51", new[] {"w51".StringToBytes()}, null)
-        //            };
-
-        //            foreach (var p in plays)
-        //            {
-        //                var parents = new List<string> {index[p.SelfParent]};
-        //                index.TryGetValue(p.OtherParent, out var otherParent);
-        //                parents.Add(otherParent ?? "");
-
-        //                var e = new Event(p.TxPayload, p.SigPayload, parents.ToArray(),
-        //                    nodes[p.To].Pub,
-        //                    p.Index);
-
-        //                nodes[p.To].SignAndAddEvent(e, p.Name, index, orderedEvents);
-        //            }
-
-        //            var participants = new Dictionary<string, int>();
-        //            foreach (var node in nodes)
-        //            {
-        //                participants[node.Pub.ToHex()] = node.Id;
-        //            }
-
-        //            var hashgraph = new Hashgraph(participants, new InmemStore(participants, CacheSize, logger), null, logger);
-
-        //            i = 0;
-        //            foreach (var ev in orderedEvents)
-        //            {
-        //                var err = await hashgraph.InsertEvent(ev, true);
-
-        //                if (err != null)
-        //                {
-        //                    Console.WriteLine($"ERROR inserting event {i}: {err.Message} ");
-        //                }
-        //            }
-
-        //            return (hashgraph, index);
-        //        }
-
-        //        [Fact]
-        //        public async Task TestFunkyHashgraphFame()
-        //        {
-        //            var ( h, index) = await InitFunkyHashgraph();
-
-        //            await h.DivideRounds();
-
-        //            var l = h.Store.LastRound();
-        //            Assert.Equal(5, l);
-
-        //            for (var r = 0; r < 6; r++)
-        //            {
-        //                var ( round, err) = await h.Store.GetRound(r);
-
-        //                Assert.Null(err);
-
-        //                var witnessNames = new List<string>();
-        //                foreach (var w in round.Witnesses())
-        //                {
-        //                    witnessNames.Add(GetName(index, w));
-        //                }
-
-        //                Console.WriteLine("Round {0} witnesses: {1}", r, string.Join(", ", witnessNames));
-        //            }
-
-        //            await h.DecideFame();
-
-        //            //rounds 0,1, 2 and 3 should be decided
-        //            var expectedUndecidedRounds = new List<int> {4, 5};
-
-        //            h.UndecidedRounds.ToArray().ShouldCompareTo(expectedUndecidedRounds.ToArray());
-        //        }
-
-        //        [Fact]
-        //        public async Task TestFunkyHashgraphBlocks()
-        //        {
-        //            var (h, _ ) = await InitFunkyHashgraph();
-        //            await h.DivideRounds();
-        //            await h.DecideFame();
-        //            await h.FindOrder();
-
-        //            var expectedBlockTxCounts = new Dictionary<int, int>
-        //            {
-        //                {0, 6},
-        //                {1, 7},
-        //                {2, 7}
-        //            };
-
-        //            for (var bi = 0; bi < 3; bi++)
-        //            {
-        //                var (b, err) = await h.Store.GetBlock(bi);
-        //                Assert.Null(err);
-
-        //                var i = 0;
-        //                foreach (var tx in b.Transactions())
-        //                {
-        //                    logger.Debug(string.Format("block {0}, tx {1}: {2}", bi, i, tx.BytesToString()));
-        //                    i++;
-        //                }
-
-        //                Assert.Equal(expectedBlockTxCounts[bi], b.Transactions().Length);
         //            }
         //        }
 

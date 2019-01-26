@@ -1,7 +1,7 @@
 ﻿using Babble.Core.Crypto;
 using Babble.Core.HashgraphImpl.Model;
 using Babble.Core.Util;
-using Babble.Test.Helpers;
+using Babble.Test.Utils;
 using Serilog;
 using Xunit;
 using Xunit.Abstractions;

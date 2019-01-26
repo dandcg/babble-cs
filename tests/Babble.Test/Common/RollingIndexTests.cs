@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Babble.Core.Common;
-using Babble.Test.Helpers;
+using Babble.Test.Utils;
 using Xunit;
 
 namespace Babble.Test.Common
