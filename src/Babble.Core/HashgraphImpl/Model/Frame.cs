@@ -15,9 +15,9 @@ namespace Babble.Core.HashgraphImpl.Model
             return this.SerializeToByteArray();
         }
 
-        public static BlockBody Unmarshal(byte[] data)
+        public static Frame Unmarshal(byte[] data)
         {
-            return data.DeserializeFromByteArray<BlockBody>();
+            return data.DeserializeFromByteArray<Frame>();
         }
 
         public byte[] Hash()

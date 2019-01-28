@@ -22,6 +22,11 @@ namespace Babble.Core.HashgraphImpl.Model
             Values = new Index[capacity];
         }
 
+        public OrderedEventCoordinates()
+        {
+            
+        }
+
         public int GetIdIndex(int id)
         {
             var i = 0;

@@ -25,8 +25,11 @@ namespace Babble.Test.Utils
             Assert.True(result.AreEqual, result.DifferencesString);
         }
 
-        public static void IsNotError(this BabbleError err, string userMessage=null)
+        public static void ShouldNotBeError(this BabbleError err, string userMessage=null)
         {
+        
+            userMessage = userMessage ?? err?.ToString();
+
             Assert.True(err==null,userMessage);
         }
 

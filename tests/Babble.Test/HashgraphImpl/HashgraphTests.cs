@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Babble.Core;
@@ -15,6 +16,7 @@ using Serilog;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
+using static Babble.Core.Util.IterationHelpers;
 
 namespace Babble.Test.HashgraphImpl
 {
@@ -2095,7 +2097,6 @@ namespace Babble.Test.HashgraphImpl
             foreach (var i in await h.Participants.ToIdSlice())
             {
                 var l = known[i];
-
                 Assert.True(l == expectedKnown[i], $"KnownEvents[{i}] should be {expectedKnown[i]}, not {l}");
             }
         }
@@ -2124,7 +2125,7 @@ namespace Babble.Test.HashgraphImpl
             }
 
             var (frame, err1) = await h.GetFrame(1);
-            err1.IsNotError();
+            err1.ShouldNotBeError();
 
             var p = 0;
             foreach (var r in frame.Roots)
@@ -2152,7 +2153,7 @@ namespace Babble.Test.HashgraphImpl
             foreach (var eh in expectedEventsHashes)
             {
                 var (e, err2) = await h.Store.GetEvent(eh);
-                err2.IsNotError();
+                err2.ShouldNotBeError();
                 expectedEvents.Add(e);
             }
 
@@ -2162,7 +2163,7 @@ namespace Babble.Test.HashgraphImpl
 
             var (block0, err3) = await h.Store.GetBlock(0);
 
-            err3.IsNotError($"Store should contain a block with Index 1: {err3}");
+            err3.ShouldNotBeError($"Store should contain a block with Index 1: {err3}");
 
             var frame1Hash = frame.Hash();
             frame1Hash.ShouldCompareTo(block0.FrameHash(), $"Block0.FrameHash ({block0.FrameHash()}) and Frame1.Hash ({frame1Hash}) differ");
@@ -2210,11 +2211,14 @@ namespace Babble.Test.HashgraphImpl
             expectedRoots[1] = new Root
             {
                 NextRound = 1,
-                SelfParent = new RootEvent {Hash = index["e10"],
-                    CreatorId = participants[1].ID, 
-                    Index = 1, 
-                    LamportTimestamp = 1, 
-                    Round = 0},
+                SelfParent = new RootEvent
+                {
+                    Hash = index["e10"],
+                    CreatorId = participants[1].ID,
+                    Index = 1,
+                    LamportTimestamp = 1,
+                    Round = 0
+                },
                 Others = new Dictionary<string, RootEvent>
                 {
                     {
@@ -2233,11 +2237,14 @@ namespace Babble.Test.HashgraphImpl
             expectedRoots[2] = new Root
             {
                 NextRound = 1,
-                SelfParent = new RootEvent {Hash = index["e21b"], 
-                    CreatorId = participants[2].ID, 
-                    Index = 2, 
-                    LamportTimestamp = 3, 
-                    Round = 0},
+                SelfParent = new RootEvent
+                {
+                    Hash = index["e21b"],
+                    CreatorId = participants[2].ID,
+                    Index = 2,
+                    LamportTimestamp = 3,
+                    Round = 0
+                },
                 Others = new Dictionary<string, RootEvent>
                 {
                     {
@@ -2255,7 +2262,7 @@ namespace Babble.Test.HashgraphImpl
 
             BabbleError err4;
             (frame, err4) = await h.GetFrame(2);
-            err4.IsNotError();
+            err4.ShouldNotBeError();
 
             p = 0;
             foreach (var r in frame.Roots)
@@ -2268,26 +2275,25 @@ namespace Babble.Test.HashgraphImpl
                 p++;
             }
 
-           expectedEventsHashes = new string[]
-           {
-               index["f1"],
-               index["f1b"],
-               index["f0"],
-               index["f2"],
-               index["f10"],
-               index["f0x"],
-               index["f21"],
-               index["f02"],
-               index["f02b"]
-           };
-
+            expectedEventsHashes = new[]
+            {
+                index["f1"],
+                index["f1b"],
+                index["f0"],
+                index["f2"],
+                index["f10"],
+                index["f0x"],
+                index["f21"],
+                index["f02"],
+                index["f02b"]
+            };
 
             expectedEvents = new List<Event>();
 
             foreach (var eh in expectedEventsHashes)
             {
                 var (e, err5) = await h.Store.GetEvent(eh);
-                err5.IsNotError();
+                err5.ShouldNotBeError();
                 expectedEvents.Add(e);
             }
 
@@ -2296,74 +2302,186 @@ namespace Babble.Test.HashgraphImpl
             frame.Events.ShouldCompareTo(expectedEvents.ToArray(), "Frame.Events is not good");
         }
 
-        //        [Fact]
-        //        public async Task TestResetFromFrame()
-        //        {
-        //            var (h, _) = await InitConsensusHashgraph(false, GetPath(), logger);
+        [Fact]
+        public async Task TestResetFromFrame()
+        {
+            var (h, index) = await InitConsensusHashgraph(false);
 
-        //            await h.DivideRounds();
+            var participants = await h.Participants.ToPeerSlice();
 
-        //            await h.DecideFame();
+            await h.DivideRounds();
 
-        //            await h.FindOrder();
+            await h.DecideFame();
 
-        //            var (frame, err) = await h.GetFrame();
+            await h.DecideRoundReceived();
 
-        //            Assert.Null(err);
+            await h.ProcessDecidedRounds();
 
-        //            err = h.Reset(frame.Roots);
+            var (block, err1) = await h.Store.GetBlock(1);
+            err1.ShouldNotBeError();
 
-        //            Assert.Null(err);
+            var (frame, err2) = await h.GetFrame(block.RoundReceived());
+            err2.ShouldNotBeError();
 
-        //            foreach (var ev in frame.Events)
-        //            {
-        //                err = await h.InsertEvent(ev, false);
-        //                if (err != null)
-        //                {
-        //                    Console.WriteLine($"Error inserting {ev.Hex()} in reset Hashgraph: {err}");
-        //                }
+            //This operation clears the private fields which need to be recomputed
+            //in the Events (round, roundReceived,etc)
+            var marshalledFrame = frame.Marshal();
+            var unmarshalledFrame = Frame.Unmarshal(marshalledFrame);
 
-        //                Assert.Null(err);
-        //            }
+            var h2 = new Hashgraph(h.Participants, await InmemStore.NewInmemStore(h.Participants, CacheSize, logger), null, logger);
+            var err3 = await h2.Reset(block, unmarshalledFrame);
+            err3.ShouldNotBeError();
 
-        //            var expectedKnown = new Dictionary<int, int>
-        //            {
-        //                {0, 8},
-        //                {1, 7},
-        //                {2, 7}
-        //            };
+            /*
+                The hashgraph should now look like this:
 
-        //            var known = await h.KnownEvents();
+                          f02b|   |
+                          |   |   |
+                          f02 |   |
+                          | \ |   |
+                          |   \   |
+                          |   | \ |
+                   +--f0x  |   f21 //f0x's other-parent is e21b; contained in R0
+                   |   |   | / |
+                   |   |  f10  |
+                   |   | / |   |
+                   |   f0  |   f2
+                   |   | \ | / |
+                   |   |  f1b  |
+                   |   |   |   |
+                   |   |   f1  |
+                   |   |   |   |
+                   +-- R0  R1  R2
+            */
 
-        //            foreach (var p in h.Participants)
-        //            {
-        //                var id = p.Value;
-        //                var l = known[id];
+            //Test Known
+            var expectedKnown = new Dictionary<int, int>
+            {
+                {participants[0].ID, 5},
+                {participants[1].ID, 4},
+                {participants[2].ID, 4}
+            };
 
-        //                Assert.True(l == expectedKnown[id], $"KnownEvents[{id}] should be {expectedKnown[id]}, not {l}");
-        //            }
+            var known = await h2.Store.KnownEvents();
+            {
+                ForRangeMap(h2.Participants.ById, (key, peer) =>
+                {
+                    var l = known[peer.ID];
+                    Assert.True(expectedKnown[peer.ID] == l, $"Known[{peer.ID}] should be {expectedKnown[peer.ID]}, not {l}");
+                });
+            }
 
-        //            await h.DivideRounds();
+            /***************************************************************************
+             Test DivideRounds
+            ***************************************************************************/
 
-        //            await h.DecideFame();
+            var err4 = await h2.DivideRounds();
+            err4.ShouldNotBeError();
 
-        //            await h.FindOrder();
+            var (hRound1, err5) = await h.Store.GetRound(1);
+            err5.ShouldNotBeError();
 
-        //            var r = h.LastConsensusRound;
-        //            if (r == null || r != 1)
-        //            {
-        //                var disp = "null";
+            var (h2Round1, err6) = await h2.Store.GetRound(1);
+            err6.ShouldNotBeError();
 
-        //                if (r != null)
-        //                {
-        //                    disp = r.ToString();
-        //                }
+            //Check Round1 Witnesses
+            var hWitnesses = hRound1.Witnesses().OrderBy(o => o).ToArray();
+            var h2Witnesses = h2Round1.Witnesses().OrderBy(o => o).ToArray();
+            ;
 
-        //                Assert.True(false, $"LastConsensusRound should be 1, not {disp}");
-        //            }
-        //        }
+            h2Witnesses.ShouldCompareTo(hWitnesses, $"Reset Hg Round 1 witnesses should be {hWitnesses}, not {h2Witnesses}");
 
-        //        [Fact]
+            //check Event Rounds and LamportTimestamps
+            await ForRange(frame.Events, async (i, ev) =>
+            {
+                var (h2r, err7) = await h2.Round(ev.Hex());
+                err7.ShouldNotBeError($"Error computing {GetName(index, ev.Hex())} Round: {h2r}");
+
+                var (hr, _) = await h.Round(ev.Hex());
+
+                Assert.True(h2r == hr, $"h2[{GetName(index, ev.Hex())}].Round should be {hr}, not {h2r}");
+
+                var (h2s, err8) = await h2.LamportTimestamp(ev.Hex());
+                err8.ShouldNotBeError($"Error computing {GetName(index, ev.Hex())} LamportTimestamp: {h2s}");
+
+                var (hs, _) = await h.LamportTimestamp(ev.Hex());
+                Assert.True(h2s == hs, $"h2[{GetName(index, ev.Hex())}].LamportTimestamp should be {hs}, not {h2s}");
+            });
+
+            /***************************************************************************
+            Test Consensus
+            ***************************************************************************/
+
+            await h2.DecideFame();
+
+            await h2.DecideRoundReceived();
+            await h2.ProcessDecidedRounds();
+
+            var lbi = await h2.Store.LastBlockIndex();
+
+            Assert.True(lbi == block.Index(), $"LastBlockIndex should be {block.Index()}, not {lbi}");
+
+            var lcr = h2.LastConsensusRound;
+
+            Assert.True(lcr != null || lcr == block.RoundReceived(),$"LastConsensusRound should be {block.RoundReceived()}, not {lcr}");
+
+            var v = h2.AnchorBlock;
+            Assert.True(v == null, $"AnchorBlock should be nil, not {v}");
+
+            /***************************************************************************
+            Test continue after Reset
+            ***************************************************************************/
+            //Insert remaining Events into the Reset hashgraph
+           
+            int r;
+
+            for (r = 2; r <= 4; r++)
+            {
+                var (round, err9) = await h.Store.GetRound(r);
+                err9.ShouldNotBeError();
+
+                var events = new List<Event>();
+
+                await ForRange(round.RoundEvents(), async (i, e) =>
+                {
+                    var (ev, err10) = await h.Store.GetEvent(e);
+                    err10.ShouldNotBeError();
+                    events.Add(ev);
+                    logger.Debug(string.Format("R%d %s", r, GetName(index, e)));
+                });
+
+                events.Sort(new Event.EventByTopologicalOrder());
+
+                await ForRange(events, async (i, ev) =>
+                {
+                    var marshalledEv = ev.Marhsal();
+                    var unmarshalledEv = Event.Unmarshal(marshalledEv);
+                    var err11 = await h2.InsertEvent(unmarshalledEv, true);
+                    err11.ShouldNotBeError(string.Format("ERR Inserting Event %s: %v", GetName(index, ev.Hex()), err11));
+                });
+            }
+
+            await h2.DivideRounds();
+            await h2.DecideFame();
+            await h2.DecideRoundReceived();
+            await h2.ProcessDecidedRounds();
+
+            for (r = 1; r <= 4; r++)
+            {
+                var (hRound, err12) = await h.Store.GetRound(r);
+                err12.ShouldNotBeError();
+
+                var (h2Round, err13) = await h2.Store.GetRound(r);
+                err12.ShouldNotBeError();
+
+                hWitnesses = hRound.Witnesses().OrderBy(o => o).ToArray();
+                h2Witnesses = h2Round.Witnesses().OrderBy(o => o).ToArray();
+
+                h2Witnesses.ShouldCompareTo(hWitnesses, string.Format("Reset Hg Round %d witnesses should be %v, not %v", r, hWitnesses, h2Witnesses));
+            }
+        }
+
+//        [Fact]
         //        public async Task TestBootstrap()
         //        {
         //            var dbPath = GetPath();
@@ -2435,62 +2553,66 @@ namespace Babble.Test.HashgraphImpl
         //            Assert.Equal(h.PendingLoadedEvents, nh.PendingLoadedEvents);
         //        }
 
-        //        /*
-        //            |    |    |    |
-        //        	|    |    |    |w51 collects votes from w40, w41, w42 and w43.
-        //            |   w51   |    |IT DECIDES YES
-        //            |    |  \ |    |
-        //        	|    |   e23   |
-        //            |    |    | \  |------------------------
-        //            |    |    |   w43
-        //            |    |    | /  | Round 4 is a Coin Round. No decision will be made.
-        //            |    |   w42   |
-        //            |    | /  |    | w40 collects votes from w33, w32 and w31. It votes yes.
-        //            |   w41   |    | w41 collects votes from w33, w32 and w31. It votes yes.
-        //        	| /  |    |    | w42 collects votes from w30, w31, w32 and w33. It votes yes.
-        //           w40   |    |    | w43 collects votes from w30, w31, w32 and w33. It votes yes.
-        //            | \  |    |    |------------------------
-        //            |   d13   |    | w30 collects votes from w20, w21, w22 and w23. It votes yes
-        //            |    |  \ |    | w31 collects votes from w21, w22 and w23. It votes no
-        //           w30   |    \    | w32 collects votes from w20, w21, w22 and w23. It votes yes
-        //            | \  |    | \  | w33 collects votes from w20, w21, w22 and w23. It votes yes
-        //            |   \     |   w33
-        //            |    | \  |  / |Again, none of the witnesses in round 3 are able to decide.
-        //            |    |   w32   |However, a strong majority votes yes
-        //            |    |  / |    |
-        //        	|   w31   |    |
-        //            |  / |    |    |--------------------------
-        //           w20   |    |    | w23 collects votes from w11, w12 and w13. It votes no
-        //            |  \ |    |    | w21 collects votes from w11, w12, and w13. It votes no
-        //            |    \    |    | w22 collects votes from w11, w12, w13 and w14. It votes yes
-        //            |    | \  |    | w20 collects votes from w11, w12, w13 and w14. It votes yes
-        //            |    |   w22   |
-        //            |    | /  |    | None of the witnesses in round 2 were able to decide.
-        //            |   c10   |    | They voted according to the majority of votes they observed
-        //            | /  |    |    | in round 1. The vote is split 2-2
-        //           b00  w21   |    |
-        //            |    |  \ |    |
-        //            |    |    \    |
-        //            |    |    | \  |
-        //            |    |    |   w23
-        //            |    |    | /  |------------------------
-        //           w10   |   b21   |
-        //        	| \  | /  |    | w10 votes yes (it can see w00)
-        //            |   w11   |    | w11 votes yes
-        //            |    |  \ |    | w12 votes no  (it cannot see w00)
-        //        	|    |   w12   | w13 votes no
-        //            |    |    | \  |
-        //            |    |    |   w13
-        //            |    |    | /  |------------------------
-        //            |   a10  a21   | We want to decide the fame of w00
-        //            |  / |  / |    |
-        //            |/  a12   |    |
-        //           a00   |  \ |    |
-        //        	|    |   a23   |
-        //            |    |    | \  |
-        //           w00  w01  w02  w03
-        //        	0	 1	  2	   3
-        //        */
+        /*
+     
+         This example demonstrates that a Round can be 'decided' before an earlier
+         round. Here, rounds 1 and 2 are decided before round 0 because the fame of
+         witness w00 is only decided at round 5.
+             //            |    |    |    |
+             //        	|    |    |    |w51 collects votes from w40, w41, w42 and w43.
+             //            |   w51   |    |IT DECIDES YES
+             //            |    |  \ |    |
+             //        	|    |   e23   |
+             //            |    |    | \  |------------------------
+             //            |    |    |   w43
+             //            |    |    | /  | Round 4 is a Coin Round. No decision will be made.
+             //            |    |   w42   |
+             //            |    | /  |    | w40 collects votes from w33, w32 and w31. It votes yes.
+             //            |   w41   |    | w41 collects votes from w33, w32 and w31. It votes yes.
+             //        	| /  |    |    | w42 collects votes from w30, w31, w32 and w33. It votes yes.
+             //           w40   |    |    | w43 collects votes from w30, w31, w32 and w33. It votes yes.
+             //            | \  |    |    |------------------------
+             //            |   d13   |    | w30 collects votes from w20, w21, w22 and w23. It votes yes
+             //            |    |  \ |    | w31 collects votes from w21, w22 and w23. It votes no
+             //           w30   |    \    | w32 collects votes from w20, w21, w22 and w23. It votes yes
+             //            | \  |    | \  | w33 collects votes from w20, w21, w22 and w23. It votes yes
+             //            |   \     |   w33
+             //            |    | \  |  / |Again, none of the witnesses in round 3 are able to decide.
+             //            |    |   w32   |However, a strong majority votes yes
+             //            |    |  / |    |
+             //        	|   w31   |    |
+             //            |  / |    |    |--------------------------
+             //           w20   |    |    | w23 collects votes from w11, w12 and w13. It votes no
+             //            |  \ |    |    | w21 collects votes from w11, w12, and w13. It votes no
+             //            |    \    |    | w22 collects votes from w11, w12, w13 and w14. It votes yes
+             //            |    | \  |    | w20 collects votes from w11, w12, w13 and w14. It votes yes
+             //            |    |   w22   |
+             //            |    | /  |    | None of the witnesses in round 2 were able to decide.
+             //            |   c10   |    | They voted according to the majority of votes they observed
+             //            | /  |    |    | in round 1. The vote is split 2-2
+             //           b00  w21   |    |
+             //            |    |  \ |    |
+             //            |    |    \    |
+             //            |    |    | \  |
+             //            |    |    |   w23
+             //            |    |    | /  |------------------------
+             //           w10   |   b21   |
+             //        	| \  | /  |    | w10 votes yes (it can see w00)
+             //            |   w11   |    | w11 votes yes
+             //            |    |  \ |    | w12 votes no  (it cannot see w00)
+             //        	|    |   w12   | w13 votes no
+             //            |    |    | \  |
+             //            |    |    |   w13
+             //            |    |    | /  |------------------------
+             //            |   a10  a21   | We want to decide the fame of w00
+             //            |  / |  / |    |
+             //            |/  a12   |    |
+             //           a00   |  \ |    |
+             //        	|    |   a23   |
+             //            |    |    | \  |
+             //           w00  w01  w02  w03
+             //        	0	 1	  2	   3
+             //        */
 
         //        public async Task<(Hashgraph h, Dictionary<string, string> index)> InitFunkyHashgraph()
 
