@@ -106,6 +106,9 @@
       <NamedTestSelector>
         <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestGetFrame</TestName>
       </NamedTestSelector>
+      <NamedTestSelector>
+        <TestName>Babble.Test.HashgraphImpl.HashgraphTests.TestResetFromFrame</TestName>
+      </NamedTestSelector>
     </IgnoredTests>
   </Settings>
 </ProjectConfiguration>

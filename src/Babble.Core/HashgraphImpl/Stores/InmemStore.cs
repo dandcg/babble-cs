@@ -10,25 +10,25 @@ namespace Babble.Core.HashgraphImpl.Stores
 {
     public class InmemStore : IStore
     {
-        private  ILogger logger;
+        private ILogger logger;
 
-        private  int cacheSize;
-        private  Peers participants;
-        
+        private int cacheSize;
+        private Peers participants;
+
         private LruCache<string, Event> eventCache;
         private LruCache<int, RoundInfo> roundCache;
-        private  LruCache<int, Block> blockCache;
-        private  LruCache<int, Frame> frameCache;
-        
+        private LruCache<int, Block> blockCache;
+        private LruCache<int, Frame> frameCache;
+
         private RollingIndex<string> consensusCache;
         private int totConsensusEvents;
-        private  ParticipantEventsCache participantEventsCache;
+        private ParticipantEventsCache participantEventsCache;
 
-        private Dictionary<string, Root> rootsByParticipant; //[participant] => Root
+        internal Dictionary<string, Root> rootsByParticipant; //[participant] => Root
         private Dictionary<string, Root> rootsBySelfParent; //[Root.SelfParent.Hash] => Root
-        
+
         private int lastRound;
-        private Dictionary<string,string> lastConsensusEvents;
+        private Dictionary<string, string> lastConsensusEvents;
         private int lastBlock;
 
 
@@ -36,10 +36,10 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public static async Task<InmemStore> NewInmemStore(Peers participants, int cacheSize, ILogger logger)
         {
-            
+
             var inmemStore = new InmemStore();
 
-        var rootsByParticipant = new Dictionary<string, Root>();
+            var rootsByParticipant = new Dictionary<string, Root>();
 
 
 
@@ -49,7 +49,7 @@ namespace Babble.Core.HashgraphImpl.Stores
                 var pid = p.Value;
 
                 var root = Root.NewBaseRoot(pid.ID);
-             rootsByParticipant[pk] = root;
+                rootsByParticipant[pk] = root;
             }
 
             inmemStore.logger = logger.AddNamedContext("InmemStore");
@@ -58,10 +58,10 @@ namespace Babble.Core.HashgraphImpl.Stores
             inmemStore.participants = participants;
             inmemStore.eventCache = new LruCache<string, Event>(cacheSize, null, logger, "EventCache");
             inmemStore.roundCache = new LruCache<int, RoundInfo>(cacheSize, null, logger, "RoundCache");
-            inmemStore.blockCache= new LruCache<int, Block>(cacheSize, null, logger,"BlockCache");
-            inmemStore.frameCache= new LruCache<int, Frame>(cacheSize,null,logger, "FrameCache");
-            inmemStore.consensusCache = new RollingIndex<string>("ConsensusCache",cacheSize);
-            inmemStore.participantEventsCache =await ParticipantEventsCache.NewParticipantEventsCache(cacheSize, participants);
+            inmemStore.blockCache = new LruCache<int, Block>(cacheSize, null, logger, "BlockCache");
+            inmemStore.frameCache = new LruCache<int, Frame>(cacheSize, null, logger, "FrameCache");
+            inmemStore.consensusCache = new RollingIndex<string>("ConsensusCache", cacheSize);
+            inmemStore.participantEventsCache = await ParticipantEventsCache.NewParticipantEventsCache(cacheSize, participants);
             inmemStore.rootsByParticipant = rootsByParticipant;
             inmemStore.lastRound = -1;
             inmemStore.lastBlock = -1;
@@ -82,7 +82,10 @@ namespace Babble.Core.HashgraphImpl.Stores
             return (participants, null);
         }
 
-        public (Dictionary<string,Root>,StoreError) RootsBySelfParent() 
+
+
+
+    public (Dictionary<string,Root>,StoreError) RootsBySelfParent() 
         {
             if (rootsBySelfParent == null)
             {
@@ -181,18 +184,13 @@ namespace Babble.Core.HashgraphImpl.Stores
                     last = root.SelfParent.Hash;
                     isRoot = true;
                     err = null;
-
-
                 }
                 else
                 {
                     err= new StoreError(StoreErrorType.NoRoot, $"InmemStore.Roots Participant={participant}") ;
                 }
-
-         
             }
-
-   
+            
             return (last, isRoot, err);
         }
 

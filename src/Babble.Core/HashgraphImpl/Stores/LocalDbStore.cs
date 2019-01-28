@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -66,18 +67,18 @@ namespace Babble.Core.HashgraphImpl.Stores
 
             using (var tx = store.BeginTx())
             {
-
                 var err = await store.DbSetParticipants(participants);
                 if (err != null)
                 {
                     return (null, err);
                 }
 
-                err = await store.DbSetRoots(inmemStore.Roots);
+                err = await store.DbSetRoots(inmemStore.rootsByParticipant);
                 if (err != null)
                 {
                     return (null, err);
                 }
+
                 tx.Commit();
             }
 
@@ -86,7 +87,6 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public static async Task<(IStore store, StoreError err)> Load(int cacheSize, string path, ILogger logger)
         {
-
             logger = logger.AddNamedContext("LocalDbStore");
             logger.Verbose("Load store");
 
@@ -127,8 +127,6 @@ namespace Babble.Core.HashgraphImpl.Stores
                     roots[p.Key] = root;
                 }
 
-
-
                 err = inmemStore.Reset(roots);
                 if (err != null)
                 {
@@ -139,11 +137,11 @@ namespace Babble.Core.HashgraphImpl.Stores
                 store.InMemStore = inmemStore;
 
                 tx.Commit();
-
             }
 
             return (store, null);
         }
+
         private const string ParticipantEv = "participantEvent";
         private const string ParticipantPrefix = "participant";
         private const string RootSuffix = "root";
@@ -185,7 +183,6 @@ namespace Babble.Core.HashgraphImpl.Stores
         {
             return $"{BlockPrefix}_{index}";
         }
-
 
         public string FrameKey(int index)
         {
@@ -266,15 +263,10 @@ namespace Babble.Core.HashgraphImpl.Stores
             return InMemStore.LastEventFrom(participant);
         }
 
-
-        public (string last, bool isRoot, StoreError err) LastConsensusEventFrom(string participant )
+        public (string last, bool isRoot, StoreError err) LastConsensusEventFrom(string participant)
         {
             return InMemStore.LastConsensusEventFrom(participant);
         }
-
-
-
-
 
         public async Task<Dictionary<int, int>> KnownEvents()
         {
@@ -295,7 +287,7 @@ namespace Babble.Core.HashgraphImpl.Stores
                         (root, err) = await GetRoot(p);
                         if (err != null)
                         {
-                           last = root.SelfParent.Hash;
+                            last = root.SelfParent.Hash;
                             index = root.SelfParent.Index;
                         }
                     }
@@ -417,13 +409,12 @@ namespace Babble.Core.HashgraphImpl.Stores
             return err;
         }
 
-
         public Task<int> LastBlockIndex()
         {
             return InMemStore.LastBlockIndex();
         }
 
-        public async Task<(Frame frame, StoreError err)> GetFrame(int rr) 
+        public async Task<(Frame frame, StoreError err)> GetFrame(int rr)
         {
             var (res, err) = await InMemStore.GetFrame(rr);
             if (err != null)
@@ -434,10 +425,10 @@ namespace Babble.Core.HashgraphImpl.Stores
             return (res, err); //return res, mapError(err, string(frameKey(rr)))
         }
 
-        public async Task<StoreError>  SetFrame( Frame frame) 
+        public async Task<StoreError> SetFrame(Frame frame)
         {
             var err = await InMemStore.SetFrame(frame);
-            
+
             if (err != null)
             {
                 return err;
@@ -445,8 +436,6 @@ namespace Babble.Core.HashgraphImpl.Stores
 
             return await DbSetFrame(frame);
         }
-
-
 
         public StoreError Reset(Dictionary<string, Root> roots)
         {
@@ -472,20 +461,16 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public StoreTx BeginTx()
         {
-
-            MethodBase method=null;
+            MethodBase method = null;
             if (logger.IsEnabled(LogEventLevel.Debug))
             {
                 StackTrace stackTrace = new StackTrace();
 
                 method = stackTrace.GetFrame(1).GetMethod();
-                  
             }
-
 
             if (txLevel == 0)
             {
-       
                 logger.Verbose($"Begin Transaction {method?.DeclaringType.Name}/{method?.Name}");
 
                 tx = db.GetTransaction();
@@ -493,7 +478,7 @@ namespace Babble.Core.HashgraphImpl.Stores
                     {
                         if (txLevel != 1) return;
                         tx.Commit();
-                        logger.Verbose($"Commit Transaction");
+                        logger.Verbose("Commit Transaction");
                     },
                     () =>
                     {
@@ -501,7 +486,6 @@ namespace Babble.Core.HashgraphImpl.Stores
 
                         if (txLevel == 0)
                         {
-                            
                             logger.Verbose("End Transaction");
                             tx.Dispose();
                             tx = null;
@@ -524,12 +508,11 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public (Dictionary<string, Root>, StoreError err) RootsBySelfParent()
         {
-            throw new System.NotImplementedException();
+            return InMemStore.RootsBySelfParent();
         }
 
         public Task<(Event ev, StoreError err)> DbGetEvent(string key)
         {
-
             logger.Verbose("Db - GetEvent {eventKey}", key);
 
             var evRes = tx.Select<string, Event>(EventStore, key);
@@ -573,7 +556,6 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public Task<(Event[] events, StoreError error)> DbTopologicalEvents()
         {
-
             logger.Verbose("Db - TopologicalEvents");
 
             var res = new List<Event>();
@@ -633,7 +615,6 @@ namespace Babble.Core.HashgraphImpl.Stores
         public Task<(string ev, StoreError err)> DbParticipantEvent(string participant, int index)
 
         {
-
             logger.Verbose("Db - ParticipantEvent");
 
             var key = ParticipantEventKey(participant, index);
@@ -704,17 +685,17 @@ namespace Babble.Core.HashgraphImpl.Stores
         {
             logger.Verbose("Db - GetParticipants");
 
-            var res = Peers.NewPeers();
-
-            var p = tx.SelectDictionary<string,Peer>(ParticipantPrefix).ToDictionary(k => string.Join(string.Empty, k.Key.Skip(ParticipantPrefix.Length + 1)), v => v.Value);
-
+            var res = Peers.NewPeers(); 
+            
+            var p = tx.SelectDictionary<string, Peer>(ParticipantPrefix).ToDictionary(k => string.Join(string.Empty, k.Key.Skip(ParticipantPrefix.Length + 1)), v => v.Value);
+            
             foreach (var participant in p)
             {
-                logger.Debug("Get Participant {key}",participant.Key);
-               await res.AddPeer(Peer.New(participant.Value.PubKeyHex, ""));
+                logger.Debug("Get Participant {key}", participant.Key);
+                await res.AddPeer(Peer.New(participant.Value.PubKeyHex, ""));
             }
-            return (res, null);
 
+            return (res, null);
         }
 
         public Task<StoreError> DbSetParticipants(Peers ps)
@@ -725,7 +706,8 @@ namespace Babble.Core.HashgraphImpl.Stores
             {
                 var key = ParticipantKey(participant.Key);
                 var val = participant.Value;
-                logger.Debug("Set Participant {key}",key);
+
+                logger.Debug("Set Participant {key}", key);
                 //insert [participant_participant] => [id]
                 tx.Insert(ParticipantPrefix, key, val);
             }
@@ -735,7 +717,6 @@ namespace Babble.Core.HashgraphImpl.Stores
 
         public Task<(Block block, StoreError error)> DbGetBlock(int index)
         {
-
             logger.Verbose("Db - GetBlock");
 
             var key = BlockKey(index);
@@ -747,62 +728,45 @@ namespace Babble.Core.HashgraphImpl.Stores
             }
 
             return Task.FromResult<(Block, StoreError)>((result.Value, null));
-
-
         }
-
 
         public Task<StoreError> DbSetBlock(Block block)
         {
             logger.Verbose("Db - SetRound");
 
             var key = BlockKey(block.Index());
-            
+
             tx.Insert(BlockPrefix, key, block);
 
             return Task.FromResult<StoreError>(null);
         }
 
+        public Task<(Frame frame, StoreError err)> DbGetFrame(int index)
+        {
+            logger.Verbose("Db - GetFrame");
 
-       public  Task<(Frame frame, StoreError err)> DbGetFrame(int index)
-       {
-           
-           logger.Verbose("Db - GetFrame");
+            var key = FrameKey(index);
 
-           var key = FrameKey(index);
+            var result = tx.Select<string, Frame>(FramePrefix, key);
 
+            if (!result.Exists)
+            {
+                return Task.FromResult((new Frame(), new StoreError(StoreErrorType.KeyNotFound)));
+            }
 
-           var result = tx.Select<string, Frame>(FramePrefix, key);
-
-            
-           if (!result.Exists)
-           {
-               return Task.FromResult<(Frame, StoreError)>((new Frame(), new StoreError(StoreErrorType.KeyNotFound)));
-           }
-
-
-
-           return Task.FromResult<(Frame, StoreError)>((result.Value, null));
-
+            return Task.FromResult<(Frame, StoreError)>((result.Value, null));
         }
 
-        public Task<StoreError> DbSetFrame( Frame frame)
+        public Task<StoreError> DbSetFrame(Frame frame)
         {
-        
-            
-            
-            
             logger.Verbose("Db - SetFrame");
 
             var key = FrameKey(frame.Round);
-            
+
             tx.Insert(FramePrefix, key, frame);
 
             return Task.FromResult<StoreError>(null);
-            
-  
         }
-
 
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -818,10 +782,5 @@ namespace Babble.Core.HashgraphImpl.Stores
         //    }
         //    return err
         //}
-
-
-
-
-
     }
 }

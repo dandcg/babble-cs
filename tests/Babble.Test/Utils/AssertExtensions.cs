@@ -27,9 +27,7 @@ namespace Babble.Test.Utils
 
         public static void ShouldNotBeError(this BabbleError err, string userMessage=null)
         {
-        
             userMessage = userMessage ?? err?.ToString();
-
             Assert.True(err==null,userMessage);
         }
 

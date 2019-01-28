@@ -9,7 +9,7 @@ namespace Babble.Core.PeersImpl
     public class Peers
     {
         public AsyncLock RwMutex = new AsyncLock();
-        public List<Peer> Sorted;
+        public List<Peer> Sorted ;
         public Dictionary<string, Peer> ByPubKey;
         public Dictionary<int, Peer> ById;
 
@@ -17,7 +17,7 @@ namespace Babble.Core.PeersImpl
 
         public static Peers NewPeers()
         {
-            return new Peers {ById = new Dictionary<int, Peer>(), ByPubKey = new Dictionary<string, Peer>()};
+            return new Peers {ById = new Dictionary<int, Peer>(), ByPubKey = new Dictionary<string, Peer>(), Sorted = new List<Peer>() };
         }
 
         public static Peers NewPeersFromSlice(Peer[] source)

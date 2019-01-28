@@ -35,10 +35,11 @@ namespace Babble.Test.HashgraphImpl
 
         private readonly ILogger logger;
         private readonly ITestOutputHelper output;
+        private string path;
 
         private string GetPath()
         {
-            return $"localdb/{Guid.NewGuid():D}";
+            return path ?? (path = $"localdb/{Guid.NewGuid():D}");
         }
 
         public class TestNode
@@ -2423,7 +2424,7 @@ namespace Babble.Test.HashgraphImpl
 
             var lcr = h2.LastConsensusRound;
 
-            Assert.True(lcr != null || lcr == block.RoundReceived(),$"LastConsensusRound should be {block.RoundReceived()}, not {lcr}");
+            Assert.True(lcr != null || lcr == block.RoundReceived(), $"LastConsensusRound should be {block.RoundReceived()}, not {lcr}");
 
             var v = h2.AnchorBlock;
             Assert.True(v == null, $"AnchorBlock should be nil, not {v}");
@@ -2432,7 +2433,7 @@ namespace Babble.Test.HashgraphImpl
             Test continue after Reset
             ***************************************************************************/
             //Insert remaining Events into the Reset hashgraph
-           
+
             int r;
 
             for (r = 2; r <= 4; r++)
@@ -2481,77 +2482,73 @@ namespace Babble.Test.HashgraphImpl
             }
         }
 
-//        [Fact]
-        //        public async Task TestBootstrap()
-        //        {
-        //            var dbPath = GetPath();
+        [Fact]
+        public async Task TestBootstrap()
+        {
+            var dbPath = GetPath();
 
-        //            //Initialize a first Hashgraph with a DB backend
-        //            //Set events and run consensus methods on it
-        //            var (h, _) = await InitConsensusHashgraph(true, dbPath, logger);
+            //Initialize a first Hashgraph with a DB backend
+            //Set events and run consensus methods on it
+            var (h, _) = await InitConsensusHashgraph(true);
 
-        //            using (var tx = h.Store.BeginTx())
-        //            {
-        //                await h.DivideRounds();
+            using (var tx = h.Store.BeginTx())
+            {
+                await h.DivideRounds();
+                await h.DecideFame();
+                await h.DecideRoundReceived();
+                await h.ProcessDecidedRounds();
 
-        //                await h.DecideFame();
+                tx.Commit();
+            }
 
-        //                await h.FindOrder();
+            h.Store.Close();
 
-        //                tx.Commit();
-        //            }
+            logger.Debug("------- RecycledStore -------");
 
-        //            h.Store.Close();
+            //Now we want to create a new Hashgraph based on the database of the previous
+            //Hashgraph and see if we can boostrap it to the same state.
 
-        //            Exception err;
+            var (recycledStore, err1) = await LocalDbStore.Load(CacheSize, GetPath(), logger);
+            err1.ShouldNotBeError();
 
-        //            logger.Debug("------- RecycledStore -------");
+            var nParticipants = recycledStore.Participants();
+            var nh = new Hashgraph(nParticipants.participants, recycledStore, null, logger);
 
-        //            //Now we want to create a new Hashgraph based on the database of the previous
-        //            //Hashgraph and see if we can boostrap it to the same state.
-        //            IStore recycledStore;
-        //            (recycledStore, err) = await LocalDbStore.Load(CacheSize, dbPath, logger);
+            var err2 = await nh.Bootstrap();
+            err2.ShouldNotBeError();
 
-        //            Assert.Null(err);
+            var hConsensusEvents = h.Store.ConsensusEvents();
 
-        //            Assert.Equal(h.Store.Participants().participants.Count, recycledStore.Participants().participants.Count);
+            var nhConsensusEvents = nh.Store.ConsensusEvents();
 
-        //            foreach (var p in h.Store.Participants().participants)
-        //            {
-        //                Assert.Equal(recycledStore.Participants().participants[p.Key], p.Value);
-        //            }
+            Assert.Equal(hConsensusEvents.Length, nhConsensusEvents.Length);
 
-        //            var nh = new Hashgraph(recycledStore.Participants().participants, recycledStore, null, logger);
+            var hKnown = await h.Store.KnownEvents();
 
-        //            err = await nh.Bootstrap();
+            var nhKnown = await nh.Store.KnownEvents();
 
-        //            Assert.Null(err);
+            Assert.Equal(hKnown.Count, nhKnown.Count);
 
-        //            var hConsensusEvents = h.ConsensusEvents();
+            nhKnown.ShouldCompareTo(hKnown);
 
-        //            var nhConsensusEvents = nh.ConsensusEvents();
+            Assert.Equal(h.LastConsensusRound, nh.LastConsensusRound);
 
-        //            Assert.Equal(hConsensusEvents.Length, nhConsensusEvents.Length);
+            Assert.Equal(h.LastCommitedRoundEvents, nh.LastCommitedRoundEvents);
 
-        //            var hKnown = await h.KnownEvents();
+            Assert.Equal(h.ConsensusTransactions, nh.ConsensusTransactions);
 
-        //            var nhKnown = await nh.KnownEvents();
+            Assert.Equal(h.PendingLoadedEvents, nh.PendingLoadedEvents);
+        }
 
-        //            Assert.Equal(hKnown.Count, nhKnown.Count);
-
-        //            foreach (var p in hKnown)
-        //            {
-        //                Assert.Equal(nhKnown[p.Key], p.Value);
-        //            }
-
-        //            Assert.Equal(h.LastConsensusRound, nh.LastConsensusRound);
-
-        //            Assert.Equal(h.LastCommitedRoundEvents, nh.LastCommitedRoundEvents);
-
-        //            Assert.Equal(h.ConsensusTransactions, nh.ConsensusTransactions);
-
-        //            Assert.Equal(h.PendingLoadedEvents, nh.PendingLoadedEvents);
-        //        }
+        [Fact]
+        public void ComputeIdofPeer()
+        {
+            var key = CryptoUtils.GenerateEcdsaKey();
+            var pubKey = CryptoUtils.FromEcdsaPub(key);
+            var peer = Peer.New(pubKey.ToHex(), "");
+            var peer2 = Peer.New(pubKey.ToHex(), "");
+            Assert.Equal(peer.ID, peer2.ID);
+        }
 
         /*
      

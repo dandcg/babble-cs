@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Babble.Core.Common;
 using Babble.Core.Util;
 
@@ -16,7 +15,6 @@ namespace Babble.Core.PeersImpl
         {
             var peer = new Peer {PubKeyHex = pubKeyHex, NetAddr = netAddr};
             peer.ComputeId();
-
             return peer;
         }
 
@@ -29,12 +27,11 @@ namespace Babble.Core.PeersImpl
         {
             // TODO: Use the decoded bytes from hex
             var pubKey = PubKeyBytes();
-
             var hash = new Fnv1a32();
-            var res = hash.ComputeHash(pubKey);
-            ID = hash.GetHashCode();
-        }
 
+            var res = hash.ComputeHash(pubKey);
+            ID = BitConverter.ToInt32(res, 0);
+        }
 
         // ExcludePeer is used to exclude a single peer from a list of peers.
         public static (int, Peer[]) ExcludePeer(Peer[] peers, string peer)
@@ -48,7 +45,8 @@ namespace Babble.Core.PeersImpl
                 if (p.NetAddr != peer)
                 {
                     otherPeers.Add(p);
-                } else
+                }
+                else
                 {
                     index = i;
                 }
@@ -58,8 +56,5 @@ namespace Babble.Core.PeersImpl
 
             return (index, otherPeers.ToArray());
         }
-
     }
-
-
 }
